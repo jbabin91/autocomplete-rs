@@ -1,0 +1,41 @@
+// hk configuration for autocomplete-rs
+// Install via mise: mise install
+// Setup git hooks: hk install
+
+amends "package://github.com/jdx/hk/releases/download/v1.19.0/hk@1.19.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.19.0/hk@1.19.0#/Builtins.pkl"
+
+// Configure git hooks
+hooks {
+  // Run formatting and linting checks before commit
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps {
+      // Rust tools (builtins)
+      ["cargo_fmt"] = Builtins.cargo_fmt
+      ["cargo_clippy"] = Builtins.cargo_clippy
+      ["cargo_check"] = Builtins.cargo_check
+
+      // Non-Rust formatting (builtins)
+      ["prettier"] = Builtins.prettier
+      ["taplo"] = Builtins.taplo
+
+      // Markdown linting (custom - uses markdownlint-cli2)
+      ["markdown_lint"] {
+        glob = "*.md"
+        check = "markdownlint-cli2 {{files}}"
+        fix = "markdownlint-cli2 --fix {{files}}"
+      }
+    }
+  }
+
+  // Run full test suite before push
+  ["pre-push"] {
+    steps {
+      ["test"] {
+        check = "cargo test --all-features"
+      }
+    }
+  }
+}

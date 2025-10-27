@@ -1,0 +1,18 @@
+# rustfmt configuration
+# See: https://rust-lang.github.io/rustfmt/
+# Only uses stable features (works with stable Rust 1.85+)
+
+# Edition to use (should match Cargo.toml)
+edition = "2024"
+
+# Maximum line width
+max_width = 100
+
+# Formatting
+use_small_heuristics = "Default"
+
+# Misc
+newline_style = "Unix"
+remove_nested_parens = true
+reorder_imports = true
+reorder_modules = true

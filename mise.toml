@@ -1,0 +1,73 @@
+# mise configuration for autocomplete-rs
+# Install tools: mise install
+# Run tasks: mise run <task>
+
+# Development tools
+[tools]
+# Rust tools
+"cargo:taplo-cli" = "latest"
+"cargo:hk" = "latest"
+
+# JS ecosystem tools
+"npm:prettier" = "latest"
+"npm:markdownlint-cli2" = "latest"
+
+# System tools
+pkl = "latest"
+
+# Tasks (replaces Makefile)
+[tasks.fmt]
+description = "Format all files (Rust + TOML/Markdown/JSON)"
+run = [
+  "cargo fmt --all",
+  "taplo fmt",
+  "prettier --write '**/*.{json,md,yml,yaml}'",
+]
+
+[tasks.fmt-check]
+description = "Check formatting without modifying"
+run = [
+  "cargo fmt --all -- --check",
+  "taplo fmt --check",
+  "prettier --check '**/*.{json,md,yml,yaml}'",
+]
+
+[tasks.check]
+description = "Quick type check"
+run = "cargo check --all-targets --all-features"
+
+[tasks.lint]
+description = "Run clippy linter"
+run = "cargo clippy --all-targets --all-features -- -D warnings"
+
+[tasks.test]
+description = "Run tests"
+run = "cargo test --all-features"
+
+[tasks.build]
+description = "Build in debug mode"
+run = "cargo build"
+
+[tasks.release]
+description = "Build optimized release"
+run = "cargo build --release"
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "cargo clean"
+
+[tasks.install]
+description = "Install binary locally"
+run = "cargo install --path ."
+
+[tasks.publish]
+description = "Publish to crates.io"
+run = "cargo publish"
+
+[tasks.ci]
+description = "Run all CI checks"
+depends = ["fmt-check", "check", "lint", "test"]
+
+[tasks.watch]
+description = "Watch for changes and run checks"
+run = "cargo watch -x check -x test"

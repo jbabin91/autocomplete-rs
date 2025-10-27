@@ -1,0 +1,16 @@
+# Clippy configuration
+# See: https://doc.rust-lang.org/clippy/
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 30
+
+# Disallowed methods (functions you don't want to use)
+# disallowed-methods = [
+#     { path = "std::env::set_var", reason = "Use at program startup only" }
+# ]
+
+# Type complexity threshold
+type-complexity-threshold = 250
+
+# Allowed lints (if you want to disable some clippy warnings)
+# Example: allow_attributes_without_reason = false
