@@ -1,3 +1,4 @@
+use crate::daemon::Suggestion;
 use anyhow::Result;
 use crossterm::{
     ExecutableCommand,
@@ -9,26 +10,31 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, List, ListItem},
 };
 use std::io;
 
-#[allow(dead_code)]
 pub struct CompletionUI {
-    suggestions: Vec<String>,
+    suggestions: Vec<Suggestion>,
     selected: usize,
 }
 
-#[allow(dead_code)]
 impl CompletionUI {
-    pub fn new(suggestions: Vec<String>) -> Self {
+    pub fn new(suggestions: Vec<Suggestion>) -> Self {
         Self {
             suggestions,
             selected: 0,
         }
     }
 
-    pub fn run(&mut self) -> Result<Option<String>> {
+    /// Display the TUI and return the selected suggestion (if any)
+    pub fn run(&mut self) -> Result<Option<Suggestion>> {
+        // Don't show TUI if no suggestions
+        if self.suggestions.is_empty() {
+            return Ok(None);
+        }
+
         // Setup terminal
         enable_raw_mode()?;
         let mut stdout = io::stdout();
@@ -49,23 +55,25 @@ impl CompletionUI {
     fn run_app<B: ratatui::backend::Backend>(
         &mut self,
         terminal: &mut Terminal<B>,
-    ) -> Result<Option<String>> {
+    ) -> Result<Option<Suggestion>> {
         loop {
             terminal.draw(|f| self.ui(f))?;
 
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => return Ok(None),
+                    KeyCode::Esc => return Ok(None),
                     KeyCode::Enter => {
                         return Ok(Some(self.suggestions[self.selected].clone()));
                     }
                     KeyCode::Down => {
-                        if self.selected < self.suggestions.len() - 1 {
-                            self.selected += 1;
-                        }
+                        // Wrap around to beginning
+                        self.selected = (self.selected + 1) % self.suggestions.len();
                     }
                     KeyCode::Up => {
-                        if self.selected > 0 {
+                        // Wrap around to end
+                        if self.selected == 0 {
+                            self.selected = self.suggestions.len() - 1;
+                        } else {
                             self.selected -= 1;
                         }
                     }
@@ -85,20 +93,44 @@ impl CompletionUI {
             .suggestions
             .iter()
             .enumerate()
-            .map(|(i, s)| {
-                let style = if i == self.selected {
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default()
-                };
-                ListItem::new(s.as_str()).style(style)
+            .map(|(i, suggestion)| {
+                let is_selected = i == self.selected;
+
+                // Build the line with text and description
+                let mut spans = vec![Span::styled(
+                    &suggestion.text,
+                    if is_selected {
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(Color::White)
+                    },
+                )];
+
+                // Add description if present
+                if !suggestion.description.is_empty() {
+                    spans.push(Span::raw(" - "));
+                    spans.push(Span::styled(
+                        &suggestion.description,
+                        if is_selected {
+                            Style::default().fg(Color::Yellow)
+                        } else {
+                            Style::default().fg(Color::Gray)
+                        },
+                    ));
+                }
+
+                ListItem::new(Line::from(spans))
             })
             .collect();
 
-        let list =
-            List::new(items).block(Block::default().borders(Borders::ALL).title("Suggestions"));
+        let list = List::new(items).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Completions")
+                .style(Style::default().fg(Color::Cyan)),
+        );
 
         f.render_widget(list, chunks[0]);
     }

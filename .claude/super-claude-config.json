@@ -1,0 +1,94 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jbabin91/super-claude/refs/heads/main/.claude-plugin/super-claude-config.schema.json",
+  "_comment": [
+    "Super Claude Plugin Configuration",
+    "",
+    "This file controls plugin behavior for this project.",
+    "Configuration priority: this file > plugin defaults > environment variables",
+    "",
+    "Common customizations:",
+    "  • Disable a skill: Set 'enabled': false",
+    "  • Change protected branches: Modify workflow.hooks.gitCommitGuard.protectedBranches",
+    "  • Add branch prefixes: Modify workflow.hooks.branchNameValidator.allowedPrefixes",
+    "  • Customize triggers: Add/modify 'keywords' or 'patterns' arrays",
+    "",
+    "Changes take effect immediately (no restart needed).",
+    "Documentation: https://github.com/jbabin91/super-claude"
+  ],
+
+  "workflow": {
+    "skills": {},
+    "hooks": {
+      "gitCommitGuard": {
+        "enabled": false,
+        "protectedBranches": ["main", "master"],
+        "bypassEnvVar": "SKIP_COMMIT_GUARD"
+      },
+      "branchNameValidator": {
+        "enabled": true,
+        "allowedPrefixes": [
+          "feat",
+          "fix",
+          "chore",
+          "docs",
+          "test",
+          "refactor",
+          "perf",
+          "build",
+          "ci",
+          "revert",
+          "style"
+        ],
+        "allowedBranches": ["main", "master", "develop"]
+      }
+    }
+  },
+
+  "meta": {
+    "skills": {
+      "skill-creator": {
+        "enabled": true,
+        "triggers": {
+          "keywords": ["create skill", "new skill", "skill template"],
+          "patterns": ["generate.*skill", "scaffold.*skill"]
+        }
+      },
+      "command-creator": {
+        "enabled": true,
+        "triggers": {
+          "keywords": ["create command", "new command", "slash command"],
+          "patterns": ["generate.*command", "scaffold.*command"]
+        }
+      },
+      "agent-creator": {
+        "enabled": true,
+        "triggers": {
+          "keywords": ["create agent", "new agent"],
+          "patterns": ["generate.*agent", "scaffold.*agent"]
+        }
+      },
+      "skill-validator": {
+        "enabled": true,
+        "triggers": {
+          "keywords": ["validate skill", "check skill"],
+          "patterns": ["validate.*skill", "check.*skill.*format"]
+        }
+      },
+      "plugin-creator": {
+        "enabled": true,
+        "triggers": {
+          "keywords": ["create plugin", "new plugin"],
+          "patterns": ["generate.*plugin", "scaffold.*plugin"]
+        }
+      },
+      "hook-creator": {
+        "enabled": true,
+        "triggers": {
+          "keywords": ["create hook", "new hook"],
+          "patterns": ["generate.*hook", "scaffold.*hook"]
+        }
+      }
+    },
+    "hooks": {}
+  }
+}

@@ -45,3 +45,4 @@ Thumbs.db
 # Cache
 .cache/
 .rumdl-cache/
+.python-version
