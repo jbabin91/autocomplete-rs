@@ -27,6 +27,11 @@ hooks {
         check = "markdownlint-cli2 {{files}}"
         fix = "markdownlint-cli2 --fix {{files}}"
       }
+
+      // Beads: flush pending changes to JSONL before commit
+      ["bd_flush"] {
+        check = "TERM=dumb bd hooks run pre-commit --quiet"
+      }
     }
   }
 
@@ -35,6 +40,29 @@ hooks {
     steps {
       ["test"] {
         check = "cargo test --all-features"
+      }
+
+      // Beads: sync before push
+      ["bd_sync"] {
+        check = "TERM=dumb bd hooks run pre-push --quiet"
+      }
+    }
+  }
+
+  // Beads: import JSONL after pull/merge
+  ["post-merge"] {
+    steps {
+      ["bd_import"] {
+        check = "TERM=dumb bd hooks run post-merge --quiet"
+      }
+    }
+  }
+
+  // Beads: import JSONL after branch checkout
+  ["post-checkout"] {
+    steps {
+      ["bd_import"] {
+        check = "TERM=dumb bd hooks run post-checkout --quiet"
       }
     }
   }
