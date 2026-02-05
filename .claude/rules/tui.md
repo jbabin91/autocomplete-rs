@@ -3,34 +3,27 @@ paths:
   - 'src/tui/**'
 ---
 
-# TUI Development Rules
+# Inline Completion Dropdown Rules
 
-## Architecture
+## Target Architecture
 
-- Ratatui immediate-mode rendering with Crossterm backend
+The completion dropdown renders **inline** in the shell using raw ANSI escape codes via crossterm — NOT alternate screen, NOT Ratatui. It appears below the cursor without disrupting terminal context (like Fig's UX, not fzf's).
+
+Implementation approach:
+
+1. Save cursor position
+2. Move cursor below current line
+3. Write dropdown box using box-drawing characters and ANSI colors
+4. Handle keyboard input (arrows, enter, esc, typing to filter)
+5. On dismiss: restore cursor, erase dropdown lines
+6. Use synchronized output (DEC mode 2026) to prevent flicker
+
+## Current Implementation (TEMPORARY — will be replaced)
+
+- Uses Ratatui with `EnterAlternateScreen` (full-screen mode) — this is wrong for the target UX
 - `CompletionUI` struct holds suggestions + selected index
-- Event loop reads `crossterm::event::Event::Key` for navigation
-- Navigation wraps around (last → first, first → last)
-
-## Current Implementation (Alternate Screen)
-
-- Uses `EnterAlternateScreen` / `LeaveAlternateScreen` (full-screen mode)
-- Raw mode enabled during TUI, restored on exit (including on error)
-- Terminal cleanup MUST happen in all exit paths (success, cancel, error)
-
-## Future Direction
-
-- Replace alternate screen with inline ANSI rendering (ADR-0004)
-- Dropdown should render below the cursor line, pushing content down
-- This is a significant architectural change — don't do it incrementally within the current alternate-screen approach
-
-## Styling
-
-- Selected item: Yellow + Bold
-- Unselected text: White
-- Description text: Gray (dimmed when unselected, Yellow when selected)
-- Border: Cyan with "Completions" title
-- Uses Ratatui `List`, `Block`, `ListItem` widgets
+- Raw mode enabled during TUI, restored on exit
+- When rewriting: drop Ratatui dependency for this module, use crossterm directly
 
 ## Key Bindings
 
@@ -39,7 +32,9 @@ paths:
 - `Down` → next item (wraps)
 - `Up` → previous item (wraps)
 
-## Performance Budget
+## Constraints
 
-- TUI render: <10ms
-- Must handle 100+ suggestions smoothly
+- Max ~5-8 visible suggestions (scrollable)
+- Smart positioning: render above cursor if near bottom of terminal
+- Must work in all major terminals (iTerm2, Alacritty, Kitty, Ghostty, WezTerm, VS Code terminal)
+- Render time: <2ms target
