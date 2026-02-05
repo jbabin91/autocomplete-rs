@@ -1,9 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "includeCoAuthoredBy": false,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "cleanupPeriodDays": 30,
-  "spinnerTipsEnabled": false,
+  "includeCoAuthoredBy": false,
   "permissions": {
+    "allow": [],
+    "ask": [],
     "defaultMode": "acceptEdits",
     "deny": [
       "Read(.env)",
@@ -37,5 +42,6 @@
       "Bash(pnpm add -g:*)",
       "Bash(yarn global:*)"
     ]
-  }
+  },
+  "spinnerTipsEnabled": false
 }

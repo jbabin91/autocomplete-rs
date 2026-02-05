@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "resolvedDependencies": {
+    "package://github.com/jdx/hk/releases/download/v1.19.0/hk@1": {
+      "type": "remote",
+      "uri": "projectpackage://github.com/jdx/hk/releases/download/v1.19.0/hk@1.19.0",
+      "checksums": {
+        "sha256": "80f48f57ae632fb50241a64d3da1bc942d905e5fcbb6ae4bf34afebd24714f00"
+      }
+    }
+  }
+}

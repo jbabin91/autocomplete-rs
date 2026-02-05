@@ -2,6 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-<!-- Import main agent instructions (source of truth) -->
+All project instructions live in `AGENTS.md`. Write new instructions there, not here.
 
 @AGENTS.md
