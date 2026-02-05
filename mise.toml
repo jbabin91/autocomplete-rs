@@ -21,7 +21,7 @@ description = "Format all files (Rust + TOML/Markdown/JSON)"
 run = [
   "cargo fmt --all",
   "taplo fmt",
-  "prettier --write '**/*.{json,md,yml,yaml}'",
+  "prettier -uwl '**/*.{json,md,yml,yaml}'",
 ]
 
 [tasks.fmt-check]
@@ -29,7 +29,7 @@ description = "Check formatting without modifying"
 run = [
   "cargo fmt --all -- --check",
   "taplo fmt --check",
-  "prettier --check '**/*.{json,md,yml,yaml}'",
+  "prettier -uc '**/*.{json,md,yml,yaml}'",
 ]
 
 [tasks.check]

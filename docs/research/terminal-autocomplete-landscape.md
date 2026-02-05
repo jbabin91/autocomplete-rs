@@ -416,25 +416,25 @@ The majority of each spec is static data describing the command tree:
 
 ```typescript
 const completionSpec: Fig.Spec = {
-  name: "git",
+  name: 'git',
   subcommands: [
     {
-      name: "checkout",
-      description: "Switch branches or restore working tree files",
+      name: 'checkout',
+      description: 'Switch branches or restore working tree files',
       args: {
-        name: "branch",
-        description: "Branch to checkout",
+        name: 'branch',
+        description: 'Branch to checkout',
         // generator would go here for dynamic branch listing
       },
       options: [
         {
-          name: ["-b", "--branch"],
-          description: "Create and checkout a new branch",
-          args: { name: "new-branch-name" },
+          name: ['-b', '--branch'],
+          description: 'Create and checkout a new branch',
+          args: { name: 'new-branch-name' },
         },
         {
-          name: ["-f", "--force"],
-          description: "Force checkout (throw away local modifications)",
+          name: ['-f', '--force'],
+          description: 'Force checkout (throw away local modifications)',
         },
       ],
     },
@@ -456,24 +456,24 @@ Generators are JavaScript functions that execute at completion time to produce c
 
 ```typescript
 const completionSpec: Fig.Spec = {
-  name: "git",
+  name: 'git',
   subcommands: [
     {
-      name: "checkout",
+      name: 'checkout',
       args: {
-        name: "branch",
+        name: 'branch',
         generators: {
           // This runs: git branch --no-color
           // Then parses the output into suggestions
-          script: ["git", "branch", "--no-color"],
+          script: ['git', 'branch', '--no-color'],
           postProcess: function (output) {
             return output
-              .split("\n")
-              .filter((branch) => !branch.includes("*"))
+              .split('\n')
+              .filter((branch) => !branch.includes('*'))
               .map((branch) => ({
                 name: branch.trim(),
-                description: "Branch",
-                icon: "fig://icon?type=git",
+                description: 'Branch',
+                icon: 'fig://icon?type=git',
               }));
           },
         },

@@ -30,13 +30,13 @@ Example spec:
 
 ```typescript
 const completionSpec: Fig.Spec = {
-  name: "git",
-  description: "The stupid content tracker",
+  name: 'git',
+  description: 'The stupid content tracker',
   subcommands: [
     {
-      name: "checkout",
-      description: "Switch branches or restore files",
-      options: [{ name: ["-b", "--branch"], description: "Create new branch" }],
+      name: 'checkout',
+      description: 'Switch branches or restore files',
+      options: [{ name: ['-b', '--branch'], description: 'Create new branch' }],
     },
   ],
 };
