@@ -66,4 +66,13 @@ hooks {
       }
     }
   }
+
+  // Beads: add agent identity trailers to commit messages
+  ["prepare-commit-msg"] {
+    steps {
+      ["bd_trailers"] {
+        check = "TERM=dumb bd hooks run prepare-commit-msg --quiet"
+      }
+    }
+  }
 }

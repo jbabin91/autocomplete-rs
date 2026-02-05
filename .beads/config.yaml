@@ -65,3 +65,7 @@ sync-branch: "beads-sync"
 # - linear.api-key
 # - github.org
 # - github.repo
+
+daemon.auto-commit: true
+
+daemon.auto-push: true
