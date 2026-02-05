@@ -42,12 +42,6 @@ Decision records document the "why" behind our technical choices:
 - [ADR-0005: Ratatui for TUI](adr/0005-ratatui-for-tui.md) - Why Ratatui over
   other TUI frameworks
 
-## Quick Links
-
-- [OpenSpec Changes](../openspec/changes/) - Planned features and changes
-- [Roadmap](../openspec/ROADMAP.md) - Development phases and priorities
-- [Project Context](../openspec/project.md) - Tech stack and conventions
-
 ## Documentation Standards
 
 When writing documentation:

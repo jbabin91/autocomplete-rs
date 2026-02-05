@@ -64,6 +64,6 @@ The README has AI-generated template feel — emoji bullet points, "blazing fast
 
 The docs/ directory is extensive but much of it describes features that don't exist yet as if they do. Consider trimming to what's real and marking everything else as planned/aspirational. ADRs may need revisiting based on the architectural concerns above.
 
-### OpenSpec
+### Planning
 
-The openspec/ change proposals were written before the Fig/Inshellisense research. They should be reviewed against the new findings — particularly the rendering approach and daemon architecture.
+The original proposals were written before the Fig/Inshellisense research. They should be reviewed against the new findings — particularly the rendering approach and daemon architecture. Planning is now tracked in beads (`bd list`).

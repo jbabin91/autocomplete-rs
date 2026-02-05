@@ -162,7 +162,7 @@ great together.
 
 ## Development Priorities
 
-Check [ROADMAP.md](openspec/ROADMAP.md) for current phase and priorities:
+Check project issues (`bd ready`) for current phase and priorities:
 
 **Phase 1 (MVP) - Current:**
 

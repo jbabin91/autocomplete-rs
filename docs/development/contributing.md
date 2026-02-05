@@ -40,7 +40,7 @@ chosen for newcomers and include:
 
 ### Current Priorities
 
-Check [ROADMAP.md](../../openspec/ROADMAP.md) for current phase priorities:
+Check project issues (`bd ready`) for current phase priorities:
 
 **Phase 1 (MVP):** Foundation work
 
@@ -73,9 +73,9 @@ For significant new features:
 
 1. **Check existing issues** to avoid duplicates
 2. **Open a discussion** on GitHub Discussions
-3. **Create an OpenSpec proposal** (see [OpenSpec Workflow](#openspec-workflow))
+3. **Create a beads issue** (`bd create --title="..." --type=feature`)
 4. **Get feedback** before implementing
-5. **Update roadmap** if accepted
+5. **Update issue status** as work progresses
 
 ## Development Workflow
 
@@ -439,118 +439,6 @@ creating new strings for each token.
 Before: 8.2ms avg for 200-char buffer
 After: 2.1ms avg for 200-char buffer
 ```
-
-## OpenSpec Workflow
-
-For significant changes, use OpenSpec:
-
-### 1. Create Change Proposal
-
-```bash
-cd openspec/changes
-mkdir my-feature
-cd my-feature
-```
-
-Create `proposal.md`:
-
-```markdown
-# Add My Feature
-
-**Priority:** TBD **Phase:** TBD **Dependencies:** None
-
-## Why
-
-Explain motivation and problem being solved
-
-## What Changes
-
-- List changes to code
-- List affected modules
-- List new dependencies
-
-## Impact
-
-- Performance impact
-- Breaking changes
-- Migration needed
-
-## Design Decisions
-
-- Key technical choices
-- Trade-offs considered
-```
-
-### 2. Create Specs
-
-Create `specs/my-capability.md`:
-
-```markdown
-# Capability: My Feature
-
-## Purpose
-
-What this capability provides
-
-## Requirements
-
-- Functional requirements
-- Performance requirements
-- Compatibility requirements
-
-## Implementation
-
-- Key components
-- Data structures
-- Algorithms
-
-## Testing
-
-- Test scenarios
-- Performance benchmarks
-```
-
-### 3. Create Tasks
-
-Create `tasks.md`:
-
-```markdown
-# Tasks
-
-## Setup
-
-- [ ] Task 1
-- [ ] Task 2
-
-## Implementation
-
-- [ ] Task 3
-- [ ] Task 4
-
-## Testing
-
-- [ ] Task 5
-- [ ] Task 6
-```
-
-### 4. Validate
-
-```bash
-openspec validate my-feature
-```
-
-### 5. Get Feedback
-
-- Open GitHub Discussion
-- Tag relevant maintainers
-- Incorporate feedback
-- Update proposal
-
-### 6. Implement
-
-Follow tasks, create PRs for each milestone.
-
-See [OpenSpec Agents Guide](../../openspec/AGENTS.md) for complete workflow.
 
 ## Review Process
 

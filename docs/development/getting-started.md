@@ -217,10 +217,7 @@ autocomplete-rs/
 │   └── zsh.zsh          # ZLE widget
 ├── tests/               # Integration tests
 ├── benches/             # Performance benchmarks
-├── openspec/            # OpenSpec proposals
-│   ├── project.md       # Project context
-│   ├── ROADMAP.md       # Development phases
-│   └── changes/         # Change proposals
+├── .beads/              # Issue tracking (beads)
 └── docs/
     ├── adr/             # Architecture decisions
     ├── development/     # This guide
@@ -421,10 +418,9 @@ Expected output (when specs implemented):
 
 Ready to contribute? Great!
 
-1. Check [ROADMAP.md](../../openspec/ROADMAP.md) for current priorities
+1. Check project issues (`bd ready`) for current priorities
 2. Look for issues tagged `good-first-issue`
 3. Read [Contributing Guide](contributing.md)
-4. Follow [OpenSpec workflow](../../openspec/AGENTS.md) for larger changes
 
 ### Code Standards
 
@@ -463,7 +459,7 @@ cargo flamegraph --bin autocomplete-rs -- daemon /tmp/test.sock
 
 - Read [Project Structure](project-structure.md) to understand the codebase
 - Read [Architecture Overview](../architecture/overview.md) for system design
-- Check [ROADMAP.md](../../openspec/ROADMAP.md) for what's being built
+- Check project issues (`bd ready`) for what's being built
 - Join development discussions in GitHub Issues
 
 ## Getting Help

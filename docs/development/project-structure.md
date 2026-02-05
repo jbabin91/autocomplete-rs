@@ -13,7 +13,7 @@ autocomplete-rs/
 ├── benches/                # Performance benchmarks
 ├── specs/                  # Compiled completion specs (generated)
 ├── vendor/                 # Third-party code (Fig specs)
-├── openspec/              # OpenSpec proposals and specs
+├── .beads/                # Issue tracking (beads)
 ├── docs/                   # Documentation
 ├── Cargo.toml             # Rust project manifest
 ├── Cargo.lock             # Dependency lock file
@@ -394,32 +394,19 @@ benches/
 - Adding new features (benchmark them!)
 - Tracking performance regressions
 
-## OpenSpec (`openspec/`)
+## Issue Tracking (`.beads/`)
 
-### Project Specifications
+**Purpose:** Git-native issue tracking for AI-supervised development
 
-```sh
-openspec/
-├── project.md        # Project context for AI
-├── ROADMAP.md        # Development phases
-├── AGENTS.md         # OpenSpec workflow
-└── changes/          # Change proposals
-    ├── add-foundation-architecture/
-    ├── implement-mvp-parser/
-    ├── add-fig-spec-parser/
-    ├── add-theme-support/
-    └── add-multi-shell-support/
-```
+Uses [Beads](https://github.com/steveyegge/beads) for tracking features, bugs, and tasks
+with dependencies. Issues are tracked via `bd` CLI commands.
 
-**Purpose:** Specification-driven development
+**Key commands:**
 
-**When to use:**
-
-- Planning new features
-- Documenting architecture
-- Coordinating with AI assistants
-
-See [OpenSpec Workflow](../../openspec/AGENTS.md) for details.
+- `bd ready` - Show issues ready to work (no blockers)
+- `bd list` - List all issues
+- `bd show <id>` - View issue details
+- `bd create --title="..." --type=feature` - Create new issue
 
 ## Documentation (`docs/`)
 
@@ -530,5 +517,5 @@ main.rs
 
 - Read [Getting Started](getting-started.md) to set up development
 - Read [Architecture Overview](../architecture/overview.md) for system design
-- Check [ROADMAP.md](../../openspec/ROADMAP.md) for current phase
+- Check project issues (`bd ready`) for current priorities
 - Read [Testing Guide](testing.md) for testing practices

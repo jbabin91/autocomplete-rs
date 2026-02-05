@@ -686,5 +686,5 @@ fn test_parser_output() {
 
 - Read [Contributing Guide](contributing.md) for contribution workflow
 - Read [Project Structure](project-structure.md) to understand codebase
-- Check [ROADMAP.md](../../openspec/ROADMAP.md) for current priorities
+- Check project issues (`bd ready`) for current priorities
 - Start with tests tagged `good-first-issue`

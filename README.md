@@ -65,7 +65,7 @@ system from scratch.
 - [ ] Fish support
 - [ ] Windows WSL support
 
-See [ROADMAP.md](openspec/ROADMAP.md) for detailed development plan.
+See project issues (`bd list`) for detailed development plan.
 
 ## Quick Start
 
@@ -225,7 +225,7 @@ autocomplete-rs/
 ├── shell-integration/
 │   └── zsh.zsh          # ZLE widget
 ├── docs/                # Comprehensive documentation
-├── openspec/            # Development specs & roadmap
+├── .beads/              # Issue tracking (beads)
 └── tests/               # Integration tests
 ```
 
@@ -237,7 +237,7 @@ do.
 **Getting Started:**
 
 1. Read [Getting Started Guide](docs/development/getting-started.md)
-2. Check [ROADMAP.md](openspec/ROADMAP.md) for current priorities
+2. Check project issues (`bd ready`) for current priorities
 3. Look for issues tagged
    [`good-first-issue`](https://github.com/jacebabin/autocomplete-rs/labels/good-first-issue)
 4. Read [Contributing Guide](docs/development/contributing.md)
