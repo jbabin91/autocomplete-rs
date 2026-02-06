@@ -27,7 +27,8 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
   tasks leak on shutdown
 - Flag `sleep`-based polling when `tokio::sync::Notify` or channel-based waking is
   appropriate
-- Timeouts must use `tokio::time::timeout` — flag open-ended reads/writes on sockets
+- Timeouts must use `tokio::time::timeout` on both reads AND writes — flag any
+  open-ended socket I/O (a stalled client can block handler tasks indefinitely)
 
 ## Resource Management
 
@@ -36,6 +37,8 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 - Semaphore-based backpressure (`try_acquire_owned`) for connection limiting — flag
   unbounded accept loops
 - PID files use `kill(pid, 0)` liveness checks — flag file-existence-only checks
+- File creation for single-instance enforcement must use `OpenOptions::create_new(true)`
+  for atomicity — flag check-then-write patterns (TOCTOU race)
 
 ## Type Design
 
@@ -53,7 +56,10 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
   `println!` or `eprintln!` outside of CLI user-facing output
 - Use `#[instrument(skip_all)]` on async functions that take non-Debug parameters
 - Constants for magic numbers — flag bare numeric literals in timeout durations, size
-  limits, or protocol values
+  limits, or protocol values (e.g. use `PROTOCOL_VERSION` not `1`)
+- Protocol message fallback parsing must check for `"type"` field presence — if JSON
+  has a `"type"` field but fails to parse as a known variant, return an error instead
+  of silently falling back to a bare request type
 
 ## Testing
 

@@ -19,7 +19,7 @@ paths:
 - **Envelope format**: `DaemonMessage` tagged enum with `"type"` field:
   - `{"type":"complete","buffer":"...","cursor":N}` — completion request
   - `{"type":"shutdown"}` — graceful shutdown request
-- **Backward compatibility**: Bare `CompletionRequest` without `"type"` field is accepted (handler falls back)
+- **Backward compatibility**: Bare `CompletionRequest` without `"type"` field is accepted (handler falls back). But if JSON has a `"type"` field that doesn't match a known variant, the handler returns an error instead of falling back — prevents masking protocol bugs.
 - Response types:
   - `CompletionResponse { suggestions: Vec<Suggestion> }` — success
   - `ErrorResponse { error: String }` — validation failure or malformed JSON
@@ -35,12 +35,12 @@ paths:
 - Stream split into reader/writer: `stream.into_split()` with `BufReader` for line reading
 - Individual connection failures must NOT crash the daemon
 - Semaphore-based backpressure (100 concurrent connections max)
-- 1-second read timeout per connection
+- 1-second read timeout per connection, 1-second write timeout per response
 
 ## Socket Lifecycle
 
 - Default path: `/tmp/autocomplete-rs.sock` (override via `AUTOCOMPLETE_RS_SOCKET` env var)
-- PID file for single-instance enforcement (`*.sock` → `*.pid`)
+- PID file for single-instance enforcement (`*.sock` → `*.pid`) — uses atomic `create_new(true)` to prevent TOCTOU races
 - Socket permissions set to `0o600` after bind
 - Remove stale socket file on startup before binding
 - Clean up socket + PID file on graceful shutdown (PID file via RAII `Drop`)

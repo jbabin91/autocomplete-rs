@@ -81,7 +81,7 @@ The daemon is a persistent background process that:
 │  │  - Arc<dyn CompletionEngine>                         │ │
 │  │  - Arc<Semaphore> (100 permits)                      │ │
 │  │  - CancellationToken (cross-task shutdown)           │ │
-│  │  - AtomicU64 total_requests, AtomicU32 active_conns  │ │
+│  │  - AtomicU64 total_requests, AtomicU64 active_conns  │ │
 │  └────────────────────────────────────────────────────────┘ │
 │                                                               │
 │  ┌────────────────────────────────────────────────────────┐ │
@@ -100,26 +100,27 @@ The daemon is a persistent background process that:
 ```rust
 // src/daemon/mod.rs — thin facade
 pub async fn start(socket_path: &str) -> Result<()> {
-    let engine = Arc::new(StubEngine);
-    start_with_engine(socket_path, engine).await
+    start_with_engine(socket_path, Arc::new(StubEngine)).await
 }
 
 pub async fn start_with_engine(
     socket_path: &str,
     engine: Arc<dyn CompletionEngine>,
 ) -> Result<()> {
+    let path = Path::new(socket_path);
+
     // 1. Acquire PID file (single-instance enforcement)
-    let _pid_file = PidFile::acquire(socket_path)?;
+    let _pid_file = PidFile::acquire(path)?;
 
     // 2. Remove stale socket + bind
-    let _ = std::fs::remove_file(socket_path);
-    let listener = UnixListener::bind(socket_path)?;
+    let _ = std::fs::remove_file(path);
+    let listener = UnixListener::bind(path)?;
 
-    // 3. Create shared state
-    let state = Arc::new(DaemonState::new(engine));
+    // 3. Create shared state (DaemonState is Clone, not wrapped in Arc)
+    let state = DaemonState::new(engine);
 
     // 4. Run server accept loop (blocks until shutdown)
-    server::run(listener, state, socket_path).await
+    server::run(listener, state, path).await
 }
 ```
 
@@ -137,43 +138,28 @@ pub async fn start_with_engine(
 // src/daemon/handler.rs — generic over AsyncRead/AsyncWrite for testability
 pub async fn handle_connection<R, W>(
     reader: R,
-    writer: W,
-    state: Arc<DaemonState>,
+    mut writer: W,
+    state: &DaemonState,
     conn_id: u64,
 ) -> Result<()>
 where
     R: AsyncRead + Unpin,
     W: AsyncWrite + Unpin,
 {
-    let _guard = ConnectionGuard::new(&state);
+    let _guard = state.connection_guard();
 
     // 1. Read with 1s timeout + 100KB size limit
-    let raw = tokio::time::timeout(
-        Duration::from_secs(1),
-        read_limited(reader, MAX_REQUEST_SIZE as u64),
-    ).await??;
+    // 2. Parse: try DaemonMessage envelope first; if JSON has a "type" field
+    //    but fails, return error (don't fall back to bare CompletionRequest).
+    //    Only bare JSON without "type" gets backward-compat fallback.
+    // 3. Validate request fields
+    // 4. Call state.engine.complete()
+    // 5. Write response with 1s timeout (prevents stalled clients from
+    //    blocking handler tasks indefinitely)
 
-    // 2. Try DaemonMessage envelope first, fall back to bare request
-    let message = serde_json::from_str::<DaemonMessage>(&raw)
-        .or_else(|_| {
-            serde_json::from_str::<CompletionRequest>(&raw)
-                .map(DaemonMessage::Complete)
-        })?;
-
-    match message {
-        DaemonMessage::Complete(request) => {
-            // 3. Validate
-            validate_request(&request)?;
-            // 4. Call engine
-            let response = state.engine.complete(&request);
-            // 5. Write response
-            write_json(writer, &response).await
-        }
-        DaemonMessage::Shutdown => {
-            state.cancel.cancel();
-            write_json(writer, &ShutdownAck { status: "ok" }).await
-        }
-    }
+    // Shutdown variant cancels the shared CancellationToken:
+    //   state.cancel.cancel();
+    //   write_json(&mut writer, &ShutdownAck { status: "shutting_down" })
 }
 ```
 
@@ -302,7 +288,7 @@ compatibility.
 ```rust
 // src/protocol.rs
 #[derive(Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum DaemonMessage {
     Complete(CompletionRequest),
     Shutdown,
@@ -312,8 +298,8 @@ pub enum DaemonMessage {
 pub struct CompletionRequest {
     pub buffer: String,
     pub cursor: usize,
-    #[serde(default)]
-    pub version: Option<u32>,
+    #[serde(default = "default_version")]
+    pub version: u8,  // defaults to PROTOCOL_VERSION (1)
 }
 ```
 
@@ -333,8 +319,7 @@ pub struct CompletionRequest {
   "suggestions": [
     {
       "text": "feature/new",
-      "description": "Create new feature branch",
-      "suggestion_type": "argument"
+      "description": "Create new feature branch"
     }
   ]
 }
@@ -343,7 +328,7 @@ pub struct CompletionRequest {
 **Shutdown acknowledgment:**
 
 ```json
-{ "status": "ok" }
+{ "status": "shutting_down" }
 ```
 
 **Schema:**
@@ -358,22 +343,12 @@ pub struct CompletionResponse {
 #[derive(Serialize, Deserialize)]
 pub struct Suggestion {
     pub text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    pub suggestion_type: SuggestionType,
+    pub description: String,
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum SuggestionType {
-    Command,
-    Subcommand,
-    Option,
-    Argument,
-}
-
-#[derive(Serialize)]
 pub struct ShutdownAck {
-    pub status: &'static str,
+    pub status: String,
 }
 ```
 
@@ -382,25 +357,19 @@ pub struct ShutdownAck {
 **Error Response:**
 
 ```json
-{
-  "error": "Invalid cursor position",
-  "code": "INVALID_CURSOR"
+{ "error": "cursor position 99 exceeds buffer length 2" }
+```
+
+```rust
+// src/protocol.rs
+#[derive(Serialize, Deserialize)]
+pub struct ErrorResponse {
+    pub error: String,
 }
 ```
 
-**Error Codes:**
-
-- `INVALID_REQUEST` - Malformed JSON
-- `INVALID_BUFFER` - Buffer validation failed
-- `INVALID_CURSOR` - Cursor out of bounds
-- `PARSE_ERROR` - Parser failure
-- `INTERNAL_ERROR` - Unexpected error
-
-**Strategy:**
-
-- Return empty suggestions on recoverable errors
-- Return error JSON on client errors
-- Log internal errors, return generic error
+Validation errors are human-readable strings from `thiserror`-derived
+`ValidationError` variants. No error codes — the error message is the contract.
 
 ## Performance Optimization
 

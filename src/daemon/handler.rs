@@ -15,6 +15,9 @@ use super::state::DaemonState;
 /// Timeout for reading a request from a client.
 const READ_TIMEOUT: Duration = Duration::from_secs(1);
 
+/// Timeout for writing a response to a client.
+const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
+
 /// Handle a single connection.
 ///
 /// Reads one request, processes it, writes one response, then closes.
@@ -108,6 +111,10 @@ enum ParsedMessage {
 }
 
 /// Parse a JSON line, trying `DaemonMessage` first, then bare `CompletionRequest`.
+///
+/// If the JSON contains a `"type"` field but fails to parse as `DaemonMessage`,
+/// we return an error instead of falling back — this prevents masking protocol bugs
+/// (e.g. a misspelled type value being silently treated as a completion request).
 fn parse_message(line: &str) -> ParsedMessage {
     // Try envelope format first
     if let Ok(msg) = serde_json::from_str::<DaemonMessage>(line) {
@@ -117,23 +124,36 @@ fn parse_message(line: &str) -> ParsedMessage {
         };
     }
 
-    // Fall back to bare CompletionRequest (backward compat)
+    // If the JSON has a "type" field, it was intended as a DaemonMessage but had an
+    // unrecognized type value — don't silently fall back to CompletionRequest.
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
+        if value.get("type").is_some() {
+            return ParsedMessage::Error(format!("unknown message type: {}", value["type"]));
+        }
+    }
+
+    // Fall back to bare CompletionRequest (backward compat — no "type" field)
     match serde_json::from_str::<CompletionRequest>(line) {
         Ok(req) => ParsedMessage::Complete(req),
         Err(e) => ParsedMessage::Error(format!("invalid JSON: {e}")),
     }
 }
 
-/// Serialize a value as JSON and write it as a newline-terminated line.
+/// Serialize a value as JSON and write it as a newline-terminated line with timeout.
 async fn write_json<W, T>(writer: &mut W, value: &T) -> Result<()>
 where
     W: AsyncWrite + Unpin,
     T: serde::Serialize,
 {
     let json = serde_json::to_string(value)?;
-    writer.write_all(json.as_bytes()).await?;
-    writer.write_all(b"\n").await?;
-    writer.flush().await?;
+    timeout(WRITE_TIMEOUT, async {
+        writer.write_all(json.as_bytes()).await?;
+        writer.write_all(b"\n").await?;
+        writer.flush().await?;
+        Ok::<(), anyhow::Error>(())
+    })
+    .await
+    .map_err(|_| anyhow::anyhow!("write timed out"))??;
     Ok(())
 }
 
@@ -241,6 +261,14 @@ mod tests {
         let parsed: ShutdownAck = serde_json::from_str(&resp).unwrap();
         assert_eq!(parsed.status, "shutting_down");
         assert!(state.cancel.is_cancelled());
+    }
+
+    #[tokio::test]
+    async fn unknown_message_type_rejected() {
+        let state = make_state();
+        let resp = roundtrip(r#"{"type":"unknown","buffer":"ls","cursor":2}"#, &state).await;
+        let parsed: ErrorResponse = serde_json::from_str(&resp).unwrap();
+        assert!(parsed.error.contains("unknown message type"));
     }
 
     #[tokio::test]

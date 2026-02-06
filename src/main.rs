@@ -1,6 +1,8 @@
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use autocomplete_rs::daemon;
-use autocomplete_rs::protocol::{CompletionRequest, DaemonMessage};
+use autocomplete_rs::protocol::{CompletionRequest, DaemonMessage, PROTOCOL_VERSION};
 use clap::{Parser, Subcommand};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
@@ -102,7 +104,7 @@ async fn complete_command(buffer: &str, cursor: usize, socket_path: &str) -> Res
     let request = CompletionRequest {
         buffer: buffer.to_string(),
         cursor,
-        version: 1,
+        version: PROTOCOL_VERSION,
     };
     let request_json = serde_json::to_string(&request)?;
     writer.write_all(request_json.as_bytes()).await?;
@@ -140,11 +142,15 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
             writer.write_all(b"\n").await?;
             writer.flush().await?;
 
-            // Wait for acknowledgement
+            // Wait for acknowledgement with timeout
             let mut ack_line = String::new();
-            reader.read_line(&mut ack_line).await?;
-
-            println!("Daemon stopped");
+            match tokio::time::timeout(Duration::from_secs(5), reader.read_line(&mut ack_line))
+                .await
+            {
+                Ok(Ok(_)) => println!("Daemon stopped"),
+                Ok(Err(_)) => println!("Daemon stopped (connection closed)"),
+                Err(_) => println!("Daemon stop requested (timed out waiting for ack)"),
+            }
         }
         Err(_) => {
             // Can't connect, remove stale socket

@@ -21,6 +21,10 @@ deduplication principle, see `.claude/rules/tooling.md`.
 - Flag socket path references that don't mention the `AUTOCOMPLETE_RS_SOCKET` env var
   override
 - Flag outdated architecture descriptions that don't reflect implemented components
+- Code snippets in design docs must match actual function signatures, types, and serde
+  attributes — flag divergences between doc examples and `src/` implementations
+- Flag incorrect type widths (e.g. `AtomicU32` when code uses `AtomicU64`), wrong
+  `rename_all` values, or `Option<T>` when the field is actually required
 
 ## Style
 

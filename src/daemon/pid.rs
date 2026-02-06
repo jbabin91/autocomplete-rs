@@ -1,5 +1,5 @@
-use std::fs;
-use std::io;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
@@ -19,31 +19,39 @@ impl PidFile {
     /// an error. If the process is dead, removes the stale PID file.
     pub fn acquire(socket_path: &Path) -> Result<Self> {
         let pid_path = derive_pid_path(socket_path);
-
-        if pid_path.exists() {
-            let contents =
-                fs::read_to_string(&pid_path).context("failed to read existing PID file")?;
-
-            if let Ok(pid) = contents.trim().parse::<u32>() {
-                if is_process_alive(pid) {
-                    bail!(
-                        "another daemon is already running (PID {} from {})",
-                        pid,
-                        pid_path.display()
-                    );
-                }
-                debug!(pid, "removing stale PID file (process is dead)");
-            }
-            // Stale or corrupt PID file — remove it
-            let _ = fs::remove_file(&pid_path);
-        }
-
         let current_pid = std::process::id();
-        fs::write(&pid_path, current_pid.to_string())
-            .with_context(|| format!("failed to write PID file: {}", pid_path.display()))?;
 
-        debug!(pid = current_pid, path = %pid_path.display(), "PID file acquired");
-        Ok(Self { path: pid_path })
+        // Try atomic create first — if it succeeds, no other daemon is running.
+        match write_pid_atomic(&pid_path, current_pid) {
+            Ok(()) => {
+                debug!(pid = current_pid, path = %pid_path.display(), "PID file acquired");
+                Ok(Self { path: pid_path })
+            }
+            Err(_) => {
+                // File already exists — check if the process is alive.
+                let contents =
+                    fs::read_to_string(&pid_path).context("failed to read existing PID file")?;
+
+                if let Ok(pid) = contents.trim().parse::<u32>() {
+                    if is_process_alive(pid) {
+                        bail!(
+                            "another daemon is already running (PID {} from {})",
+                            pid,
+                            pid_path.display()
+                        );
+                    }
+                    debug!(pid, "removing stale PID file (process is dead)");
+                }
+
+                // Stale or corrupt PID file — remove and recreate.
+                let _ = fs::remove_file(&pid_path);
+                fs::write(&pid_path, current_pid.to_string())
+                    .with_context(|| format!("failed to write PID file: {}", pid_path.display()))?;
+
+                debug!(pid = current_pid, path = %pid_path.display(), "PID file acquired (stale replaced)");
+                Ok(Self { path: pid_path })
+            }
+        }
     }
 
     /// Return the path of this PID file.
@@ -57,6 +65,15 @@ impl Drop for PidFile {
     fn drop(&mut self) {
         let _ = fs::remove_file(&self.path);
     }
+}
+
+/// Atomically create a PID file using `create_new(true)`.
+///
+/// Returns `Ok(())` if the file was created, or `Err` if it already exists.
+fn write_pid_atomic(path: &Path, pid: u32) -> io::Result<()> {
+    let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
+    write!(file, "{pid}")?;
+    Ok(())
 }
 
 /// Derive the PID file path from a socket path.
