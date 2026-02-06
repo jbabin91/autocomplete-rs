@@ -2,8 +2,8 @@ name: Security Audit
 
 on:
   schedule:
-    # Run daily at 6am UTC
-    - cron: '0 6 * * *'
+    # Run weekly on Mondays at 6am UTC
+    - cron: '0 6 * * 1'
   push:
     branches: [main]
     paths:
