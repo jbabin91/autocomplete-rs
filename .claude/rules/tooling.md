@@ -35,7 +35,7 @@ paths:
 
 - `rustfmt.toml`: 100 char max width, Rust 2024 edition, Unix newlines
 - `clippy.toml`: cognitive-complexity-threshold = 30
-- `Cargo.toml`: Rust 2024 edition, uses tokio (full), ratatui, crossterm, clap (derive), serde, anyhow, thiserror, tracing
+- `Cargo.toml`: Rust 2024 edition, uses tokio (full), clap (derive), serde, anyhow, thiserror, tracing
 - `build.rs`: stub for Phase 2 (will parse Fig TypeScript specs with deno_ast)
 
 ## Adding New Tools

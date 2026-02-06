@@ -9,7 +9,7 @@ autocomplete-rs is a Rust-based terminal autocomplete engine — a spiritual suc
 Three-component design: a Tokio-based daemon (Unix socket server), a CLI client, and a ZLE widget for zsh.
 
 - **Daemon** (`src/daemon/`) — long-running process listening on a Unix socket. Receives `CompletionRequest` JSON (buffer + cursor position), returns `CompletionResponse` with suggestions.
-- **TUI** (`src/tui/`) — Ratatui-based dropdown shown by the client after receiving suggestions. Currently uses alternate screen (full-screen) — should be replaced with inline ANSI rendering.
+- **Inline Dropdown** — Not yet implemented. Will render completions inline below the cursor using raw ANSI escape codes via crossterm (no alternate screen, no Ratatui).
 - **Parser** (`src/parser/`) — stub. Intended to tokenize the shell buffer and match against completion specs.
 - **Shell integration** (`shell-integration/zsh.zsh`) — ZLE widget that captures the buffer/cursor, calls the client, and inserts the selected completion.
 - **Socket path:** `/tmp/autocomplete-rs.sock` (override with `AUTOCOMPLETE_RS_SOCKET` env var)
@@ -58,7 +58,7 @@ cargo test <name>    # run a single test by name
 - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 - Breaking changes: `feat!:` or `BREAKING CHANGE:` footer
 - Enforced locally by hk commit-msg hook (`cog verify`)
-- Enforced in CI by cocogitto GitHub Action
+- Enforced in CI by PR title validation (`amannn/action-semantic-pull-request`)
 
 **Workflow formulas:** Use `bd mol pour <formula>` for structured work.
 

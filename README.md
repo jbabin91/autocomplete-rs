@@ -131,8 +131,8 @@ mise run fmt         # format all files
 mise run ci          # fmt-check + check + lint + test
 ```
 
-**Git workflow:** GitHub Flow with conventional commits (enforced by
-[cocogitto](https://docs.cocogitto.io/)). Squash or rebase merges only.
+**Git workflow:** GitHub Flow with conventional commits. Squash or rebase merges
+only.
 
 **CI:** GitHub Actions runs lint, test, and conventional commit checks on every
 push and PR.
@@ -147,7 +147,7 @@ autocomplete-rs/
 |   +-- main.rs          # CLI entry point (Clap)
 |   +-- daemon/          # Tokio Unix socket server
 |   +-- parser/          # Command buffer parsing (stub)
-|   +-- tui/             # Terminal UI (temporary Ratatui, will be inline ANSI)
+|   +-- (tui/)           # Inline ANSI dropdown (not yet implemented)
 +-- shell-integration/
 |   +-- zsh.zsh          # ZLE widget
 +-- docs/                # Architecture docs, ADRs, guides
@@ -181,8 +181,7 @@ do.
 - **Dev Tools:** [mise](https://mise.jdx.dev/) (tool & task manager)
 - **Git Hooks:** [hk](https://hk.jdx.dev/) (with Rust builtins)
 - **Async Runtime:** [Tokio](https://tokio.rs/)
-- **TUI:** [Ratatui](https://ratatui.rs/) (temporary — moving to inline ANSI)
-- **Terminal:** [Crossterm](https://github.com/crossterm-rs/crossterm)
+- **Terminal I/O:** [Crossterm](https://github.com/crossterm-rs/crossterm) (planned — inline ANSI dropdown)
 - **CLI:** [Clap](https://github.com/clap-rs/clap) (derive)
 
 ## License

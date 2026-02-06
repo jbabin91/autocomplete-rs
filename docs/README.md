@@ -26,7 +26,7 @@ Welcome to the autocomplete-rs documentation!
 - [Architecture Overview](architecture/overview.md) - High-level system design
 - [Daemon](architecture/daemon.md) - Unix socket server and request handling
 - [Parser](architecture/parser.md) - Command buffer parsing and spec matching
-- [TUI](architecture/tui.md) - Terminal UI rendering with Ratatui
+- [Inline Dropdown](architecture/tui.md) - Inline ANSI completion rendering (planned)
 
 ### Architecture Decision Records (ADRs)
 
@@ -39,8 +39,10 @@ Decision records document the "why" behind our technical choices:
   parse Fig specs at build time
 - [ADR-0004: Direct Terminal Control](adr/0004-direct-terminal-control.md) - Why
   ZLE integration over Accessibility API
-- [ADR-0005: Ratatui for TUI](adr/0005-ratatui-for-tui.md) - Why Ratatui over
-  other TUI frameworks
+- [ADR-0005: Ratatui for TUI](adr/0005-ratatui-for-tui.md) - (Superseded) Why
+  Ratatui was initially chosen
+- [ADR-0006: Inline ANSI Dropdown](adr/0006-inline-ansi-dropdown.md) - Why
+  inline ANSI rendering over Ratatui
 
 ## Documentation Standards
 

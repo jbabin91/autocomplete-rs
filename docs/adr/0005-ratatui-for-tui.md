@@ -1,6 +1,6 @@
 # ADR-0005: Ratatui for Terminal UI
 
-**Status:** Accepted **Date:** 2025-10-25 **Decision Makers:** Project Team
+**Status:** Superseded by [ADR-0006](0006-inline-ansi-dropdown.md) **Date:** 2025-10-25 **Decision Makers:** Project Team
 **Technical Story:** Choose TUI framework for rendering completion dropdown
 
 ## Context

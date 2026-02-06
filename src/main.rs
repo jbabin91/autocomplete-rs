@@ -5,7 +5,6 @@ use tokio::net::UnixStream;
 
 mod daemon;
 mod parser;
-mod tui;
 
 #[derive(Parser)]
 #[command(name = "autocomplete-rs")]
@@ -88,7 +87,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Handle the complete command: connect to daemon, get suggestions, show TUI
+/// Handle the complete command: connect to daemon, get suggestions, output as JSON
 async fn complete_command(buffer: &str, cursor: usize, socket_path: &str) -> Result<()> {
     // Connect to daemon
     let stream = UnixStream::connect(socket_path)
@@ -113,18 +112,9 @@ async fn complete_command(buffer: &str, cursor: usize, socket_path: &str) -> Res
     let mut response_line = String::new();
     reader.read_line(&mut response_line).await?;
 
-    // Parse response
-    let response: daemon::CompletionResponse =
-        serde_json::from_str(&response_line).context("Failed to parse daemon response")?;
-
-    // Show TUI with suggestions
-    if !response.suggestions.is_empty() {
-        let mut ui = tui::CompletionUI::new(response.suggestions);
-        if let Some(selected) = ui.run()? {
-            // Print selected completion to stdout for zsh to capture
-            println!("{}", selected.text);
-        }
-    }
+    // Output raw response for shell integration to consume
+    // TODO: Replace with inline ANSI dropdown rendering (Phase 1)
+    print!("{}", response_line.trim());
 
     Ok(())
 }

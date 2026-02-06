@@ -63,7 +63,7 @@ enum Commands {
 - Listen on Unix domain socket
 - Accept concurrent connections
 - Parse JSON requests
-- Coordinate parser and TUI
+- Coordinate parser and completion response
 - Send JSON responses
 
 **Key Components:**
@@ -160,67 +160,15 @@ pub struct Suggestion {
 - Adding new completion types
 - Optimizing parse performance
 
-### `src/tui/`
+### `src/tui/` (planned)
 
-**Purpose:** Render completion UI with Ratatui
+**Purpose:** Inline ANSI dropdown for completion display
 
-**Responsibilities:**
+**Current State:** Not yet implemented. The old Ratatui-based TUI has been
+removed. Will use raw ANSI escape codes via crossterm to render an inline
+dropdown below the cursor (see [ADR-0006](../adr/0006-inline-ansi-dropdown.md)).
 
-- Display dropdown with suggestions
-- Handle keyboard navigation (arrows, Enter, Esc)
-- Apply themes (Catppuccin)
-- Render within terminal constraints
-
-**Key Components:**
-
-```sh
-tui/
-├── mod.rs           # Main UI logic
-├── widgets.rs       # Custom widgets (future)
-├── theme.rs         # Color themes (future)
-└── layout.rs        # Layout calculations (future)
-```
-
-**Current State:** Basic Ratatui setup
-
-**Key Types:**
-
-```rust
-pub struct CompletionUI {
-    suggestions: Vec<String>,
-    selected: usize,
-}
-
-pub struct Theme {
-    border: Color,
-    selected_bg: Color,
-    selected_fg: Color,
-    text: Color,
-}
-```
-
-**UI Layout:**
-
-```text
-┌─ Completions ────────────────┐
-│ > git checkout               │
-│   main           Default     │
-│ → feature/new    Create new  │  ← Selected
-│   develop        Development │
-└──────────────────────────────┘
-```
-
-**Performance Requirements:**
-
-- Render time: <10ms
-- Handle 100+ suggestions with scrolling
-- Smooth keyboard navigation
-
-**When to modify:**
-
-- Changing UI appearance
-- Adding new themes
-- Improving keyboard handling
+**When to implement:** Phase 1 MVP
 
 ### `src/specs/`
 
@@ -385,7 +333,7 @@ tests/
 benches/
 ├── daemon_bench.rs   # Daemon startup and IPC (future)
 ├── parser_bench.rs   # Parser performance (future)
-└── tui_bench.rs      # TUI render time (future)
+└── dropdown_bench.rs # Inline dropdown render time (future)
 ```
 
 **When to modify:**
@@ -420,7 +368,8 @@ docs/
 │   ├── 0002-daemon-architecture.md
 │   ├── 0003-build-time-spec-parsing.md
 │   ├── 0004-direct-terminal-control.md
-│   └── 0005-ratatui-for-tui.md
+│   ├── 0005-ratatui-for-tui.md        # Superseded
+│   └── 0006-inline-ansi-dropdown.md
 ├── development/          # Developer guides
 │   ├── getting-started.md
 │   ├── project-structure.md (this file)
@@ -434,7 +383,7 @@ docs/
     ├── overview.md
     ├── daemon.md
     ├── parser.md
-    └── tui.md
+    └── tui.md            # Inline dropdown (renamed from TUI)
 ```
 
 **When to modify:**
@@ -470,8 +419,8 @@ Daemon sends response
          ↓
 ZLE widget receives response
          ↓
-TUI (src/tui/mod.rs)
-    - Renders dropdown
+Inline Dropdown (not yet implemented)
+    - Renders dropdown below cursor
     - User selects "checkout"
          ↓
 ZLE widget updates buffer
@@ -485,7 +434,7 @@ main.rs
   ├── daemon (phase 1)
   │   ├── parser (phase 1-2)
   │   │   └── specs (phase 2)
-  │   └── tui (phase 1)
+  │   └── dropdown (phase 1, not yet implemented)
   │       └── theme (phase 3)
   └── installer (phase 1)
       └── shell-integration/*.{zsh,sh,fish}

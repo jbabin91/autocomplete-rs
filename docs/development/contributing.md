@@ -46,7 +46,7 @@ Check project issues (`bd ready`) for current phase priorities:
 
 - Daemon implementation
 - Parser basics
-- TUI rendering
+- Inline dropdown rendering
 - ZLE integration
 
 **Phase 2 (Scale):** Spec parsing
@@ -339,7 +339,7 @@ We have strict performance requirements:
 - **Total latency:** <20ms
 - **Daemon startup:** <5ms
 - **Parser:** <5ms
-- **TUI render:** <10ms
+- **Inline dropdown render:** <10ms
 
 ### Before Optimizing
 

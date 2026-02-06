@@ -14,7 +14,7 @@ _autocomplete_rs_widget() {
     _autocomplete_rs_ensure_daemon
 
     # Call autocomplete-rs complete command
-    # This will show the TUI dropdown and return the selected completion
+    # This will show the inline dropdown and return the selected completion
     local completion=$(autocomplete-rs complete "$buffer" --cursor "$cursor" --socket "$AUTOCOMPLETE_RS_SOCKET" 2>/dev/null)
 
     # If a completion was selected, insert it

@@ -16,10 +16,6 @@ name = "autocomplete-rs"
 path = "src/main.rs"
 
 [dependencies]
-# TUI rendering
-crossterm = "0.29"
-ratatui = "0.30"
-
 # Async runtime
 tokio = { version = "1.48", features = ["full"] }
 

@@ -113,7 +113,6 @@ Edit code in `src/`:
 - `src/main.rs` - CLI entry point
 - `src/daemon/` - Unix socket server
 - `src/parser/` - Command buffer parsing
-- `src/tui/` - Ratatui UI rendering
 - `src/specs/` - Completion specs
 
 **3. Build and Test**
@@ -210,8 +209,6 @@ autocomplete-rs/
 │   │   └── mod.rs       # Unix socket server
 │   ├── parser/
 │   │   └── mod.rs       # Command parsing
-│   ├── tui/
-│   │   └── mod.rs       # Ratatui UI
 │   └── specs/           # Completion specs (Phase 2 — not yet created)
 ├── shell-integration/
 │   └── zsh.zsh          # ZLE widget
@@ -273,7 +270,7 @@ This measures:
 - Daemon startup time
 - IPC latency
 - Parser performance
-- TUI render time
+- Inline dropdown render time
 
 ### Updating Dependencies
 
@@ -355,7 +352,7 @@ info!("Received completion request: buffer={}, cursor={}", buffer, cursor);
 // In parser
 debug!("Parsed tokens: {:?}", tokens);
 
-// In TUI
+// In dropdown
 trace!("Rendering {} suggestions", suggestions.len());
 ```
 
@@ -437,7 +434,7 @@ We have strict performance requirements:
 - **Daemon startup:** <5ms
 - **IPC round-trip:** <1ms
 - **Parser:** <5ms
-- **TUI render:** <10ms
+- **Inline dropdown render:** <10ms
 
 Before optimizing:
 

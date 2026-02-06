@@ -112,13 +112,13 @@ User Types: "git che" + Alt+Space
 │ 7. SHELL INTEGRATION (shell-integration/zsh.zsh)        │
 │    - Receives JSON response                             │
 │    - Parses suggestions array                           │
-│    - Invokes TUI rendering                              │
+│    - Invokes inline dropdown rendering                  │
 └──────────────────────────────────────────────────────────┘
        │
        ▼
 ┌──────────────────────────────────────────────────────────┐
-│ 8. TUI RENDERING (src/tui/mod.rs)                       │
-│    - Ratatui renders dropdown below cursor              │
+│ 8. INLINE DROPDOWN (not yet implemented)                 │
+│    - Renders dropdown below cursor via ANSI escapes     │
 │    - Shows: checkout, cherry, cherry-pick               │
 │    - Handles keyboard: arrows, Enter, Esc               │
 │    - <10ms rendering                                     │
@@ -139,7 +139,7 @@ Total Time: <20ms (design goal)
 - Spec lookup: <1ms
 - Matching: <2ms
 - Response: <1ms
-- TUI: <10ms
+- Dropdown: <10ms
 ```
 
 ## Key Architectural Decisions
@@ -217,23 +217,23 @@ See [ADR-0003](../adr/0003-build-time-spec-parsing.md) for full details.
 - Async complexity
 - Runtime overhead (~100KB)
 
-### 5. Immediate-Mode UI with Ratatui
+### 5. Inline ANSI Dropdown
 
-**Decision:** Use Ratatui for terminal UI rendering
+**Decision:** Use raw ANSI escape codes via crossterm for inline completion dropdown
 
 **Rationale:**
 
-- Rich widget system (List, Block, etc.)
-- Active maintenance and community
-- <10ms render time
-- Declarative UI code
+- Renders inline below cursor (like Fig's UX)
+- No alternate screen takeover
+- Smaller binary (no Ratatui dependency)
+- Full control over rendering
 
 **Trade-offs:**
 
-- ~2MB binary size
-- Framework abstraction
+- More manual cursor/layout work
+- No widget abstraction
 
-See [ADR-0005](../adr/0005-ratatui-for-tui.md) for full details.
+See [ADR-0006](../adr/0006-inline-ansi-dropdown.md) for full details.
 
 ## Data Flow
 
@@ -344,10 +344,10 @@ Breakdown:
   - LRU cache hit: <0.1ms
   - MessagePack deserialize: <1ms (cache miss)
 
-- **TUI rendering:** <10ms
+- **Inline dropdown rendering:** <10ms
   - Layout calculation: <2ms
-  - Widget rendering: <5ms
-  - Terminal output: <3ms
+  - ANSI output: <5ms
+  - Terminal flush: <3ms
 
 - **Buffer:** 3ms (safety margin)
 
@@ -363,7 +363,7 @@ Breakdown:
 
 - **Rust core:** ~3MB
 - **Tokio + dependencies:** ~2MB
-- **Ratatui + Crossterm:** ~2MB
+- **Crossterm (inline ANSI):** ~0.5MB
 - **Embedded specs:** ~10MB (MessagePack)
 - **Stripped release:** ~8MB
 
@@ -577,7 +577,7 @@ Daemon
 
 - [Daemon Architecture](daemon.md) - Detailed daemon design
 - [Parser Architecture](parser.md) - Parser algorithms
-- [TUI Architecture](tui.md) - UI rendering details
+- [Inline Dropdown](tui.md) - UI rendering details (planned)
 - [ADRs](../adr/) - Architecture decision records
 - [Development Guide](../development/getting-started.md) - How to build
 - [Project Structure](../development/project-structure.md) - Code organization

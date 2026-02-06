@@ -656,7 +656,8 @@ Next completion will use defaults.
 
 - See [Troubleshooting](troubleshooting.md) for common issues
 - Check [Installation Guide](installation.md) for setup
-- Read [ADR-0005](../adr/0005-ratatui-for-tui.md) for TUI technical details
+- Read [ADR-0006](../adr/0006-inline-ansi-dropdown.md) for dropdown technical
+  details
 
 ## Getting Help
 

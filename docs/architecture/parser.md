@@ -950,5 +950,5 @@ pub fn parse_multiline(
 
 - [Architecture Overview](overview.md) - System architecture
 - [Daemon Architecture](daemon.md) - Daemon design
-- [TUI Architecture](tui.md) - UI rendering
+- [Inline Dropdown](tui.md) - UI rendering (planned)
 - [ADR-0003: Build-time Spec Parsing](../adr/0003-build-time-spec-parsing.md)

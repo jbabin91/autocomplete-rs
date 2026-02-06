@@ -84,7 +84,7 @@ cargo test -- --nocapture
 
 ```rust
 // tests/completion_flow.rs
-use autocomplete_rs::{daemon, parser, tui};
+use autocomplete_rs::{daemon, parser};
 use std::path::Path;
 use tokio::net::UnixStream;
 
@@ -206,7 +206,7 @@ cargo bench -- --verbose
 - Daemon startup: <5ms
 - IPC round-trip: <1ms
 - Parser: <5ms per request
-- TUI render: <10ms
+- Inline dropdown render: <10ms
 - Total latency: <20ms
 
 **Best Practices:**
@@ -239,7 +239,7 @@ autocomplete-rs/
 └── benches/
     ├── daemon_bench.rs
     ├── parser_bench.rs
-    └── tui_bench.rs
+    └── dropdown_bench.rs
 ```
 
 ### Naming Conventions

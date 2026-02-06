@@ -18,12 +18,9 @@ Implementation approach:
 5. On dismiss: restore cursor, erase dropdown lines
 6. Use synchronized output (DEC mode 2026) to prevent flicker
 
-## Current Implementation (TEMPORARY — will be replaced)
+## Current State
 
-- Uses Ratatui with `EnterAlternateScreen` (full-screen mode) — this is wrong for the target UX
-- `CompletionUI` struct holds suggestions + selected index
-- Raw mode enabled during TUI, restored on exit
-- When rewriting: drop Ratatui dependency for this module, use crossterm directly
+The inline dropdown is **not yet implemented**. The old Ratatui-based TUI has been removed. Currently `complete_command` outputs raw JSON to stdout.
 
 ## Key Bindings
 
