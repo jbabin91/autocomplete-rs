@@ -27,7 +27,7 @@ impl PidFile {
                 debug!(pid = current_pid, path = %pid_path.display(), "PID file acquired");
                 Ok(Self { path: pid_path })
             }
-            Err(_) => {
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
                 // File already exists — check if the process is alive.
                 let contents =
                     fs::read_to_string(&pid_path).context("failed to read existing PID file")?;
@@ -43,13 +43,17 @@ impl PidFile {
                     debug!(pid, "removing stale PID file (process is dead)");
                 }
 
-                // Stale or corrupt PID file — remove and recreate.
+                // Stale or corrupt PID file — remove and recreate atomically.
                 let _ = fs::remove_file(&pid_path);
-                fs::write(&pid_path, current_pid.to_string())
+                write_pid_atomic(&pid_path, current_pid)
                     .with_context(|| format!("failed to write PID file: {}", pid_path.display()))?;
 
                 debug!(pid = current_pid, path = %pid_path.display(), "PID file acquired (stale replaced)");
                 Ok(Self { path: pid_path })
+            }
+            Err(e) => {
+                // Real I/O error (permission denied, missing parent dir, etc.)
+                Err(e).with_context(|| format!("failed to create PID file: {}", pid_path.display()))
             }
         }
     }

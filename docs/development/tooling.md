@@ -87,8 +87,8 @@ mise run release      # Optimized build
 For running a specific test:
 
 ```sh
-cargo nextest run -E 'test(test_name)'    # Run one test by name
-cargo nextest run --no-capture            # Run with stdout visible
+mise run test                              # Run full suite (see mise.toml for flags)
+cargo nextest run -E 'test(test_name)'     # Run one test by name
 ```
 
 ## Git Hooks

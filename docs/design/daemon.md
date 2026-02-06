@@ -222,8 +222,8 @@ pub struct DaemonState {
     pub engine: Arc<dyn CompletionEngine>,
     pub semaphore: Arc<Semaphore>,
     pub cancel: CancellationToken,
-    pub total_requests: AtomicU64,
-    pub active_connections: AtomicU32,
+    pub total_requests: Arc<AtomicU64>,
+    pub active_connections: Arc<AtomicU64>,
 }
 ```
 

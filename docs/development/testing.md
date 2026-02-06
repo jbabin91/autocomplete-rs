@@ -123,11 +123,11 @@ async fn test_end_to_end_completion() {
 **Run:**
 
 ```sh
-# All integration tests
-cargo nextest run --all-features -E 'kind(test)'
+# All integration tests (flags defined in mise.toml)
+mise run test
 
 # Specific test file
-cargo nextest run --all-features --test completion_flow
+cargo nextest run --test completion_flow
 ```
 
 **Best Practices:**

@@ -21,12 +21,12 @@ hooks {
       }
       ["cargo_clippy"] {
         glob = "*.rs"
-        check = "cargo clippy --all-targets --all-features -- -D warnings"
+        check = "cargo clippy --locked --all-targets --all-features -- -D warnings"
         fix = "cargo clippy --fix --allow-dirty --allow-staged --all-targets --all-features"
       }
       ["cargo_check"] {
         glob = "*.rs"
-        check = "cargo check --all-targets --all-features -q"
+        check = "cargo check --locked --all-targets --all-features -q"
       }
 
       // Non-Rust formatting
@@ -58,7 +58,7 @@ hooks {
   ["pre-push"] {
     steps {
       ["test"] {
-        check = "cargo nextest run --all-features --no-tests=warn"
+        check = "cargo nextest run --locked --all-features --no-tests=warn"
       }
 
       // Beads: sync before push
