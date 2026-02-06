@@ -6,12 +6,11 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -23,9 +22,13 @@ jobs:
     if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -33,20 +36,63 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features
+        run: cargo clippy --locked --all-targets --all-features
 
   test:
     name: Test
     if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Run tests
-        run: cargo test --all-features
+        run: cargo test --locked --all-features
+
+  msrv:
+    name: MSRV
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - name: Extract MSRV from Cargo.toml
+        id: msrv
+        run: echo "version=$(grep '^rust-version' Cargo.toml | sed 's/.*= *\"\(.*\)\"/\1/')" >> "$GITHUB_OUTPUT"
+      - name: Setup Rust ${{ steps.msrv.outputs.version }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+      - name: Restore cargo cache
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
+      - name: Check MSRV compatibility
+        run: cargo check --locked --all-features
+
+  deny:
+    name: Deny
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - name: Check dependencies
+        uses: EmbarkStudios/cargo-deny-action@3fd3802e88374d3fe9159b834c7714ec57d6c979 # v2
 
   pr-title:
     name: PR Title
@@ -64,7 +110,7 @@ jobs:
   ci-status:
     name: CI Status
     if: always()
-    needs: [lint, test, pr-title]
+    needs: [lint, test, msrv, deny, pr-title]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -84,6 +130,8 @@ jobs:
           jobs=(
             "Lint|${{ needs.lint.result }}"
             "Test|${{ needs.test.result }}"
+            "MSRV|${{ needs.msrv.result }}"
+            "Deny|${{ needs.deny.result }}"
             "PR Title|${{ needs.pr-title.result }}"
           )
 

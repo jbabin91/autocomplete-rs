@@ -21,6 +21,7 @@ exclude = [
   "cliff.toml",
   "clippy.toml",
   "cog.toml",
+  "deny.toml",
   "dist-workspace.toml",
   "docs/",
   "hk.pkl",

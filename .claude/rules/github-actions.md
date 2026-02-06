@@ -4,6 +4,7 @@ paths:
   - '.github/actions/**'
   - '.github/renovate.json'
   - 'dist-workspace.toml'
+  - 'deny.toml'
 ---
 
 # GitHub Actions & CI/CD
@@ -12,16 +13,42 @@ paths:
 
 | Workflow       | File                 | Triggers                    | Purpose                                                       |
 | -------------- | -------------------- | --------------------------- | ------------------------------------------------------------- |
-| CI             | `ci.yml`             | push/PR to main             | Lint, test, PR title validation with gate job                 |
+| CI             | `ci.yml`             | push/PR to main             | Lint, test, MSRV, deny, PR title validation with gate job     |
 | Release PLZ    | `release-plz.yml`    | push to main                | Creates release PRs, publishes to crates.io via OIDC          |
 | Release        | `release.yml`        | version tags (`v*.*.*`)     | cargo-dist: builds binaries, GitHub Release, Homebrew formula |
 | Security Audit | `audit.yml`          | weekly + Cargo file changes | `rustsec/audit-check` for dependency vulnerabilities          |
 | CodeQL         | `codeql.yml`         | push to main + weekly       | Static analysis for Rust                                      |
 | Branch Cleanup | `branch-cleanup.yml` | PR closed + daily           | Deletes unmerged PR branches and stale branches (30+ days)    |
 
-## CI gate job
+## CI jobs
 
-`ci-status` is the only required check in the GitHub ruleset. It aggregates lint, test, and pr-title results into a summary table. Skipped jobs (e.g., on release-plz branches) pass the gate.
+| Job       | Purpose                                                            |
+| --------- | ------------------------------------------------------------------ |
+| Lint      | `cargo fmt --check` + `cargo clippy --locked --all-targets`        |
+| Test      | `cargo test --locked --all-features`                               |
+| MSRV      | `cargo check --locked` with Rust version from `Cargo.toml`         |
+| Deny      | `cargo-deny` — license compliance, advisory, bans, source policies |
+| PR Title  | Conventional commit format validation (PRs only)                   |
+| CI Status | Gate job aggregating all results into a summary table              |
+
+`ci-status` is the only required check in the GitHub ruleset. Skipped jobs (e.g., on release-plz branches) pass the gate.
+
+## Workflow hardening
+
+- **Permissions**: `permissions: {}` at workflow level, grant per-job (least privilege)
+- **Checkout**: Always use `persist-credentials: false` unless git push is needed
+- **Cargo flags**: Use `--locked` on all cargo commands in CI (ensures Cargo.lock match)
+- **Concurrency**: `cancel-in-progress` is PR-only (don't cancel main branch runs)
+- **Release-plz skip**: All CI jobs skip on `release-plz-*` branches (only change Cargo.toml/lock/CHANGELOG)
+
+## cargo-deny
+
+Config: `deny.toml` — enforces dependency policies:
+
+- **Licenses**: Allow-list (MIT, Apache-2.0, BSD, ISC, Unicode)
+- **Advisories**: Deny known vulnerabilities, warn on unmaintained
+- **Bans**: Warn on duplicate dependency versions
+- **Sources**: Only allow crates.io (deny unknown registries/git deps)
 
 ## Release pipeline
 
