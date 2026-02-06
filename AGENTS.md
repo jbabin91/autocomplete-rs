@@ -69,7 +69,21 @@ cargo test <name>    # run a single test by name
 
 For simple tasks/chores, use `bd create` directly.
 
-**Releases:** release-plz (versioning + changelog + crates.io) + cargo-dist (binaries + installers + Homebrew). Not yet configured — tracked in `autocomplete-rs-9jz`.
+**Releases:** release-plz (versioning + changelog + crates.io via OIDC) + cargo-dist (binaries + installers + Homebrew tap).
+
+- `release-plz.yml` — runs on push to main, creates release PRs and publishes to crates.io
+- `release.yml` — cargo-dist managed, runs on version tags, builds binaries and publishes Homebrew formula
+- `.prettierignore` excludes `release.yml` (cargo-dist owns formatting)
+
+**Regenerating cargo-dist workflow:**
+
+`release.yml` is managed by cargo-dist with `allow-dirty = ["ci"]` so Renovate can auto-update action SHAs directly. When you need to regenerate (cargo-dist upgrade, config changes in `dist-workspace.toml`):
+
+1. Remove `allow-dirty = ["ci"]` from `dist-workspace.toml`
+2. Update SHAs in `[dist.github-action-commits]` to latest
+3. Run `dist generate-ci`
+4. Add `allow-dirty = ["ci"]` back
+5. Commit all changes
 
 ## Landing the Plane (Session Completion)
 
