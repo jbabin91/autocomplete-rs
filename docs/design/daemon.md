@@ -1,10 +1,10 @@
-# Daemon Architecture — Design Spec
+# Daemon Architecture
 
-> **This is a design specification, not documentation.** It describes the
-> intended daemon design. Actual documentation will be written after
-> implementation.
+> **Status:** Core daemon implemented (Phase 1). Parser integration and spec
+> loading are Phase 2.
 
-This document details the design of the autocomplete-rs daemon.
+This document details the design and implementation of the autocomplete-rs
+daemon.
 
 ## Overview
 
@@ -35,53 +35,60 @@ The daemon is a persistent background process that:
 │                                                               │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │              Main (src/main.rs)                        │ │
-│  │  - Parse CLI args                                      │ │
-│  │  - Initialize logging                                  │ │
-│  │  - Call daemon::start()                                │ │
+│  │  - Parse CLI args (Clap derive + env vars)            │ │
+│  │  - Initialize logging (tracing)                       │ │
+│  │  - Call daemon::start(socket_path)                    │ │
 │  └────────────────────────────────────────────────────────┘ │
 │                           │                                  │
 │                           ▼                                  │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │         Server (src/daemon/mod.rs)                     │ │
-│  │                                                         │ │
-│  │  ┌──────────────────────────────────────────────────┐ │ │
-│  │  │  Tokio Runtime                                   │ │ │
-│  │  │  - Async executor                                │ │ │
-│  │  │  - Thread pool (default: # CPU cores)           │ │ │
-│  │  └──────────────────────────────────────────────────┘ │ │
-│  │                                                         │ │
-│  │  ┌──────────────────────────────────────────────────┐ │ │
-│  │  │  UnixListener                                    │ │ │
-│  │  │  - Binds to socket path                         │ │ │
-│  │  │  - Accepts connections                           │ │ │
-│  │  │  - Spawns handler task per connection           │ │ │
-│  │  └──────────────────────────────────────────────────┘ │ │
-│  │                                                         │ │
-│  │  ┌──────────────────────────────────────────────────┐ │ │
-│  │  │  Connection Handler (per connection)            │ │ │
-│  │  │  - Read JSON request                            │ │ │
-│  │  │  - Parse and validate                           │ │ │
-│  │  │  - Call parser                                  │ │ │
-│  │  │  - Serialize response                           │ │ │
-│  │  │  - Write JSON response                          │ │ │
-│  │  └──────────────────────────────────────────────────┘ │ │
+│  │     Daemon Facade (src/daemon/mod.rs)                 │ │
+│  │  - start() / start_with_engine()                      │ │
+│  │  - Acquires PID file (single-instance enforcement)    │ │
+│  │  - Binds UnixListener, delegates to server::run()     │ │
 │  └────────────────────────────────────────────────────────┘ │
 │                           │                                  │
 │                           ▼                                  │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │            Parser (src/parser/mod.rs)                  │ │
-│  │  - Tokenization                                        │ │
-│  │  - Context analysis                                    │ │
-│  │  - Spec matching                                       │ │
-│  │  - Suggestion generation                               │ │
+│  │     Server (src/daemon/server.rs)                     │ │
+│  │  - Accept loop with tokio::select! (biased)          │ │
+│  │  - CancellationToken + Ctrl+C signal handling        │ │
+│  │  - Semaphore backpressure (100 max connections)      │ │
+│  │  - JoinSet for task tracking + 5s drain timeout      │ │
+│  │  - Socket permissions (0o600)                        │ │
 │  └────────────────────────────────────────────────────────┘ │
 │                           │                                  │
 │                           ▼                                  │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │         Spec Loader (src/specs/mod.rs)                │ │
-│  │  - MessagePack embedded data                          │ │
-│  │  - LRU cache (hot specs)                              │ │
-│  │  - Lazy deserialization                               │ │
+│  │     Handler (src/daemon/handler.rs)                   │ │
+│  │  - Per-connection request handling                    │ │
+│  │  - 1s read timeout, 100KB size limit                 │ │
+│  │  - DaemonMessage envelope (Complete | Shutdown)      │ │
+│  │  - Bare CompletionRequest fallback (backward compat) │ │
+│  │  - ConnectionGuard RAII for active_connections       │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                           │                                  │
+│                           ▼                                  │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │   CompletionEngine (src/engine.rs)                    │ │
+│  │  - Trait: Send + Sync, consumed via Arc<dyn ...>     │ │
+│  │  - StubEngine returns empty suggestions (Phase 1)    │ │
+│  │  - Parser will implement this trait (Phase 2)        │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                               │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │     Shared State (src/daemon/state.rs)                │ │
+│  │  - Arc<dyn CompletionEngine>                         │ │
+│  │  - Arc<Semaphore> (100 permits)                      │ │
+│  │  - CancellationToken (cross-task shutdown)           │ │
+│  │  - AtomicU64 total_requests, AtomicU32 active_conns  │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                               │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │     PID File (src/daemon/pid.rs)                      │ │
+│  │  - RAII PidFile with Drop cleanup                    │ │
+│  │  - Derives path: *.sock → *.pid                      │ │
+│  │  - kill(pid, 0) liveness check (handles EPERM)       │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -91,138 +98,114 @@ The daemon is a persistent background process that:
 ### Startup
 
 ```rust
-// src/main.rs
-#[tokio::main]
-async fn main() -> Result<()> {
-    // 1. Parse arguments
-    let cli = Cli::parse();
-
-    // 2. Initialize logging
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .init();
-
-    // 3. Match command
-    match cli.command {
-        Commands::Daemon { socket } => {
-            // 4. Start daemon
-            daemon::start(&socket).await?;
-        }
-        // ... other commands
-    }
-
-    Ok(())
-}
-```
-
-```rust
-// src/daemon/mod.rs
+// src/daemon/mod.rs — thin facade
 pub async fn start(socket_path: &str) -> Result<()> {
-    // 1. Remove stale socket if exists
+    let engine = Arc::new(StubEngine);
+    start_with_engine(socket_path, engine).await
+}
+
+pub async fn start_with_engine(
+    socket_path: &str,
+    engine: Arc<dyn CompletionEngine>,
+) -> Result<()> {
+    // 1. Acquire PID file (single-instance enforcement)
+    let _pid_file = PidFile::acquire(socket_path)?;
+
+    // 2. Remove stale socket + bind
     let _ = std::fs::remove_file(socket_path);
-
-    // 2. Create Unix socket listener
     let listener = UnixListener::bind(socket_path)?;
-    info!("Daemon listening on {}", socket_path);
 
-    // 3. Set socket permissions (user-only)
-    set_socket_permissions(socket_path)?;
+    // 3. Create shared state
+    let state = Arc::new(DaemonState::new(engine));
 
-    // 4. Initialize shared state
-    let state = Arc::new(DaemonState::new());
-
-    // 5. Accept loop
-    loop {
-        match listener.accept().await {
-            Ok((stream, _addr)) => {
-                let state = Arc::clone(&state);
-                // Spawn handler task
-                tokio::spawn(async move {
-                    if let Err(e) = handle_connection(stream, state).await {
-                        error!("Connection error: {}", e);
-                    }
-                });
-            }
-            Err(e) => {
-                error!("Accept error: {}", e);
-            }
-        }
-    }
+    // 4. Run server accept loop (blocks until shutdown)
+    server::run(listener, state, socket_path).await
 }
 ```
 
 **Startup Time:** <5ms
 
+- PID file acquire: <1ms
 - Socket creation: <1ms
 - Permission setting: <1ms
 - State initialization: <1ms
-- Ready to accept: <2ms buffer
+- Ready to accept: <1ms buffer
 
 ### Request Handling
 
 ```rust
-async fn handle_connection(
-    stream: UnixStream,
-    state: Arc<DaemonState>
-) -> Result<()> {
-    // 1. Read request (with timeout)
-    let request = tokio::time::timeout(
-        Duration::from_millis(100),
-        read_request(&stream)
+// src/daemon/handler.rs — generic over AsyncRead/AsyncWrite for testability
+pub async fn handle_connection<R, W>(
+    reader: R,
+    writer: W,
+    state: Arc<DaemonState>,
+    conn_id: u64,
+) -> Result<()>
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    let _guard = ConnectionGuard::new(&state);
+
+    // 1. Read with 1s timeout + 100KB size limit
+    let raw = tokio::time::timeout(
+        Duration::from_secs(1),
+        read_limited(reader, MAX_REQUEST_SIZE as u64),
     ).await??;
 
-    debug!("Received request: {:?}", request);
+    // 2. Try DaemonMessage envelope first, fall back to bare request
+    let message = serde_json::from_str::<DaemonMessage>(&raw)
+        .or_else(|_| {
+            serde_json::from_str::<CompletionRequest>(&raw)
+                .map(DaemonMessage::Complete)
+        })?;
 
-    // 2. Validate request
-    validate_request(&request)?;
-
-    // 3. Parse buffer
-    let suggestions = state.parser.parse(
-        &request.buffer,
-        request.cursor
-    ).await?;
-
-    // 4. Create response
-    let response = Response { suggestions };
-
-    // 5. Write response
-    write_response(&stream, &response).await?;
-
-    debug!("Sent {} suggestions", response.suggestions.len());
-
-    Ok(())
+    match message {
+        DaemonMessage::Complete(request) => {
+            // 3. Validate
+            validate_request(&request)?;
+            // 4. Call engine
+            let response = state.engine.complete(&request);
+            // 5. Write response
+            write_json(writer, &response).await
+        }
+        DaemonMessage::Shutdown => {
+            state.cancel.cancel();
+            write_json(writer, &ShutdownAck { status: "ok" }).await
+        }
+    }
 }
 ```
 
 **Request Time:** <10ms
 
 - Read JSON: <1ms
-- Parse buffer: <5ms
+- Parse/validate: <1ms
+- Engine complete: <5ms (currently instant with StubEngine)
 - Serialize response: <1ms
 - Write response: <1ms
-- Buffer: 2ms
 
 ### Shutdown
 
+Shutdown is triggered by either Ctrl+C (SIGINT) or a `DaemonMessage::Shutdown`
+sent over the socket. Both paths cancel the shared `CancellationToken`.
+
 ```rust
-// Signal handler for graceful shutdown
-tokio::signal::ctrl_c().await?;
+// src/daemon/server.rs — biased select in accept loop
+tokio::select! {
+    biased;  // Check cancellation first
+    _ = state.cancel.cancelled() => break,  // Shutdown message
+    _ = signal::ctrl_c() => {
+        state.cancel.cancel();
+        break;
+    }
+    result = listener.accept() => { /* handle connection */ }
+}
 
-info!("Shutting down daemon");
-
-// 1. Stop accepting new connections
-drop(listener);
-
-// 2. Wait for in-flight requests (with timeout)
-tokio::time::timeout(
-    Duration::from_secs(5),
-    wait_for_active_connections()
-).await;
-
-// 3. Clean up socket
-std::fs::remove_file(socket_path)?;
-
-info!("Daemon shut down cleanly");
+// After loop exits:
+// 1. Drain in-flight tasks (5s timeout via JoinSet)
+// 2. Clean up socket file
+// 3. PID file cleaned up automatically via Drop
 ```
 
 ## Concurrency
@@ -245,50 +228,49 @@ info!("Daemon shut down cleanly");
 
 ### Synchronization
 
-**Shared State:**
+**Shared State (implemented):**
 
 ```rust
+// src/daemon/state.rs
 pub struct DaemonState {
-    // Parser is Send + Sync, can be shared
-    parser: Parser,
-
-    // Spec cache with interior mutability
-    spec_cache: Arc<Mutex<LruCache<String, CompletionSpec>>>,
-
-    // Metrics (atomic counters)
-    total_requests: AtomicU64,
-    active_connections: AtomicU32,
+    pub engine: Arc<dyn CompletionEngine>,
+    pub semaphore: Arc<Semaphore>,
+    pub cancel: CancellationToken,
+    pub total_requests: AtomicU64,
+    pub active_connections: AtomicU32,
 }
 ```
 
 **Lock Strategy:**
 
-- Minimize lock contention
-- Use read-write locks where appropriate
-- Async-aware locks (tokio::sync::Mutex)
-- Hold locks for shortest time possible
+- No locks needed currently — engine is `Send + Sync` via trait bound
+- Semaphore for connection limiting (no lock contention)
+- Atomics for metrics (lock-free)
+- Future spec cache will use `tokio::sync::Mutex` with minimal hold times
 
 ### Backpressure
 
-**Connection Limits:**
+**Connection Limits (implemented):**
 
 ```rust
-const MAX_CONCURRENT_CONNECTIONS: usize = 100;
-
-let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_CONNECTIONS));
-
-loop {
-    // Acquire permit (blocks if at limit)
-    let permit = semaphore.clone().acquire_owned().await?;
-
-    let (stream, _) = listener.accept().await?;
-
-    tokio::spawn(async move {
-        let _permit = permit; // Hold until handler completes
-        handle_connection(stream, state).await
-    });
+// src/daemon/server.rs — non-blocking semaphore in accept loop
+match state.semaphore.clone().try_acquire_owned() {
+    Ok(permit) => {
+        tasks.spawn(async move {
+            let _permit = permit; // Held until handler completes
+            handle_connection(reader, writer, state, conn_id).await
+        });
+    }
+    Err(_) => {
+        warn!("Connection limit reached, dropping connection");
+        drop(stream);
+    }
 }
 ```
+
+Uses `try_acquire_owned()` (non-blocking) instead of `acquire_owned()` to avoid
+blocking the accept loop when at capacity. Excess connections are dropped
+immediately rather than queued.
 
 **Request Size Limits:**
 
@@ -298,35 +280,53 @@ loop {
 
 ## Protocol
 
-### Request Format
+### DaemonMessage Envelope
+
+All requests should use the `DaemonMessage` tagged enum envelope. Bare
+`CompletionRequest` (without `"type"` field) is also accepted for backward
+compatibility.
 
 ```json
-{
-  "buffer": "git checkout -b ",
-  "cursor": 18
-}
+// Complete request (preferred)
+{ "type": "complete", "buffer": "git checkout -b ", "cursor": 18 }
+
+// Shutdown request
+{ "type": "shutdown" }
+
+// Bare request (backward compat — no "type" field)
+{ "buffer": "git checkout -b ", "cursor": 18 }
 ```
 
 **Schema:**
 
 ```rust
-#[derive(Deserialize)]
-struct Request {
-    /// The complete command buffer
-    buffer: String,
+// src/protocol.rs
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum DaemonMessage {
+    Complete(CompletionRequest),
+    Shutdown,
+}
 
-    /// Cursor position (0-indexed byte offset)
-    cursor: usize,
+#[derive(Serialize, Deserialize)]
+pub struct CompletionRequest {
+    pub buffer: String,
+    pub cursor: usize,
+    #[serde(default)]
+    pub version: Option<u32>,
 }
 ```
 
 **Validation:**
 
 - `buffer` must be valid UTF-8
-- `buffer.len()` <= 10,000
+- `buffer.len()` <= 10,000 (`MAX_BUFFER_LEN`)
 - `cursor` <= `buffer.len()`
+- Total request size <= 100KB (`MAX_REQUEST_SIZE`)
 
 ### Response Format
+
+**Completion response:**
 
 ```json
 {
@@ -334,37 +334,46 @@ struct Request {
     {
       "text": "feature/new",
       "description": "Create new feature branch",
-      "type": "argument"
-    },
-    {
-      "text": "main",
-      "description": "Branch from main",
-      "type": "argument"
+      "suggestion_type": "argument"
     }
   ]
 }
 ```
 
+**Shutdown acknowledgment:**
+
+```json
+{ "status": "ok" }
+```
+
 **Schema:**
 
 ```rust
-#[derive(Serialize)]
-struct Response {
-    suggestions: Vec<Suggestion>,
+// src/protocol.rs
+#[derive(Serialize, Deserialize)]
+pub struct CompletionResponse {
+    pub suggestions: Vec<Suggestion>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Suggestion {
+    pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub suggestion_type: SuggestionType,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum SuggestionType {
+    Command,
+    Subcommand,
+    Option,
+    Argument,
 }
 
 #[derive(Serialize)]
-struct Suggestion {
-    /// Text to insert
-    text: String,
-
-    /// Description (optional)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-
-    /// Type: "command", "option", "argument"
-    #[serde(rename = "type")]
-    suggestion_type: String,
+pub struct ShutdownAck {
+    pub status: &'static str,
 }
 ```
 
@@ -573,10 +582,15 @@ fn validate_request(request: &Request) -> Result<()> {
 ### Resource Limits
 
 ```rust
-const MAX_CONCURRENT_CONNECTIONS: usize = 100;
-const MAX_REQUEST_SIZE: usize = 100 * 1024; // 100KB
-const MAX_BUFFER_LEN: usize = 10_000;
-const REQUEST_TIMEOUT: Duration = Duration::from_millis(100);
+// src/protocol.rs
+pub const MAX_BUFFER_LEN: usize = 10_000;
+pub const MAX_REQUEST_SIZE: u64 = 100 * 1024; // 100KB
+
+// src/daemon/state.rs
+pub const MAX_CONCURRENT_CONNECTIONS: usize = 100;
+
+// src/daemon/handler.rs
+const READ_TIMEOUT: Duration = Duration::from_secs(1);
 ```
 
 **DOS Protection:**
@@ -650,96 +664,35 @@ match listener.accept().await {
 
 ## Testing
 
-### Unit Tests
+### Unit Tests (34 inline tests)
 
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
+Tests use `#[cfg(test)]` modules within each source file. Handler tests use
+`tokio::net::UnixStream::pair()` for testability without real sockets.
 
-    #[tokio::test]
-    async fn test_handle_valid_request() {
-        let state = Arc::new(DaemonState::new());
-        let request = Request {
-            buffer: "git checkout ".to_string(),
-            cursor: 13,
-        };
+- `protocol` (12): serde round-trips, validation edge cases, `DaemonMessage`
+  variants, backward compat parsing
+- `handler` (8): valid request, malformed JSON, cursor OOB, buffer too long,
+  empty disconnect, shutdown message, bare request fallback
+- `pid` (8): path derivation, live/dead process detection, acquire/release,
+  stale cleanup, double-acquire rejection
+- `state` (4): connection guard, metrics, semaphore permits
+- `engine` (2): stub returns empty, trait object behind `Arc`
 
-        // Mock socket with request
-        let (mut client, server) = UnixStream::pair()?;
+### Integration Tests (7 tests in `tests/daemon_integration.rs`)
 
-        // Write request
-        write_json(&client, &request).await?;
+Real daemon on temp socket paths using `AtomicU64` counter for uniqueness:
 
-        // Handle connection
-        tokio::spawn(async move {
-            handle_connection(server, state).await.unwrap();
-        });
+- `start_connect_complete` — Start daemon, send request, verify response
+- `shutdown_message_clean_exit` — Send shutdown, verify clean exit + cleanup
+- `socket_permissions` — Verify socket is `0o600` (owner-only)
+- `concurrent_connections` — 10 simultaneous connections
+- `malformed_json_returns_error` — Error response for bad input
+- `envelope_and_bare_request_both_work` — Both `DaemonMessage` and bare request
+- `pid_file_path_derivation` — PID file path from socket path
 
-        // Read response
-        let response: Response = read_json(&mut client).await?;
-
-        // Verify
-        assert!(!response.suggestions.is_empty());
-    }
-}
-```
-
-### Integration Tests
-
-```rust
-// tests/daemon_test.rs
-#[tokio::test]
-async fn test_daemon_startup_and_shutdown() {
-    let socket = "/tmp/test-daemon.sock";
-
-    // Start daemon
-    let handle = tokio::spawn(async move {
-        daemon::start(socket).await
-    });
-
-    // Wait for startup
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    // Connect
-    let stream = UnixStream::connect(socket).await?;
-    assert!(stream.is_ok());
-
-    // Shutdown
-    handle.abort();
-
-    // Verify socket cleaned up
-    assert!(!Path::new(socket).exists());
-}
-```
-
-### Load Tests
-
-```rust
-#[tokio::test]
-async fn test_concurrent_requests() {
-    let socket = start_test_daemon().await;
-
-    // Spawn 100 concurrent clients
-    let mut handles = vec![];
-    for _ in 0..100 {
-        let handle = tokio::spawn(async move {
-            let mut stream = UnixStream::connect(socket).await?;
-            let request = test_request();
-            write_json(&stream, &request).await?;
-            let response: Response = read_json(&mut stream).await?;
-            Ok(response)
-        });
-        handles.push(handle);
-    }
-
-    // Wait for all
-    for handle in handles {
-        let response = handle.await??;
-        assert!(!response.suggestions.is_empty());
-    }
-}
-```
+**Test pattern:** Tests use an atomic counter (not timestamps) for unique temp
+socket paths. This avoids collisions even when tests run as parallel threads in
+one process (`cargo test`) or as separate processes (`cargo nextest`).
 
 ## Future Enhancements
 

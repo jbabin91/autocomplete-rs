@@ -35,8 +35,15 @@ paths:
 
 - `rustfmt.toml`: 100 char max width, Rust 2024 edition, Unix newlines
 - `clippy.toml`: cognitive-complexity-threshold = 30
-- `Cargo.toml`: Rust 2024 edition, uses tokio (full), clap (derive), serde, anyhow, thiserror, tracing
+- `Cargo.toml`: Rust 2024 edition, uses tokio (full), tokio-util (CancellationToken), clap (derive + env), serde, anyhow, thiserror, tracing, libc
 - `build.rs`: stub for Phase 2 (will parse Fig TypeScript specs with deno_ast)
+
+## Testing
+
+- **Always use nextest** — both `mise run test` and the pre-push hook use `cargo nextest run`
+- `cargo test` runs integration tests as parallel threads in one process; nextest runs each test as a separate process — this matters for tests that create temp files/sockets
+- Integration tests that create temp socket paths must use atomic counters (not timestamps) for uniqueness, even with nextest, to be defensive
+- The crate is both a library (`lib.rs`) and binary (`main.rs`) — this enables integration tests in `tests/` to `use autocomplete_rs::*`
 
 ## Adding New Tools
 

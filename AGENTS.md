@@ -6,11 +6,18 @@ autocomplete-rs is a Rust-based terminal autocomplete engine — a spiritual suc
 
 ## Architecture
 
-Three-component design: a Tokio-based daemon (Unix socket server), a CLI client, and a ZLE widget for zsh.
+Three-component design: a Tokio-based daemon (Unix socket server), a CLI client, and a ZLE widget for zsh. The crate is both a library (`src/lib.rs`) and binary (`src/main.rs`) — the binary imports from the library, and integration tests use the library directly.
 
-- **Daemon** (`src/daemon/`) — long-running process listening on a Unix socket. Receives `CompletionRequest` JSON (buffer + cursor position), returns `CompletionResponse` with suggestions.
+- **Protocol** (`src/protocol.rs`) — shared types at crate root: `CompletionRequest`, `CompletionResponse`, `DaemonMessage` (tagged enum with `Complete` | `Shutdown`), validation, constants. Used by both daemon and CLI client.
+- **Engine** (`src/engine.rs`) — `CompletionEngine` trait at crate root. The daemon consumes it via `Arc<dyn CompletionEngine>`. `StubEngine` returns empty suggestions until the parser is wired in. Designed so the daemon-vs-single-process decision can be deferred.
+- **Daemon** (`src/daemon/`) — long-running process listening on a Unix socket:
+  - `mod.rs` — thin facade with `start()` and `start_with_engine()`
+  - `server.rs` — accept loop with `CancellationToken` + `JoinSet` + semaphore backpressure
+  - `handler.rs` — per-connection request handling with timeouts, size limits, validation
+  - `state.rs` — `DaemonState` (engine, semaphore, cancel token, atomic metrics)
+  - `pid.rs` — RAII `PidFile` for single-instance enforcement via `kill(pid, 0)`
 - **Inline Dropdown** — Not yet implemented. Will render completions inline below the cursor using raw ANSI escape codes via crossterm (no alternate screen, no Ratatui).
-- **Parser** (`src/parser/`) — stub. Intended to tokenize the shell buffer and match against completion specs.
+- **Parser** (`src/parser/`) — stub. Intended to tokenize the shell buffer and match against completion specs. Will implement `CompletionEngine` trait.
 - **Shell integration** (`shell-integration/zsh.zsh`) — ZLE widget that captures the buffer/cursor, calls the client, and inserts the selected completion.
 - **Socket path:** `/tmp/autocomplete-rs.sock` (override with `AUTOCOMPLETE_RS_SOCKET` env var)
 

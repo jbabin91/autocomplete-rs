@@ -23,6 +23,16 @@ autocomplete-rs/
 
 ## Source Code (`src/`)
 
+The crate is both a library (`src/lib.rs`) and a binary (`src/main.rs`). The
+binary imports from the library, and integration tests in `tests/` use the
+library directly.
+
+### `src/lib.rs`
+
+**Purpose:** Library crate root — re-exports all public modules
+
+**Exports:** `daemon`, `engine`, `parser`, `protocol`
+
 ### `src/main.rs`
 
 **Purpose:** CLI entry point and command routing
@@ -30,29 +40,54 @@ autocomplete-rs/
 **Responsibilities:**
 
 - Parse command-line arguments with Clap
-- Route to appropriate subcommand (daemon, complete, install)
+- Route to appropriate subcommand (daemon, stop, status, complete, install)
 - Handle top-level errors
 - Set up logging/tracing
+- Send shutdown message to daemon for `stop` command
 
 **Key Types:**
 
 ```rust
-struct Cli {
-    command: Commands,
-}
-
 enum Commands {
-    Daemon { socket: String },
-    Complete { buffer: String, cursor: usize },
-    Install { shell: String },
+    Daemon { socket: String },   // Start the daemon
+    Stop { socket: String },     // Send shutdown message
+    Status { socket: String },   // Check if daemon is running
+    Complete { buffer, cursor, socket },  // Get completions
+    Install { shell: String },   // Print shell integration instructions
 }
 ```
 
-**When to modify:**
+All socket args support `AUTOCOMPLETE_RS_SOCKET` env var override.
 
-- Adding new CLI commands
-- Changing command-line interface
-- Adding global flags
+### `src/protocol.rs`
+
+**Purpose:** Shared IPC protocol types and validation
+
+**Key Types:**
+
+- `CompletionRequest` — buffer + cursor + version
+- `CompletionResponse` — list of `Suggestion`s
+- `DaemonMessage` — tagged enum (`Complete` | `Shutdown`) for the envelope
+  protocol. Bare `CompletionRequest` (no `"type"` field) is also accepted for
+  backward compatibility.
+- `ErrorResponse`, `ShutdownAck` — error and shutdown responses
+- `ValidationError` — buffer too long, cursor out of bounds
+
+**Constants:** `MAX_BUFFER_LEN` (10,000), `MAX_REQUEST_SIZE` (100KB),
+`PROTOCOL_VERSION` (1)
+
+### `src/engine.rs`
+
+**Purpose:** Completion backend abstraction
+
+**Key Types:**
+
+- `CompletionEngine` trait — `fn complete(&self, request) -> CompletionResponse`
+- `StubEngine` — returns empty suggestions (placeholder until parser is wired in)
+
+The trait is `Send + Sync` so the daemon can share it via `Arc<dyn
+CompletionEngine>`. Designed so the daemon-vs-single-process decision can be
+deferred.
 
 ### `src/daemon/`
 
@@ -60,42 +95,36 @@ enum Commands {
 
 **Responsibilities:**
 
-- Listen on Unix domain socket
-- Accept concurrent connections
-- Parse JSON requests
-- Coordinate parser and completion response
-- Send JSON responses
+- Listen on Unix domain socket with semaphore-based backpressure
+- Accept concurrent connections (max 100)
+- Parse and validate JSON requests (with 1s read timeout, 100KB size limit)
+- Delegate to `CompletionEngine` for completions
+- Handle graceful shutdown via `CancellationToken` (Ctrl+C or shutdown message)
+- Enforce single-instance via PID file
 
-**Key Components:**
+**Components:**
 
 ```sh
 daemon/
-├── mod.rs           # Main daemon logic
-├── server.rs        # Unix socket server (future)
-├── handler.rs       # Request handling (future)
-└── protocol.rs      # JSON protocol types (future)
+├── mod.rs           # Thin facade: start() and start_with_engine()
+├── server.rs        # Accept loop, shutdown orchestration, socket permissions
+├── handler.rs       # Per-connection request handling with timeouts/validation
+├── state.rs         # DaemonState (engine, semaphore, cancel token, metrics)
+└── pid.rs           # RAII PidFile for single-instance enforcement
 ```
-
-**Current State:** Basic structure in `mod.rs`
 
 **Key Functions:**
 
-- `start(socket_path: &str)` - Start daemon, listen on socket
-- `handle_connection(stream)` - Process single request
-- `parse_request(json)` - Deserialize request
-- `send_response(stream, response)` - Send JSON response
+- `start(socket_path)` — Start daemon with default `StubEngine`
+- `start_with_engine(socket_path, engine)` — Start with custom engine
+- `handler::handle_connection(reader, writer, state, conn_id)` — Per-connection
+  logic (generic over `AsyncRead`/`AsyncWrite` for testability)
 
 **Performance Requirements:**
 
 - Response time: <10ms
 - Startup time: <5ms
 - Memory: <50MB with all specs loaded
-
-**When to modify:**
-
-- Changing request/response format
-- Adding new daemon features
-- Optimizing connection handling
 
 ### `src/parser/`
 
@@ -312,18 +341,31 @@ bindkey '^[ ' _autocomplete_rs_widget  # Alt+Space
 
 ```sh
 tests/
-├── integration.rs    # End-to-end tests (future)
-├── daemon_test.rs    # Daemon tests (future)
-├── parser_test.rs    # Parser tests (future)
-└── fixtures/         # Test data
-    └── specs/        # Sample specs for testing
+└── daemon_integration.rs  # Real socket IPC tests (7 tests)
 ```
 
-**When to modify:**
+**Current tests:**
 
-- Adding new features (add tests!)
-- Fixing bugs (add regression tests)
-- Improving test coverage
+- `start_connect_complete` — Start daemon, send request, verify response
+- `shutdown_message_clean_exit` — Send shutdown, verify clean exit + cleanup
+- `socket_permissions` — Verify socket is `0600` (owner-only)
+- `concurrent_connections` — 10 simultaneous connections
+- `malformed_json_returns_error` — Error response for bad input
+- `envelope_and_bare_request_both_work` — Both `DaemonMessage` and bare request
+- `pid_file_path_derivation` — PID file path from socket path
+
+**Pattern:** Tests use atomic counter for unique temp socket paths (not
+timestamps) to avoid collisions under parallel execution.
+
+### Unit Tests
+
+34 inline unit tests across modules:
+
+- `protocol` (12): serde round-trips, validation, `DaemonMessage` variants
+- `handler` (8): valid/invalid requests, shutdown, backward compat
+- `pid` (8): path derivation, process detection, acquire/release, stale cleanup
+- `state` (4): connection guard, metrics, semaphore permits
+- `engine` (2): stub behavior, trait object behind `Arc`
 
 ## Benchmarks (`benches/`)
 

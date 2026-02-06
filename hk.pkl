@@ -39,7 +39,7 @@ hooks {
   ["pre-push"] {
     steps {
       ["test"] {
-        check = "cargo test --all-features"
+        check = "cargo nextest run --all-features"
       }
 
       // Beads: sync before push
