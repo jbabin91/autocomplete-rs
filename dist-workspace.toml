@@ -33,7 +33,7 @@ github-attestations = true
 
 # Pin GitHub Actions to specific commit SHAs for supply chain security
 [dist.github-action-commits]
-"actions/checkout" = "de0fac2e4500dabe0009e67214ff5f5447ce83dd"
+"actions/checkout" = "0c366fd6a839edf440554fa01a7085ccba70ac98"
 "actions/upload-artifact" = "b7c566a772e6b6bfb58ed0dc250532a479d7789f"
 "actions/download-artifact" = "37930b1c2abaa49bbe596cd826c3c89aef350131"
-"actions/attest-build-provenance" = "e8998f949152b193b063cb0ec769d69d929409be"
+"actions/attest-build-provenance" = "c44148e5bf178192efd8947e07a0d439a356c60b"
