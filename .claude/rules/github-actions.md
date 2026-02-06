@@ -25,7 +25,7 @@ paths:
 | Job       | Purpose                                                            |
 | --------- | ------------------------------------------------------------------ |
 | Lint      | `cargo fmt --check` + `cargo clippy --locked --all-targets`        |
-| Test      | `cargo nextest run --locked` + `cargo test --doc` (doctests)       |
+| Test      | `cargo nextest run --locked --all-features`                        |
 | MSRV      | `cargo check --locked` with Rust version from `Cargo.toml`         |
 | Deny      | `cargo-deny` — license compliance, advisory, bans, source policies |
 | PR Title  | Conventional commit format validation (PRs only)                   |

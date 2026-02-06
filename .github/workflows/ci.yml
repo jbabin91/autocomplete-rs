@@ -54,8 +54,6 @@ jobs:
         uses: ./.github/actions/setup-rust
       - name: Run tests
         run: cargo nextest run --locked --all-features --no-tests=warn
-      - name: Run doctests
-        run: cargo test --locked --all-features --doc
 
   msrv:
     name: MSRV

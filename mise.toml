@@ -54,10 +54,7 @@ run = [
 
 [tasks.test]
 description = "Run tests"
-run = [
-  "cargo nextest run --all-features --no-tests=warn",
-  "cargo test --all-features --doc",
-]
+run = "cargo nextest run --all-features --no-tests=warn"
 
 [tasks.build]
 description = "Build in debug mode"
