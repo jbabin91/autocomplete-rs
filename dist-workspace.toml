@@ -33,10 +33,13 @@ github-attestations = true
 # Allow Renovate to update action SHAs directly in release.yml
 # Remove temporarily when regenerating: dist generate-ci
 allow-dirty = ["ci"]
+# Use ubuntu-latest so Renovate doesn't create PRs for runner updates
+[dist.github-custom-runners]
+global = "ubuntu-latest"
 
 # Pin GitHub Actions to specific commit SHAs for supply chain security
 [dist.github-action-commits]
 "actions/checkout" = "0c366fd6a839edf440554fa01a7085ccba70ac98"
-"actions/upload-artifact" = "b7c566a772e6b6bfb58ed0dc250532a479d7789f"
+"actions/upload-artifact" = "47309c993abb98030a35d55ef7ff34b7fa1074b5"
 "actions/download-artifact" = "37930b1c2abaa49bbe596cd826c3c89aef350131"
 "actions/attest-build-provenance" = "c44148e5bf178192efd8947e07a0d439a356c60b"
