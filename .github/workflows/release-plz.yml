@@ -1,4 +1,4 @@
-name: Release (release-plz)
+name: Release
 
 on:
   push:
@@ -8,12 +8,16 @@ on:
 permissions: {}
 
 jobs:
-  release-plz-release:
+  release-plz:
     name: Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
       id-token: write # OIDC for crates.io trusted publishing
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -27,27 +31,5 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: release-plz/action@20b23932963f7971bdff386c3542f07fbec45f42 # v0.5.125
-        with:
-          command: release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-
-  release-plz-pr:
-    name: Release PR
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    concurrency:
-      group: release-plz-${{ github.ref }}
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: release-plz/action@20b23932963f7971bdff386c3542f07fbec45f42 # v0.5.125
-        with:
-          command: release-pr
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
