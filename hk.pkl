@@ -19,7 +19,15 @@ hooks {
 
       // Non-Rust formatting (builtins)
       ["prettier"] = Builtins.prettier
-      ["taplo"] = Builtins.taplo
+
+      // taplo: override builtin to use `taplo fmt` (formatting check)
+      // instead of `taplo check` (syntax-only validation).
+      // Builtins.taplo uses `taplo check` which doesn't catch style issues.
+      ["taplo"] {
+        glob = "*.toml"
+        check = "taplo fmt --check {{files}}"
+        fix = "taplo fmt {{files}}"
+      }
 
       // Markdown linting (custom - uses markdownlint-cli2)
       ["markdown_lint"] {
