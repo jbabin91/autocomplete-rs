@@ -9,25 +9,49 @@ on:
 permissions: {}
 
 jobs:
-  release-plz:
-    name: Release
+  release-pr:
+    name: Release PR
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
       pull-requests: write
+    concurrency:
+      group: release-plz-pr-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Create or update release PR
+        uses: release-plz/action@20b23932963f7971bdff386c3542f07fbec45f42 # v0.5.125
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    name: Release
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
       id-token: write # OIDC for crates.io trusted publishing
     concurrency:
-      group: release-plz-${{ github.ref }}
+      group: release-plz-release-${{ github.ref }}
       cancel-in-progress: false
     steps:
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
         with:
-          app-id: ${{ secrets.AUTOMATED_COMMIT_SIGNER_APP_ID }}
-          private-key: ${{ secrets.AUTOMATED_COMMIT_SIGNER_PRIVATE_KEY }}
+          app-id: ${{ secrets.AUTOMATED_ACTIONS_AGENT_APP_ID }}
+          private-key: ${{ secrets.AUTOMATED_ACTIONS_AGENT_PRIVATE_KEY }}
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -35,7 +59,9 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
-      - name: Run release-plz
+      - name: Publish and tag release
         uses: release-plz/action@20b23932963f7971bdff386c3542f07fbec45f42 # v0.5.125
+        with:
+          command: release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
