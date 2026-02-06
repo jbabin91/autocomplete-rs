@@ -81,6 +81,43 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify CI results
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
-        run: exit 1
+      - name: Summary
+        run: |
+          icon() {
+            case "$1" in
+              success) echo "✅";;
+              skipped) echo "⏭️";;
+              failure) echo "❌";;
+              cancelled) echo "🚫";;
+              *) echo "❓";;
+            esac
+          }
+
+          failed=false
+          jobs=(
+            "Lint|${{ needs.lint.result }}"
+            "Test|${{ needs.test.result }}"
+            "Security Audit|${{ needs.audit.result }}"
+            "PR Title|${{ needs.pr-title.result }}"
+          )
+
+          {
+            echo "## CI Summary"
+            echo ""
+            echo "| Job | Status |"
+            echo "|-----|--------|"
+            for job in "${jobs[@]}"; do
+              name="${job%%|*}"
+              result="${job##*|}"
+              echo "| ${name} | $(icon "$result") ${result} |"
+              if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+                failed=true
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$failed" == "true" ]]; then
+            echo ""
+            echo "::error::CI failed — see table above for details"
+            exit 1
+          fi
