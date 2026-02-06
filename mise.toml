@@ -14,6 +14,7 @@
 
 # System tools
 pkl = "latest"
+cocogitto = "latest"
 
 # Tasks (replaces Makefile)
 [tasks.fmt]

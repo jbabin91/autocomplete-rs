@@ -1,0 +1,66 @@
+formula = "spike"
+version = 1
+type = "workflow"
+description = "Time-boxed research spike: define question, research, document findings, create follow-up issues."
+
+[vars.name]
+description = "Short name for the spike (e.g., quickjs-eval, inline-ansi)"
+required = true
+
+[vars.question]
+description = "The specific question this spike answers"
+required = true
+
+[[steps]]
+id = "scope"
+title = "Define scope for {{name}} spike"
+description = """Clarify what we're trying to learn about {{name}}.
+
+Question: {{question}}
+
+- Define what "answered" looks like (success criteria)
+- Set a time box (recommend 2-4 hours max)
+- Identify what we already know vs what we need to learn
+- List specific experiments or prototypes to try"""
+phase = "prep"
+type = "human"
+labels = ["spike", "research"]
+
+[[steps]]
+id = "research"
+title = "Research {{name}}"
+description = """Execute the research for {{name}}: {{question}}.
+
+- Build prototypes or proof-of-concepts as needed
+- Test assumptions with real code, not just reading docs
+- Document dead ends (they're valuable too)
+- Stop at the time box — partial answers are fine"""
+phase = "build"
+type = "human"
+needs = ["scope"]
+
+[[steps]]
+id = "document"
+title = "Document {{name}} findings"
+description = """Write up findings from {{name}} spike.
+
+- Answer the original question directly
+- Summarize key findings and tradeoffs discovered
+- Include code snippets or prototype references
+- Save to docs/research/ if findings have lasting value"""
+phase = "report"
+type = "human"
+needs = ["research"]
+
+[[steps]]
+id = "follow-up"
+title = "Create follow-up issues from {{name}}"
+description = """Turn {{name}} findings into actionable work.
+
+- Create beads issues for recommended next steps
+- Link back to research findings
+- Set appropriate priorities based on what we learned
+- Close this spike — research is done regardless of outcome"""
+phase = "report"
+type = "human"
+needs = ["document"]

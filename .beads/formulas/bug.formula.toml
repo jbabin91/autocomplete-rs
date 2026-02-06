@@ -1,0 +1,51 @@
+formula = "bug"
+version = 1
+type = "workflow"
+description = "Bug investigation and fix workflow: investigate, fix, verify."
+
+[vars.name]
+description = "Short name for the bug (e.g., socket-timeout, completion-crash)"
+required = true
+
+[vars.symptom]
+description = "What's going wrong — the observable behavior"
+required = true
+
+[[steps]]
+id = "investigate"
+title = "Investigate {{name}}"
+description = """Reproduce and diagnose {{name}}: {{symptom}}.
+
+- Reproduce the bug reliably (document repro steps)
+- Identify root cause vs symptoms
+- Check if this is a regression (git bisect if needed)
+- Note affected components and blast radius"""
+phase = "diagnose"
+type = "human"
+labels = ["bug"]
+
+[[steps]]
+id = "fix"
+title = "Fix {{name}}"
+description = """Implement the fix for {{name}}.
+
+- Fix the root cause, not just the symptom
+- Keep the fix minimal and focused
+- Add a regression test that fails without the fix"""
+phase = "build"
+type = "human"
+needs = ["investigate"]
+
+[[steps]]
+id = "verify"
+title = "Verify {{name}} fix"
+description = """Confirm the fix resolves {{name}}.
+
+- Regression test passes
+- Original repro steps no longer trigger the bug
+- No new clippy warnings
+- Full CI suite passes: `mise run ci`
+- Check for related bugs that might share the same root cause"""
+phase = "verify"
+type = "human"
+needs = ["fix"]

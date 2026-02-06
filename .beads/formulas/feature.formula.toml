@@ -1,0 +1,67 @@
+formula = "feature"
+version = 1
+type = "workflow"
+description = "Standard feature development workflow: design, implement, test, document."
+
+[vars.name]
+description = "Short name for the feature (e.g., inline-dropdown, spec-parser)"
+required = true
+
+[vars.summary]
+description = "One-line summary of what this feature does"
+required = true
+
+[vars.priority]
+description = "Priority (0=critical, 1=high, 2=medium, 3=low, 4=backlog)"
+default = "2"
+
+[[steps]]
+id = "design"
+title = "Design {{name}}"
+description = """Clarify requirements and design the approach for {{name}}.
+
+- Define the public API / interface
+- Identify affected modules and dependencies
+- Document key decisions and tradeoffs
+- Update or create relevant ADR if architectural"""
+phase = "prep"
+type = "human"
+labels = ["design"]
+
+[[steps]]
+id = "implement"
+title = "Implement {{name}}"
+description = """Build {{name}}: {{summary}}.
+
+- Follow existing code patterns and project style
+- Keep changes focused — no unrelated cleanup
+- Use feature branch if change is large"""
+phase = "build"
+type = "human"
+needs = ["design"]
+
+[[steps]]
+id = "test"
+title = "Test {{name}}"
+description = """Write tests for {{name}}.
+
+- Unit tests for core logic
+- Integration tests for IPC/socket interactions (if applicable)
+- Verify clippy passes with zero warnings
+- Run full CI suite: `mise run ci`"""
+phase = "verify"
+type = "human"
+needs = ["implement"]
+
+[[steps]]
+id = "document"
+title = "Document {{name}}"
+description = """Update documentation for {{name}}.
+
+- Update README if user-facing behavior changed
+- Update AGENTS.md if architecture changed
+- Add/update relevant docs/ pages
+- Ensure code comments explain non-obvious decisions"""
+phase = "verify"
+type = "human"
+needs = ["implement"]

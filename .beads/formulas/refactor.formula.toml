@@ -1,0 +1,56 @@
+formula = "refactor"
+version = 1
+type = "workflow"
+description = "Safe refactoring workflow: document current behavior, implement changes, verify no regressions."
+
+[vars.name]
+description = "Short name for the refactor (e.g., tui-to-inline, daemon-cleanup)"
+required = true
+
+[vars.goal]
+description = "What this refactor achieves (the 'why')"
+required = true
+
+[[steps]]
+id = "baseline"
+title = "Document current behavior of {{name}}"
+description = """Capture the current state before changing {{name}}.
+
+Goal: {{goal}}
+
+- Document current public API / interfaces
+- Note existing tests and their coverage
+- Identify callers and dependents
+- Run full test suite and record baseline: `mise run ci`
+- If test coverage is thin, add characterization tests first"""
+phase = "prep"
+type = "human"
+labels = ["refactor"]
+
+[[steps]]
+id = "implement"
+title = "Refactor {{name}}"
+description = """Execute the refactor for {{name}}: {{goal}}.
+
+- Make changes in small, reviewable increments
+- Keep each commit compilable and passing tests
+- Preserve external behavior unless explicitly changing it
+- Update internal documentation as you go"""
+phase = "build"
+type = "human"
+needs = ["baseline"]
+
+[[steps]]
+id = "verify"
+title = "Verify {{name}} refactor"
+description = """Confirm {{name}} refactor introduced no regressions.
+
+- All existing tests still pass
+- No new clippy warnings
+- External behavior unchanged (unless intentionally modified)
+- Full CI suite passes: `mise run ci`
+- Performance hasn't degraded (if applicable)
+- Remove any dead code left behind"""
+phase = "verify"
+type = "human"
+needs = ["implement"]

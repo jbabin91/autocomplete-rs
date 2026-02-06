@@ -67,6 +67,15 @@ hooks {
     }
   }
 
+  // Validate conventional commit format
+  ["commit-msg"] {
+    steps {
+      ["conventional_commit"] {
+        check = "cog verify --file {{commit_msg_file}}"
+      }
+    }
+  }
+
   // Beads: add agent identity trailers to commit messages
   ["prepare-commit-msg"] {
     steps {

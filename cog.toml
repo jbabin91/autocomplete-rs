@@ -1,0 +1,23 @@
+# Cocogitto configuration
+# Only used for commit message validation (cog verify)
+# Versioning and changelog handled by release-plz
+
+[changelog]
+# Not used — release-plz + git-cliff handles changelog generation
+# Included to prevent cog from using defaults if accidentally invoked
+path = "CHANGELOG.md"
+
+[commit_types]
+# Standard conventional commit types
+# https://www.conventionalcommits.org/
+feat = { changelog_title = "Features" }
+fix = { changelog_title = "Bug Fixes" }
+docs = { changelog_title = "Documentation" }
+style = { changelog_title = "Style" }
+refactor = { changelog_title = "Refactoring" }
+perf = { changelog_title = "Performance" }
+test = { changelog_title = "Tests" }
+build = { changelog_title = "Build" }
+ci = { changelog_title = "CI" }
+chore = { changelog_title = "Chore", omit_from_changelog = true }
+revert = { changelog_title = "Reverts" }

@@ -18,9 +18,10 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
 
 - **Rust 2024 Edition** (1.85+)
 - **Task runner:** mise (see mise.toml)
-- **Git hooks:** hk (see hk.pkl) — runs fmt, clippy, check on pre-commit; tests on pre-push
+- **Git hooks:** hk (see hk.pkl) — runs fmt, clippy, check on pre-commit; commit-msg validation; tests on pre-push
 - **Formatting:** rustfmt (100 char width), prettier for non-Rust files, taplo for TOML
 - **Linting:** clippy with `-D warnings` (zero warnings policy)
+- **Commit messages:** Conventional Commits enforced by cocogitto (`cog verify`)
 
 ```bash
 mise run build       # debug build
@@ -40,6 +41,35 @@ cargo test <name>    # run a single test by name
 - Structured logging via `tracing`
 - Clap derive for CLI argument parsing
 - Serde + serde_json for IPC serialization
+
+## Git Workflow
+
+**Branching:** GitHub Flow — `main` is the only long-lived branch.
+
+- **Maintainer** can push directly to main
+- **Contributors** must use feature branches + PRs
+- **Branch naming:** `feat/`, `fix/`, `refactor/`, `chore/` prefixes (match conventional commit types)
+- **Merging:** Squash merge or rebase merge only — no merge commits
+- **CI:** All PRs must pass fmt, clippy, test, and build checks before merging
+
+**Commit conventions:** [Conventional Commits](https://www.conventionalcommits.org/)
+
+- Format: `type(scope): description` (scope optional)
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+- Breaking changes: `feat!:` or `BREAKING CHANGE:` footer
+- Enforced locally by hk commit-msg hook (`cog verify`)
+- Enforced in CI by cocogitto GitHub Action
+
+**Workflow formulas:** Use `bd mol pour <formula>` for structured work.
+
+- `feature` — Design → Implement → Test → Document
+- `bug` — Investigate → Fix → Verify
+- `spike` — Scope → Research → Document → Follow-up
+- `refactor` — Baseline → Implement → Verify
+
+For simple tasks/chores, use `bd create` directly.
+
+**Releases:** release-plz (versioning + changelog + crates.io) + cargo-dist (binaries + installers + Homebrew). Not yet configured — tracked in `autocomplete-rs-9jz`.
 
 ## Landing the Plane (Session Completion)
 
