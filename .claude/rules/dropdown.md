@@ -1,6 +1,6 @@
 ---
 paths:
-  - 'src/tui/**'
+  - 'src/dropdown/**'
 ---
 
 # Inline Completion Dropdown Rules
