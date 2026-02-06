@@ -45,6 +45,7 @@ Provides patterns for the `gh` CLI to interact with GitHub repositories, service
 | Verify artifact      | `gh attestation verify artifact.tar.gz --owner owner`                                         |
 | Trigger workflow     | `gh workflow run deploy.yml -f environment=production`                                        |
 | Revert merged PR     | `gh pr revert 45`                                                                             |
+| Resolve PR threads   | `gh api graphql` with `resolveReviewThread` mutation (see PR reference)                       |
 | Sync fork            | `gh repo sync` to update fork from upstream                                                   |
 
 ## Output Formatting
@@ -100,7 +101,7 @@ The `gh` CLI requires authentication before most commands work. Run `gh auth sta
 
 - [Repos & Auth](references/repos-auth.md) -- Authentication, repository management, configuration, extensions, aliases
 - [Issues](references/issues.md) -- Issue CRUD, labels, assignments, pinning, transferring, development branches
-- [Pull Requests](references/pull-requests.md) -- PR creation, review, merge, checkout, checks, diff, auto-merge
+- [Pull Requests](references/pull-requests.md) -- PR creation, review, merge, checkout, checks, diff, auto-merge, review thread resolution
 - [Actions](references/actions.md) -- Workflow runs, manual triggers, secrets, variables, caches, artifact downloads
 - [Releases & Search](references/releases-search.md) -- Releases, attestation verification, search, gists, SSH/GPG keys
 - [Projects & API](references/projects-api.md) -- Projects v2 management, REST API, GraphQL API, rulesets, status

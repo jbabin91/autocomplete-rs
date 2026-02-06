@@ -87,6 +87,101 @@ gh pr review 45 --request-changes --body "Please fix X"
 gh pr review 45 --comment --body "Consider using Y instead"
 ```
 
+## Review Threads (GraphQL)
+
+Resolving review threads requires the GraphQL API -- there is no REST endpoint or `gh pr` subcommand for this.
+
+**Important:** GraphQL queries containing `!` (e.g., `String!`) must be passed via file or `$(cat ...)` to avoid shell interpretation. Use `-f` for string variables and `-F` for typed variables (Int, Boolean).
+
+### List review threads
+
+```sh
+# Save query to a file to avoid shell escaping issues with '!'
+cat > /tmp/threads.graphql << 'QUERY'
+query($owner: String!, $repo: String!, $pr: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $pr) {
+      reviewThreads(first: 100) {
+        nodes {
+          id
+          isResolved
+          isOutdated
+          comments(first: 1) {
+            nodes { body path line }
+          }
+        }
+      }
+    }
+  }
+}
+QUERY
+
+gh api graphql -F owner="owner" -F repo="repo" -F pr=45 \
+  -f query="$(cat /tmp/threads.graphql)"
+```
+
+### Filter to outdated unresolved threads
+
+```sh
+gh api graphql -F owner="owner" -F repo="repo" -F pr=45 \
+  -f query="$(cat /tmp/threads.graphql)" \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[]
+    | select(.isOutdated == true and .isResolved == false)
+    | {id, path: .comments.nodes[0].path, snippet: .comments.nodes[0].body[:80]}'
+```
+
+### Resolve a single thread
+
+```sh
+cat > /tmp/resolve.graphql << 'QUERY'
+mutation($threadId: ID!) {
+  resolveReviewThread(input: { threadId: $threadId }) {
+    thread { isResolved }
+  }
+}
+QUERY
+
+gh api graphql -f query="$(cat /tmp/resolve.graphql)" \
+  -f threadId="PRRT_kwDO..."
+```
+
+### Batch resolve outdated threads
+
+```sh
+# Resolve all outdated unresolved threads in a loop
+RESOLVE=$(cat /tmp/resolve.graphql)
+gh api graphql -F owner="owner" -F repo="repo" -F pr=45 \
+  -f query="$(cat /tmp/threads.graphql)" \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[]
+    | select(.isOutdated == true and .isResolved == false) | .id' \
+| while read -r tid; do
+    gh api graphql -f query="$RESOLVE" -f threadId="$tid"
+  done
+```
+
+### Unresolve a thread
+
+```sh
+cat > /tmp/unresolve.graphql << 'QUERY'
+mutation($threadId: ID!) {
+  unresolveReviewThread(input: { threadId: $threadId }) {
+    thread { isResolved }
+  }
+}
+QUERY
+
+gh api graphql -f query="$(cat /tmp/unresolve.graphql)" \
+  -f threadId="PRRT_kwDO..."
+```
+
+Thread fields reference:
+
+- `id` -- node ID (starts with `PRRT_`), used in resolve/unresolve mutations
+- `isResolved` -- whether the thread is marked resolved
+- `isOutdated` -- `true` when subsequent commits changed the lines the comment was on
+- `comments.nodes[].path` -- file path the comment is on
+- `comments.nodes[].line` -- line number (null if outdated/moved)
+
 ## Merge
 
 ```sh
