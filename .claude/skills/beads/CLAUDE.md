@@ -18,7 +18,7 @@ ADRs in `adr/` document key decisions. These are NOT loaded during skill invocat
 
 **SKILL.md should only contain:**
 
-- Decision frameworks (bd vs TodoWrite)
+- Decision frameworks (bd vs TaskCreate/TaskUpdate)
 - Prerequisites (install verification)
 - Resource index (progressive disclosure)
 - Pointers to `bd prime` and `--help`

@@ -7,14 +7,14 @@ description: Git-backed issue tracker for multi-session work with dependencies a
 
 Graph-based issue tracker that survives conversation compaction. Provides persistent memory for multi-session work with complex dependencies.
 
-## bd vs TodoWrite
+## bd vs TaskCreate/TaskUpdate
 
-| bd (persistent)       | TodoWrite (ephemeral) |
-| --------------------- | --------------------- |
-| Multi-session work    | Single-session tasks  |
-| Complex dependencies  | Linear execution      |
-| Survives compaction   | Conversation-scoped   |
-| Git-backed, team sync | Local to session      |
+| bd (persistent)       | TaskCreate (ephemeral) |
+| --------------------- | ---------------------- |
+| Multi-session work    | Single-session tasks   |
+| Complex dependencies  | Linear execution       |
+| Survives compaction   | Conversation-scoped    |
+| Git-backed, team sync | Local to session       |
 
 **Decision test**: "Will I need this context in 2 weeks?" → YES = bd
 
@@ -26,7 +26,7 @@ Graph-based issue tracker that survives conversation compaction. Provides persis
 - Exploratory/research work with fuzzy boundaries
 - Collaboration with team (git sync)
 
-**When to use TodoWrite**:
+**When to use TaskCreate/TaskUpdate**:
 
 - Single-session linear tasks
 - Simple checklist for immediate work
@@ -71,23 +71,23 @@ Essential commands: `bd ready`, `bd create`, `bd show`, `bd update`, `bd close`,
 
 ## Resources
 
-| Resource                                                     | Content                             |
-| ------------------------------------------------------------ | ----------------------------------- |
-| [BOUNDARIES.md](resources/BOUNDARIES.md)                     | bd vs TodoWrite detailed comparison |
-| [CLI_REFERENCE.md](resources/CLI_REFERENCE.md)               | Complete command syntax             |
-| [DEPENDENCIES.md](resources/DEPENDENCIES.md)                 | Dependency system deep dive         |
-| [INTEGRATION_PATTERNS.md](resources/INTEGRATION_PATTERNS.md) | TodoWrite and tool integration      |
-| [ISSUE_CREATION.md](resources/ISSUE_CREATION.md)             | When and how to create issues       |
-| [MOLECULES.md](resources/MOLECULES.md)                       | Proto definitions, component labels |
-| [PATTERNS.md](resources/PATTERNS.md)                         | Common usage patterns               |
-| [RESUMABILITY.md](resources/RESUMABILITY.md)                 | Compaction survival guide           |
-| [STATIC_DATA.md](resources/STATIC_DATA.md)                   | Database schema reference           |
-| [TROUBLESHOOTING.md](resources/TROUBLESHOOTING.md)           | Error handling and fixes            |
-| [WORKFLOWS.md](resources/WORKFLOWS.md)                       | Step-by-step workflow patterns      |
-| [AGENTS.md](resources/AGENTS.md)                             | Agent bead tracking (v0.40+)        |
-| [ASYNC_GATES.md](resources/ASYNC_GATES.md)                   | Human-in-the-loop gates             |
-| [CHEMISTRY_PATTERNS.md](resources/CHEMISTRY_PATTERNS.md)     | Mol vs Wisp decision tree           |
-| [WORKTREES.md](resources/WORKTREES.md)                       | Parallel development patterns       |
+| Resource                                                     | Content                              |
+| ------------------------------------------------------------ | ------------------------------------ |
+| [BOUNDARIES.md](resources/BOUNDARIES.md)                     | bd vs TaskCreate detailed comparison |
+| [CLI_REFERENCE.md](resources/CLI_REFERENCE.md)               | Complete command syntax              |
+| [DEPENDENCIES.md](resources/DEPENDENCIES.md)                 | Dependency system deep dive          |
+| [INTEGRATION_PATTERNS.md](resources/INTEGRATION_PATTERNS.md) | TaskCreate and tool integration      |
+| [ISSUE_CREATION.md](resources/ISSUE_CREATION.md)             | When and how to create issues        |
+| [MOLECULES.md](resources/MOLECULES.md)                       | Proto definitions, component labels  |
+| [PATTERNS.md](resources/PATTERNS.md)                         | Common usage patterns                |
+| [RESUMABILITY.md](resources/RESUMABILITY.md)                 | Compaction survival guide            |
+| [STATIC_DATA.md](resources/STATIC_DATA.md)                   | Static reference data patterns       |
+| [TROUBLESHOOTING.md](resources/TROUBLESHOOTING.md)           | Error handling and fixes             |
+| [WORKFLOWS.md](resources/WORKFLOWS.md)                       | Step-by-step workflow patterns       |
+| [AGENTS.md](resources/AGENTS.md)                             | Agent bead tracking (v0.40+)         |
+| [ASYNC_GATES.md](resources/ASYNC_GATES.md)                   | Human-in-the-loop gates              |
+| [CHEMISTRY_PATTERNS.md](resources/CHEMISTRY_PATTERNS.md)     | Mol vs Wisp decision tree            |
+| [WORKTREES.md](resources/WORKTREES.md)                       | Parallel development patterns        |
 
 ## Full Documentation
 
