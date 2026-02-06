@@ -24,10 +24,11 @@ paths:
 
 | Job       | Purpose                                                            |
 | --------- | ------------------------------------------------------------------ |
-| Lint      | `cargo fmt --check` + `cargo clippy --locked --all-targets`        |
+| Lint      | `cargo clippy --locked --all-targets --all-features`               |
 | Test      | `cargo nextest run --locked --all-features`                        |
 | MSRV      | `cargo check --locked` with Rust version from `Cargo.toml`         |
 | Deny      | `cargo-deny` — license compliance, advisory, bans, source policies |
+| Format    | `cargo fmt` + `taplo` + `prettier` + `markdownlint-cli2`           |
 | PR Title  | Conventional commit format validation (PRs only)                   |
 | CI Status | Gate job aggregating all results into a summary table              |
 

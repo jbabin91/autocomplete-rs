@@ -17,8 +17,28 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
+  format:
+    name: Format
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Setup mise
+        uses: ./.github/actions/setup-mise
+      - name: Run static analysis
+        uses: ./.github/actions/static-analysis
+
   lint:
     name: Lint
+    needs: [format]
     if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -31,15 +51,12 @@ jobs:
           persist-credentials: false
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
-        with:
-          components: rustfmt, clippy
-      - name: Check formatting
-        run: cargo fmt --all -- --check
       - name: Run clippy
         run: cargo clippy --locked --all-targets --all-features
 
   test:
     name: Test
+    needs: [format]
     if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -53,10 +70,11 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Run tests
-        run: cargo nextest run --locked --all-features --no-tests=warn
+        uses: ./.github/actions/run-tests
 
   msrv:
     name: MSRV
+    needs: [format]
     if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -81,6 +99,7 @@ jobs:
 
   deny:
     name: Deny
+    needs: [format]
     if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -110,7 +129,7 @@ jobs:
   ci-status:
     name: CI Status
     if: always()
-    needs: [lint, test, msrv, deny, pr-title]
+    needs: [format, lint, test, msrv, deny, pr-title]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -128,6 +147,7 @@ jobs:
 
           failed=false
           jobs=(
+            "Format|${{ needs.format.result }}"
             "Lint|${{ needs.lint.result }}"
             "Test|${{ needs.test.result }}"
             "MSRV|${{ needs.msrv.result }}"

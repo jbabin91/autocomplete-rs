@@ -1,11 +1,5 @@
 name: Setup Rust
-description: Install Rust toolchain, cargo-nextest, and restore cache (repo must already be checked out)
-
-inputs:
-  components:
-    description: Comma-separated list of rustup components (e.g., rustfmt, clippy)
-    required: false
-    default: ''
+description: Install Rust toolchain with rustfmt, clippy, cargo-nextest, and restore cache
 
 runs:
   using: composite
@@ -13,7 +7,7 @@ runs:
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
-        components: ${{ inputs.components }}
+        components: rustfmt, clippy
     - name: Install cargo-nextest
       uses: taiki-e/install-action@cd06cfcb315894ee98ffbc4582bcafbcbc260bdb # v2
       with:

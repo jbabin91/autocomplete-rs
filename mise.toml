@@ -4,18 +4,18 @@
 
 # Development tools
 [tools]
-# Rust tools
-"cargo:cargo-nextest" = "latest"
-"cargo:taplo-cli" = "latest"
-"cargo:hk" = "latest"
-
-# JS ecosystem tools
-"npm:prettier" = "latest"
-"npm:markdownlint-cli2" = "latest"
-
-# System tools
+# Pre-built binaries (fast install)
+taplo = "latest"
+hk = "latest"
 pkl = "latest"
 cocogitto = "latest"
+
+# Cargo tools (compile from source)
+"cargo:cargo-nextest" = "latest"
+
+# npm tools
+"npm:prettier" = "latest"
+"npm:markdownlint-cli2" = "latest"
 
 # Tasks (replaces Makefile)
 [tasks.fmt]
