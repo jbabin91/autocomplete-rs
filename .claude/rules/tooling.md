@@ -45,10 +45,27 @@ paths:
 - Integration tests that create temp socket paths must use atomic counters (not timestamps) for uniqueness, even with nextest, to be defensive
 - The crate is both a library (`lib.rs`) and binary (`main.rs`) — this enables integration tests in `tests/` to `use autocomplete_rs::*`
 
+## CI / hk / mise Consistency
+
+The three systems must stay in sync. When changing lint/test commands in one place, update all three:
+
+- **CI** (`.github/workflows/ci.yml` + `.github/actions/`) — source of truth for what blocks merges
+- **mise** (`mise.toml`) — developer-facing task runner (`mise run ci`)
+- **hk** (`hk.pkl`) — git hooks (pre-commit, pre-push)
+
+**Key principle:** hk hooks should use the **same flags** as CI, not the hk builtins' defaults. Builtins use minimal flags (e.g., `cargo clippy --quiet`) while CI uses stricter flags (e.g., `cargo clippy --all-targets --all-features`). Override builtins when the defaults don't match CI.
+
+**Current overrides (do NOT revert to builtins):**
+
+- `cargo_fmt` — uses `--all` (all workspace members), matching CI
+- `cargo_clippy` — uses `--all-targets --all-features -- -D warnings`, matching CI + mise
+- `cargo_check` — uses `--all-targets --all-features`, matching mise
+- `taplo` — uses `taplo fmt --check` (formatting), not `taplo check` (syntax-only)
+
 ## Adding New Tools
 
 - Install via mise (add to `[tools]` section in mise.toml)
 - If it needs a pre-commit check, add as a step in hk.pkl
-- Use hk builtins when available (`Builtins.cargo_fmt`, `Builtins.prettier`, etc.)
-- Verify builtins exist before using: `pkl eval -f json "package://github.com/jdx/hk/...#/Builtins.pkl" | python3 -c "import json,sys; [print(k) for k in sorted(json.load(sys.stdin).keys())]"`
-- `Builtins.taplo` handles BOTH validation (`taplo check`) and formatting (`taplo format` via `fix`) — there is no separate `taplo_format` builtin in v1.19.0
+- **Prefer custom steps over builtins** — verify builtin commands match CI before using them
+- To inspect builtin commands: `pkl eval -f json "package://github.com/jdx/hk/...#/Builtins.pkl" | python3 -c "import json,sys; b=json.load(sys.stdin)['name']; print(b['check']); print(b.get('fix',''))"`
+- When adding a new check, update all three: CI workflow, mise task, and hk step
