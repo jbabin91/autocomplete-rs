@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/jbabin91/autocomplete-rs/compare/v0.1.2...v0.1.3) - 2026-02-06
+
+### Other
+
+- audit and restructure documentation for accuracy
+- add composite actions for mise, static analysis, and tests
+- add cargo-nextest for faster test execution
+- harden workflows and add MSRV + cargo-deny checks
+- move CI/CD documentation to .claude/rules/github-actions.md
+- add CI/CD section to AGENTS.md
+- document cargo-dist regeneration workflow in AGENTS.md
+- let cargo-dist fully manage release workflow
+
 ## [0.1.2](https://github.com/jbabin91/autocomplete-rs/compare/v0.1.1...v0.1.2) - 2026-02-06
 
 ### Other
