@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
+use autocomplete_rs::daemon;
+use autocomplete_rs::protocol::{CompletionRequest, DaemonMessage};
 use clap::{Parser, Subcommand};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
-mod daemon;
-mod parser;
+const DEFAULT_SOCKET: &str = "/tmp/autocomplete-rs.sock";
 
 #[derive(Parser)]
 #[command(name = "autocomplete-rs")]
@@ -19,19 +20,19 @@ enum Commands {
     /// Start the autocomplete daemon
     Daemon {
         /// Unix socket path
-        #[arg(short, long, default_value = "/tmp/autocomplete-rs.sock")]
+        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
         socket: String,
     },
     /// Stop the running daemon
     Stop {
         /// Unix socket path
-        #[arg(short, long, default_value = "/tmp/autocomplete-rs.sock")]
+        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
         socket: String,
     },
     /// Check daemon status
     Status {
         /// Unix socket path
-        #[arg(short, long, default_value = "/tmp/autocomplete-rs.sock")]
+        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
         socket: String,
     },
     /// Get completion suggestions for a command buffer
@@ -42,7 +43,7 @@ enum Commands {
         #[arg(short, long)]
         cursor: usize,
         /// Unix socket path
-        #[arg(short, long, default_value = "/tmp/autocomplete-rs.sock")]
+        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
         socket: String,
     },
     /// Install shell integration
@@ -98,7 +99,7 @@ async fn complete_command(buffer: &str, cursor: usize, socket_path: &str) -> Res
     let mut reader = BufReader::new(reader);
 
     // Send request
-    let request = daemon::CompletionRequest {
+    let request = CompletionRequest {
         buffer: buffer.to_string(),
         cursor,
         version: 1,
@@ -113,13 +114,12 @@ async fn complete_command(buffer: &str, cursor: usize, socket_path: &str) -> Res
     reader.read_line(&mut response_line).await?;
 
     // Output raw response for shell integration to consume
-    // TODO: Replace with inline ANSI dropdown rendering (Phase 1)
     print!("{}", response_line.trim());
 
     Ok(())
 }
 
-/// Stop the running daemon
+/// Stop the running daemon by sending a shutdown message over the socket.
 async fn stop_daemon(socket_path: &str) -> Result<()> {
     use std::path::Path;
 
@@ -128,13 +128,22 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
         return Ok(());
     }
 
-    // Try to connect to send shutdown signal
     match UnixStream::connect(socket_path).await {
-        Ok(_stream) => {
-            // Connection successful means daemon is running
-            // For now, we'll just remove the socket and let the daemon detect it
-            // In a production system, you'd send a shutdown message
-            std::fs::remove_file(socket_path)?;
+        Ok(stream) => {
+            let (reader, mut writer) = stream.into_split();
+            let mut reader = BufReader::new(reader);
+
+            // Send shutdown message
+            let msg = DaemonMessage::Shutdown;
+            let json = serde_json::to_string(&msg)?;
+            writer.write_all(json.as_bytes()).await?;
+            writer.write_all(b"\n").await?;
+            writer.flush().await?;
+
+            // Wait for acknowledgement
+            let mut ack_line = String::new();
+            reader.read_line(&mut ack_line).await?;
+
             println!("Daemon stopped");
         }
         Err(_) => {
