@@ -24,13 +24,6 @@ paths:
 - Beads hooks use `TERM=dumb` prefix to suppress terminal escape sequences
 - Pre-commit has `fix = true` and `stash = "git"` (auto-fix and stash untracked)
 
-## mise.toml (Task Runner)
-
-- Manages dev tools: taplo, hk, pkl, cocogitto (pre-built binaries); cargo-nextest (cargo); prettier, markdownlint-cli2 (npm)
-- Key tasks: `fmt`, `lint`, `test`, `build`, `ci` (runs all checks)
-- `ci` task depends on: fmt-check, check, lint, test
-- Clippy runs with `-D warnings` (zero warnings policy)
-
 ## Rust Config
 
 - `rustfmt.toml`: 100 char max width, Rust 2024 edition, Unix newlines
@@ -40,32 +33,23 @@ paths:
 
 ## Testing
 
-- **Always use nextest** — both `mise run test` and the pre-push hook use `cargo nextest run`
-- `cargo test` runs integration tests as parallel threads in one process; nextest runs each test as a separate process — this matters for tests that create temp files/sockets
-- Integration tests that create temp socket paths must use atomic counters (not timestamps) for uniqueness, even with nextest, to be defensive
+- **Always use nextest** — `cargo test` runs integration tests as parallel threads in one process; nextest runs each test as a separate process (matters for tests that create temp files/sockets)
+- Integration tests that create temp socket paths must use atomic counters (not timestamps) for uniqueness
 - The crate is both a library (`lib.rs`) and binary (`main.rs`) — this enables integration tests in `tests/` to `use autocomplete_rs::*`
 
 ## CI / hk / mise Consistency
 
-The three systems must stay in sync. When changing lint/test commands in one place, update all three:
+Commands live in three executable configs — do NOT duplicate exact flags in docs:
 
 - **CI** (`.github/workflows/ci.yml` + `.github/actions/`) — source of truth for what blocks merges
 - **mise** (`mise.toml`) — developer-facing task runner (`mise run ci`)
 - **hk** (`hk.pkl`) — git hooks (pre-commit, pre-push)
 
-**Key principle:** hk hooks should use the **same flags** as CI, not the hk builtins' defaults. Builtins use minimal flags (e.g., `cargo clippy --quiet`) while CI uses stricter flags (e.g., `cargo clippy --all-targets --all-features`). Override builtins when the defaults don't match CI.
-
-**Current overrides (do NOT revert to builtins):**
-
-- `cargo_fmt` — uses `--all` (all workspace members), matching CI
-- `cargo_clippy` — uses `--all-targets --all-features -- -D warnings`, matching CI + mise
-- `cargo_check` — uses `--all-targets --all-features`, matching mise
-- `taplo` — uses `taplo fmt --check` (formatting), not `taplo check` (syntax-only)
+**Key principle:** hk hooks must use the **same flags** as CI. Do NOT use hk builtins — they use minimal flags that differ from CI. All Rust/TOML steps in hk.pkl are custom overrides.
 
 ## Adding New Tools
 
 - Install via mise (add to `[tools]` section in mise.toml)
 - If it needs a pre-commit check, add as a step in hk.pkl
 - **Prefer custom steps over builtins** — verify builtin commands match CI before using them
-- To inspect builtin commands: `pkl eval -f json "package://github.com/jdx/hk/...#/Builtins.pkl" | python3 -c "import json,sys; b=json.load(sys.stdin)['name']; print(b['check']); print(b.get('fix',''))"`
-- When adding a new check, update all three: CI workflow, mise task, and hk step
+- When adding a new check, update all three: CI workflow/action, mise task, and hk step

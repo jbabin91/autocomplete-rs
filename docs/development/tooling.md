@@ -1,7 +1,10 @@
 # Development Tooling
 
-This guide covers all development tools used in autocomplete-rs - formatters,
-linters, git hooks, and task running.
+This guide covers development tools used in autocomplete-rs — installation,
+daily workflow, and editor setup.
+
+For exact command flags, see the source-of-truth configs: `mise.toml` (tasks),
+`hk.pkl` (git hooks), `.github/workflows/ci.yml` (CI).
 
 ## Overview
 
@@ -17,13 +20,6 @@ linters, git hooks, and task running.
 | Make / npm scripts    | `mise tasks`        | Via mise             |
 | asdf / nvm / pyenv    | `mise`              | Install (see below)  |
 | -                     | `taplo`             | Via mise (pre-built) |
-
-**Formatting Approach:**
-
-- **Rust files (`.rs`):** `cargo fmt --all` (via hk)
-- **TOML files (`.toml`):** `taplo fmt` (via hk)
-- **Markdown/JSON/YAML:** `prettier` (via hk)
-- **Markdown linting:** `markdownlint-cli2` (via hk)
 
 ## Installation
 
@@ -75,82 +71,45 @@ hk install
 
 ## Daily Commands
 
-### Using mise (Recommended)
+All commands go through mise. See `mise.toml` for exact flags.
 
 ```sh
-# Format all files
-mise run fmt
-
-# Check formatting without changing files
-mise run fmt-check
-
-# Type check
-mise run check
-
-# Lint with clippy
-mise run lint
-
-# Run tests
-mise run test
-
-# Run all CI checks
-mise run ci
-
-# Build release
-mise run release
+mise run fmt          # Format all files (Rust, TOML, Markdown, JSON, YAML)
+mise run fmt-check    # Check formatting without changing files
+mise run check        # Type check (cargo check)
+mise run lint         # Clippy + markdownlint
+mise run test         # cargo nextest run
+mise run ci           # All checks (fmt-check + check + lint + test)
+mise run build        # Debug build
+mise run release      # Optimized build
 ```
 
-### Direct Commands (Alternative)
+For running a specific test:
 
 ```sh
-# Format Rust files
-cargo fmt
-
-# Format TOML files
-taplo fmt
-
-# Format other files (JSON, Markdown, YAML)
-prettier --write '**/*.{json,md,yml,yaml}'
-
-# Lint markdown
-markdownlint-cli2 '**/*.md'
-
-# Run clippy (like eslint) — matches CI flags
-cargo clippy --all-targets --all-features -- -D warnings
-
-# Fix auto-fixable issues
-cargo clippy --fix --allow-dirty --allow-staged --all-targets --all-features
-
-# Quick type check (like tsc --noEmit)
-cargo check --all-targets --all-features
-
-# Run all tests
-cargo nextest run --all-features
-
-# Run specific test
-cargo nextest run -E 'test(test_name)'
-
-# Run with output (stdout visible)
-cargo nextest run --no-capture
+cargo nextest run -E 'test(test_name)'    # Run one test by name
+cargo nextest run --no-capture            # Run with stdout visible
 ```
 
-## Pre-Commit Hooks
+## Git Hooks
 
-When you commit, hk automatically runs (flags match CI exactly):
+hk runs automatically on commit and push. See `hk.pkl` for exact commands.
 
-1. ✅ `cargo_fmt` — `cargo fmt --all -- --check`
-2. ✅ `cargo_clippy` — `cargo clippy --all-targets --all-features -- -D warnings`
-3. ✅ `cargo_check` — `cargo check --all-targets --all-features`
-4. ✅ `prettier` — `prettier --check` (hk builtin)
-5. ✅ `taplo` — `taplo fmt --check`
-6. ✅ `markdown_lint` — `markdownlint-cli2`
+**Pre-commit** (`fix = true` — auto-fixes and re-stages):
 
-**Auto-fix enabled:** If issues are found, hk automatically runs fix commands.
-Review fixes with `git diff` and re-stage with `git add .`
+- Rust formatting, linting, and type checking
+- TOML, Markdown, JSON, YAML formatting
+- Markdown linting
 
-Before push, it runs:
+**Pre-push:**
 
-1. ✅ `cargo nextest run --all-features --no-tests=warn`
+- Full test suite via nextest
+
+**Commit-msg:**
+
+- Conventional commit format validation (via cocogitto)
+
+Hooks use the same flags as CI — if it passes locally, it passes in CI.
 
 ## Configuration Files
 
@@ -193,22 +152,10 @@ Add to `.vscode/settings.json`:
 
 ## Continuous Integration
 
-CI runs via GitHub Actions (`.github/workflows/ci.yml`) with seven jobs:
+CI runs via GitHub Actions (`.github/workflows/ci.yml`). Seven jobs:
+Format (fail-fast gate), Lint, Test, MSRV, Deny, PR Title, CI Status.
 
-1. **Format** — `cargo fmt --check` + `taplo` + `prettier` + `markdownlint-cli2` (fail-fast gate)
-2. **Lint** — `cargo clippy --locked --all-targets --all-features` (needs Format)
-3. **Test** — `cargo nextest run --locked --all-features --no-tests=warn` (needs Format)
-4. **MSRV** — `cargo check --locked` with minimum supported Rust version (needs Format)
-5. **Deny** — `cargo-deny` license/advisory/ban/source checks (needs Format)
-6. **PR Title** — Conventional commit format validation (PRs only)
-7. **CI Status** — Gate job aggregating all results into a summary table
-
-Reusable composite actions in `.github/actions/`:
-
-- **`setup-rust`** — Installs Rust (rustfmt + clippy), cargo-nextest, and rust-cache
-- **`setup-mise`** — Installs mise with taplo, prettier, and markdownlint-cli2
-- **`static-analysis`** — Runs all formatting checks (assumes tools installed)
-- **`run-tests`** — Runs `cargo nextest run --locked --all-features --no-tests=warn` (assumes tools installed)
+Reusable composite actions live in `.github/actions/`.
 
 See `.claude/rules/github-actions.md` for full CI/CD documentation.
 
@@ -276,11 +223,6 @@ hk run pre-commit
 ## Getting Help
 
 - **mise:** `mise help` or `mise tasks`
-- **Rustfmt:** `cargo fmt --help`
-- **Clippy:** `cargo clippy --help`
-- **prettier:** `prettier --help`
-- **taplo:** `taplo --help`
-- **markdownlint:** `markdownlint-cli2 --help`
 - **hk:** `hk run pre-commit` (test manually)
 
 ---

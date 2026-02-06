@@ -500,13 +500,9 @@ cargo tarpaulin --out Lcov | genhtml -o coverage/
 
 ## Continuous Integration
 
-Tests run as part of the CI workflow (`.github/workflows/ci.yml`). The **Test**
-job uses the `run-tests` composite action which runs
-`cargo nextest run --locked --all-features --no-tests=warn`. It depends on the **Format** job
-passing first (fail-fast gate).
-
-See [Tooling Guide — Continuous Integration](tooling.md#continuous-integration)
-and `.claude/rules/github-actions.md` for full CI/CD documentation.
+Tests run in CI via the `run-tests` composite action. See
+`.github/actions/run-tests/action.yml` for the exact command and
+`.claude/rules/github-actions.md` for full CI/CD documentation.
 
 ## Test-Driven Development (TDD)
 
