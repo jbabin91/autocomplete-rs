@@ -11,11 +11,19 @@ metadata:
 
 ## Overview
 
-Beads Viewer (BV) is a graph-aware triage engine for Beads projects (`.beads/beads.jsonl`). It computes 9 graph metrics, generates execution plans, and provides deterministic recommendations.
+Beads Viewer (BV) is a graph-aware triage engine for Beads projects. It computes 9 graph metrics, generates execution plans, and provides deterministic recommendations.
 
 **When to use:** Triaging beads tasks, analyzing dependency graphs, finding bottlenecks, detecting circular dependencies, planning parallel execution tracks, generating sprint burndown data, comparing historical project states.
 
-**When NOT to use:** Parsing raw `beads.jsonl` directly (BV pre-computes graph metrics), simple bead CRUD operations (use `bd` CLI instead), projects without `.beads/beads.jsonl`.
+**When NOT to use:** Simple bead CRUD operations (use `bd` CLI instead), projects without `.beads/`.
+
+**IMPORTANT — JSONL prerequisite:** BV reads from `.beads/issues.jsonl`, NOT from the SQLite database directly. If the JSONL file is empty or stale, BV will return zero issues with `data_hash: "empty"`. Before running BV, ensure the JSONL is populated:
+
+```sh
+bd export -o .beads/issues.jsonl
+```
+
+Re-export after any `bd` CRUD operations to keep BV data current.
 
 | Capability   | Raw beads.jsonl                | BV Robot Mode                                     |
 | ------------ | ------------------------------ | ------------------------------------------------- |
@@ -26,18 +34,18 @@ Beads Viewer (BV) is a graph-aware triage engine for Beads projects (`.beads/bea
 
 ## Quick Reference
 
-| Command                            | Purpose                             | Key Points                                    |
-| ---------------------------------- | ----------------------------------- | --------------------------------------------- |
-| `bv --robot-triage`                | Full triage with recommendations    | Start here; includes quick_wins and blockers  |
-| `bv --robot-next`                  | Single top pick with claim command  | Minimal context cost                          |
-| `bv --robot-plan`                  | Parallel execution tracks           | Faster than `--robot-insights`                |
-| `bv --robot-insights`              | Full graph metrics (all 9)          | Check `status` field; expensive               |
-| `bv --robot-priority`              | Priority misalignment detection     | Flags misprioritzed items                     |
-| `bv --robot-alerts`                | Stale issues, blocking cascades     | Proactive health checks                       |
-| `bv --robot-suggest`               | Hygiene: duplicates, missing deps   | Includes cycle break suggestions              |
-| `bv --robot-graph`                 | Dependency graph export             | JSON, DOT, or Mermaid format                  |
-| `bv --recipe <name> --robot-<cmd>` | Pre-filter before any robot command | Recipes: actionable, high-impact, bottlenecks |
-| `bv --robot-triage --label <name>` | Scope to label subgraph             | Reduces noise for focused analysis            |
+| Command                            | Purpose                             | Key Points                                     |
+| ---------------------------------- | ----------------------------------- | ---------------------------------------------- |
+| `bv --robot-triage`                | Full triage with recommendations    | Start here; includes quick_wins and blockers   |
+| `bv --robot-next`                  | Single top pick with claim command  | Minimal context cost                           |
+| `bv --robot-plan`                  | Parallel execution tracks           | Faster than `--robot-insights`                 |
+| `bv --robot-insights`              | Full graph metrics (all 9)          | Check `status` field; expensive                |
+| `bv --robot-priority`              | Priority misalignment detection     | Flags misprioritzed items                      |
+| `bv --robot-alerts`                | Stale issues, blocking cascades     | Proactive health checks                        |
+| `bv --robot-suggest`               | Hygiene: duplicates, missing deps   | Includes cycle break suggestions               |
+| `bv --robot-graph`                 | Dependency graph export             | Default JSON; use `-graph-format mermaid\|dot` |
+| `bv --recipe <name> --robot-<cmd>` | Pre-filter before any robot command | Recipes: actionable, high-impact, bottlenecks  |
+| `bv --robot-triage --label <name>` | Scope to label subgraph             | Reduces noise for focused analysis             |
 
 **CRITICAL:** Never run bare `bv` from an agent session. It launches an interactive TUI that blocks the session. Always use `--robot-*` flags.
 
@@ -82,9 +90,12 @@ All robot JSON output includes these standard fields:
 
 Key output sections by command:
 
-- **--robot-triage**: `quick_ref`, `recommendations`, `quick_wins`, `blockers_to_clear`, `project_health`, `commands`
-- **--robot-insights**: `bottlenecks`, `keystones`, `influencers`, `hubs`, `authorities`, `cycles`, `clusterDensity`
+- **--robot-triage**: `triage.quick_ref`, `triage.recommendations`, `triage.quick_wins`, `triage.blockers_to_clear`, `triage.project_health`, `triage.commands`
+- **--robot-insights**: `Bottlenecks`, `Keystones`, `Influencers`, `Hubs`, `Authorities`, `Cycles` (note: PascalCase keys)
 - **--robot-plan**: `plan.tracks` (parallel work streams), `plan.summary.highest_impact`
+- **--robot-priority**: `summary`, `recommendations` (priority misalignment findings)
+- **--robot-alerts**: `alerts`, `summary` (stale issues, blocking cascades)
+- **--robot-suggest**: `suggestions` (hygiene recommendations)
 
 ## Common Mistakes
 
@@ -97,6 +108,8 @@ Key output sections by command:
 | Parsing stderr as JSON data                                | Only stdout contains JSON; diagnostics and warnings go to stderr                                                       |
 | Stale metrics after bead changes                           | Check `data_hash` field; results are cached by beads.jsonl fingerprint                                                 |
 | Wrong recommendations for current work                     | Use `--recipe actionable` to filter to only unblocked, ready-to-work items                                             |
+| BV returns 0 issues / `data_hash: "empty"`                 | JSONL is empty or stale. Run `bd export -o .beads/issues.jsonl` before BV commands                                     |
+| Using `--format mermaid` for graph export                  | The correct flag is `-graph-format mermaid` (separate from `--format` which controls JSON/toon output)                 |
 
 ## Delegation
 
