@@ -55,7 +55,10 @@ impl CompletionUI {
     fn run_app<B: ratatui::backend::Backend>(
         &mut self,
         terminal: &mut Terminal<B>,
-    ) -> Result<Option<Suggestion>> {
+    ) -> Result<Option<Suggestion>>
+    where
+        B::Error: Send + Sync + 'static,
+    {
         loop {
             terminal.draw(|f| self.ui(f))?;
 
