@@ -20,10 +20,10 @@ linters, git hooks, and task running.
 
 **Formatting Approach:**
 
-- **Rust files (`.rs`):** `cargo fmt` (via hk builtin)
-- **TOML files (`.toml`):** `taplo` (via hk builtin)
-- **Markdown/JSON/YAML:** `prettier` (via hk builtin)
-- **Markdown linting:** `markdownlint` (via hk builtin)
+- **Rust files (`.rs`):** `cargo fmt --all` (via hk)
+- **TOML files (`.toml`):** `taplo fmt` (via hk)
+- **Markdown/JSON/YAML:** `prettier` (via hk)
+- **Markdown linting:** `markdownlint-cli2` (via hk)
 
 ## Installation
 
@@ -115,23 +115,17 @@ prettier --write '**/*.{json,md,yml,yaml}'
 # Lint markdown
 markdownlint-cli2 '**/*.md'
 
-# Run clippy (like eslint)
-cargo clippy
-
-# With strict warnings as errors
-cargo clippy -- -D warnings
+# Run clippy (like eslint) — matches CI flags
+cargo clippy --all-targets --all-features -- -D warnings
 
 # Fix auto-fixable issues
-cargo clippy --fix
+cargo clippy --fix --allow-dirty --allow-staged --all-targets --all-features
 
 # Quick type check (like tsc --noEmit)
-cargo check
-
-# Check all targets
 cargo check --all-targets --all-features
 
 # Run all tests
-cargo nextest run
+cargo nextest run --all-features
 
 # Run specific test
 cargo nextest run -E 'test(test_name)'
@@ -142,33 +136,33 @@ cargo nextest run --no-capture
 
 ## Pre-Commit Hooks
 
-When you commit, hk automatically runs (using builtins):
+When you commit, hk automatically runs (flags match CI exactly):
 
-1. ✅ `cargo_fmt` - Rust formatting (hk builtin)
-2. ✅ `cargo_clippy` - Rust linting (hk builtin)
-3. ✅ `cargo_check` - Type checking (hk builtin)
-4. ✅ `prettier` - JSON/Markdown/YAML formatting (hk builtin)
-5. ✅ `taplo` - TOML formatting (hk builtin)
-6. ✅ `markdown_lint` - Markdown linting (hk builtin)
+1. ✅ `cargo_fmt` — `cargo fmt --all -- --check`
+2. ✅ `cargo_clippy` — `cargo clippy --all-targets --all-features -- -D warnings`
+3. ✅ `cargo_check` — `cargo check --all-targets --all-features`
+4. ✅ `prettier` — `prettier --check` (hk builtin)
+5. ✅ `taplo` — `taplo fmt --check`
+6. ✅ `markdown_lint` — `markdownlint-cli2`
 
 **Auto-fix enabled:** If issues are found, hk automatically runs fix commands.
 Review fixes with `git diff` and re-stage with `git add .`
 
 Before push, it runs:
 
-1. ✅ `cargo nextest run` - Full test suite
+1. ✅ `cargo nextest run --all-features --no-tests=warn`
 
 ## Configuration Files
 
-| File                 | Purpose                   | Like              |
-| -------------------- | ------------------------- | ----------------- |
-| `mise.toml`          | Tools & tasks             | `package.json`    |
-| `hk.pkl`             | Git hooks (all builtins!) | `.husky/`         |
-| `rustfmt.toml`       | Rust format rules         | prettier config   |
-| `.markdownlint.json` | Markdown lint rules       | `.markdownlintrc` |
-| `.prettierrc.toml`   | Prettier format rules     | `.prettierrc`     |
-| `taplo.toml`         | TOML format rules         | (TOML-specific)   |
-| `clippy.toml`        | Lint rules                | `.eslintrc`       |
+| File                 | Purpose               | Like              |
+| -------------------- | --------------------- | ----------------- |
+| `mise.toml`          | Tools & tasks         | `package.json`    |
+| `hk.pkl`             | Git hooks config      | `.husky/`         |
+| `rustfmt.toml`       | Rust format rules     | prettier config   |
+| `.markdownlint.json` | Markdown lint rules   | `.markdownlintrc` |
+| `.prettierrc.toml`   | Prettier format rules | `.prettierrc`     |
+| `taplo.toml`         | TOML format rules     | (TOML-specific)   |
+| `clippy.toml`        | Lint rules            | `.eslintrc`       |
 
 ## Editor Integration
 
@@ -203,7 +197,7 @@ CI runs via GitHub Actions (`.github/workflows/ci.yml`) with seven jobs:
 
 1. **Format** — `cargo fmt --check` + `taplo` + `prettier` + `markdownlint-cli2` (fail-fast gate)
 2. **Lint** — `cargo clippy --locked --all-targets --all-features` (needs Format)
-3. **Test** — `cargo nextest run --locked --all-features` (needs Format)
+3. **Test** — `cargo nextest run --locked --all-features --no-tests=warn` (needs Format)
 4. **MSRV** — `cargo check --locked` with minimum supported Rust version (needs Format)
 5. **Deny** — `cargo-deny` license/advisory/ban/source checks (needs Format)
 6. **PR Title** — Conventional commit format validation (PRs only)
@@ -214,7 +208,7 @@ Reusable composite actions in `.github/actions/`:
 - **`setup-rust`** — Installs Rust (rustfmt + clippy), cargo-nextest, and rust-cache
 - **`setup-mise`** — Installs mise with taplo, prettier, and markdownlint-cli2
 - **`static-analysis`** — Runs all formatting checks (assumes tools installed)
-- **`run-tests`** — Runs cargo nextest (assumes tools installed)
+- **`run-tests`** — Runs `cargo nextest run --locked --all-features --no-tests=warn` (assumes tools installed)
 
 See `.claude/rules/github-actions.md` for full CI/CD documentation.
 

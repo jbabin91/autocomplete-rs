@@ -25,7 +25,7 @@ paths:
 | Job       | Purpose                                                            |
 | --------- | ------------------------------------------------------------------ |
 | Lint      | `cargo clippy --locked --all-targets --all-features`               |
-| Test      | `cargo nextest run --locked --all-features`                        |
+| Test      | `cargo nextest run --locked --all-features --no-tests=warn`        |
 | MSRV      | `cargo check --locked` with Rust version from `Cargo.toml`         |
 | Deny      | `cargo-deny` — license compliance, advisory, bans, source policies |
 | Format    | `cargo fmt` + `taplo` + `prettier` + `markdownlint-cli2`           |
@@ -47,12 +47,12 @@ paths:
 
 Reusable actions in `.github/actions/`:
 
-| Action            | Purpose                                                              |
-| ----------------- | -------------------------------------------------------------------- |
-| `setup-rust`      | Installs stable Rust (rustfmt + clippy), cargo-nextest, rust-cache   |
-| `setup-mise`      | Installs mise with taplo, prettier, markdownlint-cli2                |
-| `static-analysis` | Runs `cargo fmt --check`, taplo, prettier, markdownlint (no install) |
-| `run-tests`       | Runs `cargo nextest run --locked --all-features` (no install)        |
+| Action            | Purpose                                                                       |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `setup-rust`      | Installs stable Rust (rustfmt + clippy), cargo-nextest, rust-cache            |
+| `setup-mise`      | Installs mise with taplo, prettier, markdownlint-cli2                         |
+| `static-analysis` | Runs `cargo fmt --check`, taplo, prettier, markdownlint (no install)          |
+| `run-tests`       | Runs `cargo nextest run --locked --all-features --no-tests=warn` (no install) |
 
 **Design pattern**: Setup actions install tools. Run actions execute checks and assume tools are already available. Jobs compose them: `checkout` → `setup-*` → `run-*`.
 

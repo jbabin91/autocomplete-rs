@@ -124,10 +124,10 @@ async fn test_end_to_end_completion() {
 
 ```sh
 # All integration tests
-cargo test --test '*'
+cargo nextest run --all-features -E 'kind(test)'
 
 # Specific test file
-cargo test --test completion_flow
+cargo nextest run --all-features --test completion_flow
 ```
 
 **Best Practices:**
@@ -502,7 +502,7 @@ cargo tarpaulin --out Lcov | genhtml -o coverage/
 
 Tests run as part of the CI workflow (`.github/workflows/ci.yml`). The **Test**
 job uses the `run-tests` composite action which runs
-`cargo nextest run --locked --all-features`. It depends on the **Format** job
+`cargo nextest run --locked --all-features --no-tests=warn`. It depends on the **Format** job
 passing first (fail-fast gate).
 
 See [Tooling Guide — Continuous Integration](tooling.md#continuous-integration)
@@ -530,8 +530,8 @@ fn test_parse_git_checkout_suggests_branches() {
 1. **Run test (should fail):**
 
 ```sh
-cargo test test_parse_git_checkout
-# Should see: test result: FAILED
+cargo nextest run -E 'test(test_parse_git_checkout)'
+# Should see: FAIL
 ```
 
 1. **Implement minimum code to pass:**
@@ -550,8 +550,8 @@ pub fn parse(&self, buffer: &str, cursor: usize) -> Result<Vec<Suggestion>> {
 1. **Run test (should pass):**
 
 ```sh
-cargo test test_parse_git_checkout
-# Should see: test result: ok
+cargo nextest run -E 'test(test_parse_git_checkout)'
+# Should see: PASS
 ```
 
 1. **Refactor:**
@@ -567,7 +567,7 @@ pub fn parse(&self, buffer: &str, cursor: usize) -> Result<Vec<Suggestion>> {
 1. **Rerun tests (should still pass):**
 
 ```sh
-cargo test
+mise run test
 ```
 
 ## Debugging Failing Tests
@@ -575,7 +575,7 @@ cargo test
 ### Run Single Test with Output
 
 ```sh
-cargo test test_name -- --nocapture --test-threads=1
+cargo nextest run -E 'test(test_name)' --no-capture
 ```
 
 ### Use dbg! Macro
