@@ -5,18 +5,18 @@ linters, git hooks, and task running.
 
 ## Overview
 
-| JavaScript/TypeScript | Rust Equivalent     | Installed?          |
-| --------------------- | ------------------- | ------------------- |
-| Prettier              | `prettier`          | Via mise (npm)      |
-| ESLint                | `cargo clippy`      | ✅ Built-in         |
-| markdownlint-cli2     | `markdownlint-cli2` | Via mise (npm)      |
-| tsc --noEmit          | `cargo check`       | ✅ Built-in         |
-| Husky                 | `hk`                | Via mise            |
-| lint-staged           | `hk`                | Via mise            |
-| npm test              | `cargo test`        | ✅ Built-in         |
-| Make / npm scripts    | `mise tasks`        | Via mise            |
-| asdf / nvm / pyenv    | `mise`              | Install (see below) |
-| -                     | `taplo`             | Via mise (cargo)    |
+| JavaScript/TypeScript | Rust Equivalent     | Installed?           |
+| --------------------- | ------------------- | -------------------- |
+| Prettier              | `prettier`          | Via mise (npm)       |
+| ESLint                | `cargo clippy`      | Built-in             |
+| markdownlint-cli2     | `markdownlint-cli2` | Via mise (npm)       |
+| tsc --noEmit          | `cargo check`       | Built-in             |
+| Husky                 | `hk`                | Via mise (pre-built) |
+| lint-staged           | `hk`                | Via mise (pre-built) |
+| npm test              | `cargo nextest run` | Via mise (cargo)     |
+| Make / npm scripts    | `mise tasks`        | Via mise             |
+| asdf / nvm / pyenv    | `mise`              | Install (see below)  |
+| -                     | `taplo`             | Via mise (pre-built) |
 
 **Formatting Approach:**
 
@@ -44,27 +44,30 @@ hk install
 
 That's it! mise will automatically install:
 
-- taplo (TOML formatter - via cargo)
+- taplo (TOML formatter - pre-built binary)
+- hk (git hooks manager - pre-built binary)
+- pkl (hk configuration language - pre-built binary)
+- cocogitto (conventional commit validator - pre-built binary)
+- cargo-nextest (fast test runner - via cargo)
 - prettier (JSON/Markdown/YAML formatter - via npm)
 - markdownlint-cli2 (markdown linter - via npm)
-- hk (git hooks manager - via cargo)
-- pkl (hk configuration language - via homebrew)
 
 ### Manual Installation (Alternative)
 
 If you prefer not to use mise:
 
 ```sh
-# Install Rust tools
-cargo install taplo-cli
-cargo install hk
+# Install pre-built binaries (see individual tool docs for methods)
+# taplo: https://taplo.tamasfe.dev
+# hk: https://github.com/jdx/hk
+# pkl: https://pkl-lang.org
+
+# Install via cargo
+cargo install cargo-nextest
 
 # Install via npm
 npm install -g prettier
 npm install -g markdownlint-cli2
-
-# Install via Homebrew
-brew install pkl
 
 # Set up git hooks
 hk install
@@ -128,13 +131,13 @@ cargo check
 cargo check --all-targets --all-features
 
 # Run all tests
-cargo test
+cargo nextest run
 
 # Run specific test
-cargo test test_name
+cargo nextest run -E 'test(test_name)'
 
-# Run with output
-cargo test -- --nocapture
+# Run with output (stdout visible)
+cargo nextest run --no-capture
 ```
 
 ## Pre-Commit Hooks
@@ -153,7 +156,7 @@ Review fixes with `git diff` and re-stage with `git add .`
 
 Before push, it runs:
 
-1. ✅ `cargo test` - Full test suite
+1. ✅ `cargo nextest run` - Full test suite
 
 ## Configuration Files
 
@@ -163,7 +166,7 @@ Before push, it runs:
 | `hk.pkl`             | Git hooks (all builtins!) | `.husky/`         |
 | `rustfmt.toml`       | Rust format rules         | prettier config   |
 | `.markdownlint.json` | Markdown lint rules       | `.markdownlintrc` |
-| `.prettierrc.json`   | Prettier format rules     | `.prettierrc`     |
+| `.prettierrc.toml`   | Prettier format rules     | `.prettierrc`     |
 | `taplo.toml`         | TOML format rules         | (TOML-specific)   |
 | `clippy.toml`        | Lint rules                | `.eslintrc`       |
 
@@ -196,14 +199,24 @@ Add to `.vscode/settings.json`:
 
 ## Continuous Integration
 
-CI runs via GitHub Actions (`.github/workflows/ci.yml`) with three jobs:
+CI runs via GitHub Actions (`.github/workflows/ci.yml`) with seven jobs:
 
-1. **Lint** — `cargo fmt --check` + `cargo clippy`
-2. **Test** — `cargo test --all-features`
-3. **PR Title** — amannn/action-semantic-pull-request validates conventional commit format (PRs only)
+1. **Format** — `cargo fmt --check` + `taplo` + `prettier` + `markdownlint-cli2` (fail-fast gate)
+2. **Lint** — `cargo clippy --locked --all-targets --all-features` (needs Format)
+3. **Test** — `cargo nextest run --locked --all-features` (needs Format)
+4. **MSRV** — `cargo check --locked` with minimum supported Rust version (needs Format)
+5. **Deny** — `cargo-deny` license/advisory/ban/source checks (needs Format)
+6. **PR Title** — Conventional commit format validation (PRs only)
+7. **CI Status** — Gate job aggregating all results into a summary table
 
-A shared composite action (`.github/actions/setup-rust/action.yml`) handles
-Rust toolchain + cache setup.
+Reusable composite actions in `.github/actions/`:
+
+- **`setup-rust`** — Installs Rust (rustfmt + clippy), cargo-nextest, and rust-cache
+- **`setup-mise`** — Installs mise with taplo, prettier, and markdownlint-cli2
+- **`static-analysis`** — Runs all formatting checks (assumes tools installed)
+- **`run-tests`** — Runs cargo nextest (assumes tools installed)
+
+See `.claude/rules/github-actions.md` for full CI/CD documentation.
 
 ## Additional Tools (Optional)
 

@@ -377,13 +377,13 @@ docs/
 │   └── contributing.md
 ├── user-guide/           # User documentation
 │   ├── installation.md
-│   ├── configuration.md
 │   └── troubleshooting.md
-└── architecture/         # System design
+└── design/              # Design specs (pre-implementation)
     ├── overview.md
     ├── daemon.md
     ├── parser.md
-    └── tui.md            # Inline dropdown (renamed from TUI)
+    ├── tui.md            # Inline dropdown
+    └── configuration.md  # Configuration system (Phase 3)
 ```
 
 **When to modify:**
@@ -458,13 +458,24 @@ main.rs
 ## Configuration Files
 
 - `.gitignore` - Git ignored files
-- `.rustfmt.toml` - Code formatting rules (future)
-- `clippy.toml` - Linter configuration (future)
-- `.github/workflows/` - CI/CD (future)
+- `rustfmt.toml` - Rust formatting rules (100 char width, 2024 edition)
+- `clippy.toml` - Clippy linting rules (cognitive complexity threshold)
+- `mise.toml` - Dev tools and task runner
+- `hk.pkl` - Git hooks configuration (Pkl language)
+- `taplo.toml` - TOML formatting rules
+- `.prettierrc.toml` - Prettier formatting rules
+- `.prettierignore` - Files excluded from prettier
+- `.markdownlint.json` - Markdown linting rules
+- `deny.toml` - cargo-deny dependency policy (licenses, advisories, bans)
+- `dist-workspace.toml` - cargo-dist release configuration
+- `release-plz.toml` - release-plz versioning configuration
+- `.github/workflows/` - CI/CD workflows (ci, release-plz, release, audit, codeql, branch-cleanup)
+- `.github/actions/` - Reusable composite actions (setup-rust, setup-mise, static-analysis, run-tests)
+- `.github/renovate.json` - Dependency update automation
 
 ## Next Steps
 
 - Read [Getting Started](getting-started.md) to set up development
-- Read [Architecture Overview](../architecture/overview.md) for system design
+- Read [Architecture Overview](../design/overview.md) for system design
 - Check project issues (`bd ready`) for current priorities
 - Read [Testing Guide](testing.md) for testing practices

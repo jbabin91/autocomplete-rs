@@ -1,4 +1,4 @@
-# Inline Dropdown Architecture
+# Inline Dropdown — Design Spec
 
 This document details the planned design for the inline completion dropdown.
 

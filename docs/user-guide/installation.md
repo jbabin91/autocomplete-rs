@@ -34,9 +34,7 @@ Works with all modern terminals:
 
 ### Method 1: Install from Crates.io (Recommended)
 
-**Note:** Not yet available. Project is in early development (pre-release).
-
-Once released:
+**Note:** Not yet published. Will be available once the first release ships.
 
 ```sh
 cargo install autocomplete-rs
@@ -100,38 +98,32 @@ Verify installation:
 autocomplete-rs --version
 ```
 
-### Method 3: Pre-built Binaries (Future)
+### Method 3: Pre-built Binaries
 
-**Note:** Not yet available.
+**Note:** Available once the first release ships. cargo-dist builds binaries
+for each release.
 
-Once released, download from GitHub releases:
+Download from
+[GitHub Releases](https://github.com/jbabin91/autocomplete-rs/releases):
 
 ```sh
-# macOS (Intel)
-curl -L https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-x86_64-apple-darwin.tar.gz | tar xz
-
-# macOS (Apple Silicon)
-curl -L https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-aarch64-apple-darwin.tar.gz | tar xz
-
-# Linux (x86_64)
-curl -L https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-x86_64-unknown-linux-gnu.tar.gz | tar xz
-
-# Install
-sudo mv autocomplete-rs /usr/local/bin/
+# cargo-dist provides a shell installer
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-installer.sh | sh
 ```
 
-### Method 4: Package Managers (Future)
-
-**Homebrew (macOS/Linux):**
+Or use `cargo binstall` (downloads pre-built binary instead of compiling):
 
 ```sh
-brew install autocomplete-rs
+cargo binstall autocomplete-rs
 ```
 
-**AUR (Arch Linux):**
+### Method 4: Homebrew (macOS/Linux)
+
+**Note:** Available once the first release ships and the
+[homebrew tap](https://github.com/jbabin91/homebrew-tap) is created.
 
 ```sh
-yay -S autocomplete-rs
+brew install jbabin91/tap/autocomplete-rs
 ```
 
 ## Shell Integration
@@ -270,30 +262,6 @@ rm /tmp/autocomplete-rs.sock
 
 The daemon will auto-restart on next completion request.
 
-## Configuration
-
-Create config file (optional):
-
-```sh
-mkdir -p ~/.config/autocomplete-rs
-cat > ~/.config/autocomplete-rs/config.toml << 'EOF'
-# Socket path (default: /tmp/autocomplete-rs.sock)
-socket_path = "/tmp/autocomplete-rs.sock"
-
-# Theme (mocha, macchiato, frappe, latte)
-# Note: Themes coming in Phase 3
-theme = "mocha"
-
-# Maximum suggestions to show
-max_suggestions = 10
-
-# Key binding (Alt+Space by default)
-keybinding = "\\e "  # Alt+Space
-EOF
-```
-
-**Note:** Configuration system coming in Phase 3.
-
 ## Customization
 
 ### Change Key Binding
@@ -382,7 +350,7 @@ exec zsh
 
 ## Upgrading
 
-### From Crates.io (Future)
+### From Crates.io
 
 ```sh
 cargo install autocomplete-rs --force
@@ -452,7 +420,6 @@ If nothing appears, check [Troubleshooting](troubleshooting.md).
 
 ## Next Steps
 
-- Read [Configuration Guide](configuration.md) to customize behavior
 - Check [Troubleshooting](troubleshooting.md) if you encounter issues
 - See [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues)
   for known issues

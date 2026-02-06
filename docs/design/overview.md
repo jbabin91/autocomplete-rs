@@ -1,4 +1,8 @@
-# Architecture Overview
+# Architecture Overview — Design Spec
+
+> **This is a design specification, not documentation.** It describes the
+> intended architecture. Actual documentation will be written after
+> implementation.
 
 This document provides a high-level overview of autocomplete-rs system
 architecture.

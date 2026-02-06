@@ -1,7 +1,10 @@
-# Parser Architecture
+# Parser Architecture — Design Spec
 
-This document details the design and implementation of the command buffer
-parser.
+> **This is a design specification, not documentation.** It describes the
+> intended parser design. Actual documentation will be written after
+> implementation.
+
+This document details the design of the command buffer parser.
 
 ## Overview
 

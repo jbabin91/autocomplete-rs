@@ -13,7 +13,7 @@ paths:
 
 | Workflow       | File                 | Triggers                    | Purpose                                                       |
 | -------------- | -------------------- | --------------------------- | ------------------------------------------------------------- |
-| CI             | `ci.yml`             | push/PR to main             | Lint, test, MSRV, deny, PR title validation with gate job     |
+| CI             | `ci.yml`             | push/PR to main             | Format, lint, test, MSRV, deny, PR title with gate job        |
 | Release PLZ    | `release-plz.yml`    | push to main                | Creates release PRs, publishes to crates.io via OIDC          |
 | Release        | `release.yml`        | version tags (`v*.*.*`)     | cargo-dist: builds binaries, GitHub Release, Homebrew formula |
 | Security Audit | `audit.yml`          | weekly + Cargo file changes | `rustsec/audit-check` for dependency vulnerabilities          |
@@ -41,6 +41,20 @@ paths:
 - **Cargo flags**: Use `--locked` on all cargo commands in CI (ensures Cargo.lock match)
 - **Concurrency**: `cancel-in-progress` is PR-only (don't cancel main branch runs)
 - **Release-plz skip**: All CI jobs skip on `release-plz-*` branches (only change Cargo.toml/lock/CHANGELOG)
+- **Fail-fast gate**: Format job runs first (~15-30s, no compile). Lint, test, MSRV, and deny all `needs: [format]` — if formatting fails, expensive Rust compile jobs are skipped
+
+## Composite actions
+
+Reusable actions in `.github/actions/`:
+
+| Action            | Purpose                                                              |
+| ----------------- | -------------------------------------------------------------------- |
+| `setup-rust`      | Installs stable Rust (rustfmt + clippy), cargo-nextest, rust-cache   |
+| `setup-mise`      | Installs mise with taplo, prettier, markdownlint-cli2                |
+| `static-analysis` | Runs `cargo fmt --check`, taplo, prettier, markdownlint (no install) |
+| `run-tests`       | Runs `cargo nextest run --locked --all-features` (no install)        |
+
+**Design pattern**: Setup actions install tools. Run actions execute checks and assume tools are already available. Jobs compose them: `checkout` → `setup-*` → `run-*`.
 
 ## cargo-deny
 

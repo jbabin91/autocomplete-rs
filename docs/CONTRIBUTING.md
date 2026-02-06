@@ -31,7 +31,7 @@ cd autocomplete-rs
 
 ```sh
 # Install mise (tool manager)
-cargo install mise
+curl https://mise.run | sh
 
 # Install all project tools automatically
 mise install
@@ -42,11 +42,13 @@ hk install
 
 mise will automatically install all required tools:
 
-- taplo (TOML formatter - via cargo)
+- taplo (TOML formatter - pre-built binary)
+- hk (git hooks manager - pre-built binary)
+- pkl (hk configuration language - pre-built binary)
+- cocogitto (conventional commit validator - pre-built binary)
+- cargo-nextest (fast test runner - via cargo)
 - prettier (JSON/Markdown/YAML formatter - via npm)
 - markdownlint-cli2 (markdown linter - via npm)
-- hk (git hooks manager - via cargo)
-- pkl (hk configuration language - via homebrew)
 
 ### 3. Build and Test
 
@@ -55,7 +57,7 @@ mise will automatically install all required tools:
 cargo build
 
 # Run tests
-cargo test
+mise run test
 
 # Run all checks (what CI runs)
 mise run ci

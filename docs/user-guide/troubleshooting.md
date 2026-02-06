@@ -421,148 +421,6 @@ implementation!
    fi
    ```
 
-2. **Reduce max suggestions:**
-
-   ```toml
-   # ~/.config/autocomplete-rs/config.toml
-   [general]
-   max_suggestions = 5
-   ```
-
-3. **Disable descriptions (Phase 3):**
-
-   ```toml
-   [ui]
-   show_descriptions = false
-   ```
-
-## Display Issues
-
-### UI Appears in Wrong Location
-
-**Symptom:** Dropdown offset from cursor
-
-**This should not happen!** Direct terminal control prevents positioning bugs.
-
-**If it does:**
-
-- This is a bug, please report
-- Include terminal type and font settings
-- Include screenshot
-
-**Workaround:** None - file
-[issue](https://github.com/jbabin91/autocomplete-rs/issues) with details.
-
-### UI Overlaps Prompt
-
-**Symptom:** Completion UI covers command prompt
-
-**Expected behavior:** UI should push prompt down temporarily
-
-**If overlapping:**
-
-- May be terminal emulator quirk
-- Try different terminal
-- Report issue with terminal name/version
-
-### Colors Look Wrong
-
-**Symptom:** Weird colors, garbled output, or no colors
-
-**Diagnosis:**
-
-1. **Check terminal color support:**
-
-   ```sh
-   echo $COLORTERM
-   # Should be: "truecolor" or "24bit"
-
-   # Check TERM
-   echo $TERM
-   # Should be: "xterm-256color" or better
-   ```
-
-2. **Test color output:**
-
-   ```sh
-   # Simple color test
-   printf "\033[38;2;255;0;0mRed\033[0m "
-   printf "\033[38;2;0;255;0mGreen\033[0m "
-   printf "\033[38;2;0;0;255mBlue\033[0m\n"
-
-   # Should show red, green, blue text
-   ```
-
-**Solutions:**
-
-**Terminal doesn't support truecolor:**
-
-```sh
-# Use 256-color mode (automatic fallback)
-# Or use basic ANSI theme
-```
-
-**TERM variable wrong:**
-
-```sh
-# Add to ~/.zshrc
-export TERM=xterm-256color
-
-# For modern terminals
-export COLORTERM=truecolor
-```
-
-**Terminal.app (macOS) limitations:**
-
-- Supports 256 colors, not truecolor
-- Use built-in theme (auto-adapts)
-
-**iTerm2, Alacritty, Kitty, WezTerm:**
-
-- Full truecolor support
-- Should work perfectly
-
-### Text Garbled or Flickers
-
-**Symptom:** Screen artifacts, flickering, mangled text
-
-**Causes:**
-
-- Terminal not handling escape codes correctly
-- Timing issues
-- Screen redraw bugs
-
-**Solutions:**
-
-1. **Clear screen:**
-
-   ```sh
-   clear
-   ```
-
-2. **Reset terminal:**
-
-   ```sh
-   reset
-   ```
-
-3. **Update terminal:**
-   - Old terminals may have bugs
-   - Try latest version
-
-4. **Disable UI temporarily:**
-
-   ```sh
-   # Unset widget
-   bindkey -r '^[ '
-
-   # Test without autocomplete
-   ```
-
-5. **Report bug:**
-   - Include terminal type and version
-   - Include screenshot or asciinema recording
-
 ## Performance Issues
 
 ### High CPU Usage
@@ -601,11 +459,9 @@ export COLORTERM=truecolor
 
 ### High Memory Usage
 
-**Symptom:** autocomplete-rs using >100MB
+**Symptom:** autocomplete-rs using excessive memory
 
-**Expected:** <50MB with all specs loaded (Phase 2)
-
-**If higher:**
+**If higher than expected:**
 
 1. **Check actual usage:**
 
@@ -614,24 +470,13 @@ export COLORTERM=truecolor
    # Look at RSS column (real memory)
    ```
 
-2. **Check for memory leak:**
+2. **Restart daemon:**
 
    ```sh
-   # Install heaptrack (Linux)
-   heaptrack autocomplete-rs daemon /tmp/autocomplete-rs.sock
-
-   # Use Instruments (macOS)
-   # Profile > Allocations
+   pkill autocomplete-rs
    ```
 
-3. **Restart daemon periodically:**
-
-   ```sh
-   # Cron job to restart daily
-   0 0 * * * pkill autocomplete-rs
-   ```
-
-4. **File bug** with memory profile
+3. **File bug** with memory usage data
 
 ## Compatibility Issues
 
@@ -744,8 +589,7 @@ autocomplete-rs daemon /tmp/autocomplete-rs.sock &
 **Solutions:**
 
 1. Check daemon is running: `ps aux | grep autocomplete-rs`
-2. Increase timeout in config (Phase 3)
-3. Restart daemon
+2. Restart daemon
 
 ### "Invalid response from daemon"
 
@@ -756,16 +600,6 @@ autocomplete-rs daemon /tmp/autocomplete-rs.sock &
 1. Restart daemon
 2. Check versions match (binary and shell integration)
 3. File bug with logs
-
-### "Spec not found"
-
-**Cause:** Completion spec missing (Phase 2+)
-
-**Solutions:**
-
-1. Check spec file exists
-2. Rebuild to re-embed specs
-3. File issue if spec should exist
 
 ## Getting Help
 

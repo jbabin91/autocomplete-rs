@@ -25,7 +25,7 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 ## Doc Structure
 
 - `docs/adr/` — Architecture Decision Records (use ADR template)
-- `docs/architecture/` — System design (overview, daemon, parser)
+- `docs/design/` — Design specs (overview, daemon, parser, tui, configuration)
 - `docs/development/` — Developer guides (setup, structure, testing, contributing)
 - `docs/research/` — Industry analysis and findings
 - `docs/user-guide/` — End-user docs (install, config, troubleshooting)

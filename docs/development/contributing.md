@@ -84,8 +84,8 @@ For significant new features:
 **Code Standards:**
 
 - Follow [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
-- Use `cargo fmt` for formatting
-- Fix all `cargo clippy` warnings
+- Run `mise run ci` to check all formatting and linting
+- Fix all clippy warnings (zero warnings policy)
 - Add tests for new functionality
 - Update documentation
 
@@ -98,14 +98,13 @@ For significant new features:
 ### 2. Test Your Changes
 
 ```sh
-# Format code
-cargo fmt
+# Run all CI checks (format + check + lint + test)
+mise run ci
 
-# Run linter
-cargo clippy
-
-# Run tests
-cargo test
+# Or run individual checks
+mise run fmt       # Format all files
+mise run lint      # Run clippy + markdownlint
+mise run test      # Run tests via nextest
 
 # Run benchmarks (if performance-critical)
 cargo bench
@@ -484,15 +483,13 @@ After: 2.1ms avg for 200-char buffer
 
 (For maintainers)
 
-Releases will be automated via [release-plz](https://release-plz.ieni.dev/) +
-[cargo-dist](https://opensource.axo.dev/cargo-dist/) (setup tracked in issue
-`autocomplete-rs-9jz`).
+Releases are automated via [release-plz](https://release-plz.ieni.dev/) +
+[cargo-dist](https://opensource.axo.dev/cargo-dist/):
 
-Once configured:
-
-1. release-plz detects conventional commits since last release
-2. Opens a release PR with version bump + CHANGELOG update
-3. Merge triggers cargo-dist to build binaries + publish to crates.io
+1. Push to main triggers release-plz, which detects conventional commits since last release
+2. release-plz opens a release PR with version bump + CHANGELOG update
+3. Merging the release PR publishes to crates.io (via OIDC) and creates a git tag
+4. The tag triggers cargo-dist, which builds cross-platform binaries and creates a GitHub Release
 
 ## Getting Help
 
@@ -501,7 +498,7 @@ Once configured:
 - [Getting Started](getting-started.md) - Development setup
 - [Project Structure](project-structure.md) - Codebase layout
 - [Testing Guide](testing.md) - Testing practices
-- [Architecture Docs](../architecture/overview.md) - System design
+- [Design Specs](../design/overview.md) - System design
 - [ADRs](../adr/) - Technical decisions
 
 ### Communication

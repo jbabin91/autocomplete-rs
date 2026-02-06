@@ -143,7 +143,7 @@ mise install
 # Common tasks
 mise run build       # debug build
 mise run release     # optimized build
-mise run test        # cargo test --all-features
+mise run test        # cargo nextest run --all-features
 mise run lint        # clippy
 mise run fmt         # format all files
 mise run ci          # fmt-check + check + lint + test

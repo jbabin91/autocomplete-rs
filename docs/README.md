@@ -8,8 +8,6 @@ Welcome to the autocomplete-rs documentation!
 
 - [Installation Guide](user-guide/installation.md) - How to install and set up
   autocomplete-rs
-- [Configuration Guide](user-guide/configuration.md) - Customizing themes and
-  behavior
 - [Troubleshooting](user-guide/troubleshooting.md) - Common issues and solutions
 
 ### For Developers
@@ -21,12 +19,16 @@ Welcome to the autocomplete-rs documentation!
 - [Testing](development/testing.md) - How to run and write tests
 - [Contributing](development/contributing.md) - How to contribute to the project
 
-### Architecture
+### Design Specs
 
-- [Architecture Overview](architecture/overview.md) - High-level system design
-- [Daemon](architecture/daemon.md) - Unix socket server and request handling
-- [Parser](architecture/parser.md) - Command buffer parsing and spec matching
-- [Inline Dropdown](architecture/tui.md) - Inline ANSI completion rendering (planned)
+Design specifications for planned features. Actual documentation will be written
+after implementation.
+
+- [Architecture Overview](design/overview.md) - High-level system design
+- [Daemon](design/daemon.md) - Unix socket server and request handling
+- [Parser](design/parser.md) - Command buffer parsing and spec matching
+- [Inline Dropdown](design/tui.md) - Inline ANSI completion rendering
+- [Configuration](design/configuration.md) - Configuration system (Phase 3)
 
 ### Architecture Decision Records (ADRs)
 

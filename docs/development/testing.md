@@ -56,14 +56,14 @@ mod tests {
 **Run:**
 
 ```sh
-# All unit tests
-cargo test
+# All unit tests (via nextest)
+mise run test
 
 # Specific module
-cargo test tokenizer
+cargo nextest run -E 'test(tokenizer)'
 
-# With output
-cargo test -- --nocapture
+# With output visible
+cargo nextest run --no-capture
 ```
 
 **Best Practices:**
@@ -500,47 +500,13 @@ cargo tarpaulin --out Lcov | genhtml -o coverage/
 
 ## Continuous Integration
 
-### GitHub Actions Workflow
+Tests run as part of the CI workflow (`.github/workflows/ci.yml`). The **Test**
+job uses the `run-tests` composite action which runs
+`cargo nextest run --locked --all-features`. It depends on the **Format** job
+passing first (fail-fast gate).
 
-```yaml
-# .github/workflows/test.yml
-name: Tests
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        rust: [stable, nightly]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-
-      - name: Run tests
-        run: cargo test --all-features
-
-      - name: Run clippy
-        run: cargo clippy -- -D warnings
-
-      - name: Check formatting
-        run: cargo fmt --check
-
-  benchmark:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Run benchmarks
-        run: cargo bench --no-fail-fast
-```
+See [Tooling Guide — Continuous Integration](tooling.md#continuous-integration)
+and `.claude/rules/github-actions.md` for full CI/CD documentation.
 
 ## Test-Driven Development (TDD)
 
@@ -678,7 +644,7 @@ fn test_parser_output() {
 6. **Mock external dependencies** for unit tests
 7. **Measure performance** for critical paths
 8. **Run tests before committing:**
-   `cargo test && cargo clippy && cargo fmt --check`
+   `mise run ci`
 9. **Aim for >80% coverage** overall
 10. **Keep tests fast:** <10s for full suite
 

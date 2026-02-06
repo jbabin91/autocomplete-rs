@@ -26,7 +26,7 @@ paths:
 
 ## mise.toml (Task Runner)
 
-- Manages dev tools: taplo, hk, prettier, markdownlint-cli2, pkl
+- Manages dev tools: taplo, hk, pkl, cocogitto (pre-built binaries); cargo-nextest (cargo); prettier, markdownlint-cli2 (npm)
 - Key tasks: `fmt`, `lint`, `test`, `build`, `ci` (runs all checks)
 - `ci` task depends on: fmt-check, check, lint, test
 - Clippy runs with `-D warnings` (zero warnings policy)

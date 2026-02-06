@@ -63,10 +63,26 @@ This will:
 
 Expected build time: ~2-3 minutes first time, ~30s incremental
 
-### 4. Run Tests
+### 4. Install Development Tools
+
+We use [mise](https://mise.jdx.dev) to manage development tools (formatters,
+linters, test runner, git hooks):
 
 ```sh
-cargo test
+# Install mise (if not already installed)
+curl https://mise.run | sh
+
+# Install all project tools
+mise install
+
+# Set up git hooks
+hk install
+```
+
+### 5. Run Tests
+
+```sh
+mise run test
 ```
 
 All tests should pass. If any fail, check:
@@ -75,7 +91,7 @@ All tests should pass. If any fail, check:
 - You're on a Unix-like system
 - No autocomplete-rs daemon is already running
 
-### 5. Install Development Build
+### 6. Install Development Build
 
 To test your changes in your actual shell:
 
@@ -125,13 +141,10 @@ cargo check
 cargo build
 
 # Run tests
-cargo test
+mise run test
 
-# Check formatting
-cargo fmt --check
-
-# Run linter
-cargo clippy
+# Run all CI checks (format + check + lint + test)
+mise run ci
 ```
 
 **4. Run Locally**
@@ -217,7 +230,7 @@ autocomplete-rs/
 └── docs/
     ├── adr/             # Architecture decisions
     ├── development/     # This guide
-    └── architecture/    # System design docs
+    └── design/          # Design specs (pre-implementation)
 ```
 
 See [Project Structure](project-structure.md) for detailed explanation of each
@@ -362,20 +375,20 @@ trace!("Rendering {} suggestions", suggestions.len());
 
 ```sh
 # Run all tests
-cargo test
+mise run test
 
 # Run specific module
-cargo test parser
+cargo nextest run -E 'test(parser)'
 
-# Run with output
-cargo test -- --nocapture
+# Run with output visible
+cargo nextest run --no-capture
 ```
 
 ### Integration Tests
 
 ```sh
 # Run integration tests
-cargo test --test integration
+cargo nextest run --test integration
 ```
 
 Integration tests in `tests/` verify:
@@ -420,8 +433,8 @@ Ready to contribute? Great!
 
 ### Code Standards
 
-- Run `cargo fmt` before committing
-- Run `cargo clippy` and fix warnings
+- Run `mise run ci` before committing (or let hk pre-commit hooks handle it)
+- Fix clippy warnings (zero warnings policy)
 - Add tests for new functionality
 - Update documentation for user-facing changes
 - Follow [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
@@ -454,7 +467,7 @@ cargo flamegraph --bin autocomplete-rs -- daemon /tmp/test.sock
 ## Next Steps
 
 - Read [Project Structure](project-structure.md) to understand the codebase
-- Read [Architecture Overview](../architecture/overview.md) for system design
+- Read [Architecture Overview](../design/overview.md) for system design
 - Check project issues (`bd ready`) for what's being built
 - Check GitHub Issues for current work
 

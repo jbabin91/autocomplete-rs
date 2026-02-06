@@ -1,7 +1,10 @@
-# Daemon Architecture
+# Daemon Architecture — Design Spec
 
-This document details the design and implementation of the autocomplete-rs
-daemon.
+> **This is a design specification, not documentation.** It describes the
+> intended daemon design. Actual documentation will be written after
+> implementation.
+
+This document details the design of the autocomplete-rs daemon.
 
 ## Overview
 

@@ -1,9 +1,10 @@
-# Configuration Guide
+# Configuration System — Design Spec
 
-This guide covers how to customize autocomplete-rs to fit your workflow.
+> **This is a design specification, not documentation.** It describes the
+> planned configuration system (Phase 3). Actual documentation will be written
+> after implementation.
 
-**Note:** Full configuration system coming in Phase 3. Basic customization
-available now.
+This document covers the planned configuration system for autocomplete-rs.
 
 ## Configuration File
 
@@ -19,7 +20,7 @@ available now.
 mkdir -p ~/.config/autocomplete-rs
 cat > ~/.config/autocomplete-rs/config.toml << 'EOF'
 # autocomplete-rs configuration
-# See: https://github.com/jbabin91/autocomplete-rs/blob/main/docs/user-guide/configuration.md
+# See: https://github.com/jbabin91/autocomplete-rs/blob/main/docs/design/configuration.md
 
 [general]
 # Socket path for daemon communication
@@ -575,11 +576,8 @@ ls -la ~/.config/autocomplete-rs/config.toml
 Check syntax:
 
 ```sh
-# Install TOML linter
-cargo install taplo-cli
-
-# Lint config
-taplo lint ~/.config/autocomplete-rs/config.toml
+# Install TOML linter (or use mise: mise install)
+taplo check ~/.config/autocomplete-rs/config.toml
 ```
 
 ### Colors Not Working
