@@ -36,6 +36,6 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Run release-plz
-        uses: release-plz/action@20b23932963f7971bdff386c3542f07fbec45f42 # v0.5.125
+        uses: release-plz/action@52440b50d383aa252927de395c8b2c1e0a9cf8e9 # v0.5.126
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
