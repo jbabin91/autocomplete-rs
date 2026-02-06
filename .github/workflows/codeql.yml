@@ -15,6 +15,7 @@ permissions:
 jobs:
   analyze:
     name: Analyze
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

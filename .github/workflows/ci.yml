@@ -20,6 +20,7 @@ env:
 jobs:
   lint:
     name: Lint
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -36,6 +37,7 @@ jobs:
 
   test:
     name: Test
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -48,6 +50,7 @@ jobs:
 
   audit:
     name: Security Audit
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -62,7 +65,7 @@ jobs:
     name: PR Title
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-plz-')
     permissions:
       pull-requests: read
     steps:
@@ -70,3 +73,14 @@ jobs:
         uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  ci-status:
+    name: CI Status
+    if: always()
+    needs: [lint, test, audit, pr-title]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify CI results
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
