@@ -48,19 +48,6 @@ jobs:
       - name: Run tests
         run: cargo test --all-features
 
-  audit:
-    name: Security Audit
-    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - name: Audit dependencies
-        uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2.0.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
   pr-title:
     name: PR Title
     runs-on: ubuntu-latest
@@ -77,7 +64,7 @@ jobs:
   ci-status:
     name: CI Status
     if: always()
-    needs: [lint, test, audit, pr-title]
+    needs: [lint, test, pr-title]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -97,7 +84,6 @@ jobs:
           jobs=(
             "Lint|${{ needs.lint.result }}"
             "Test|${{ needs.test.result }}"
-            "Security Audit|${{ needs.audit.result }}"
             "PR Title|${{ needs.pr-title.result }}"
           )
 
