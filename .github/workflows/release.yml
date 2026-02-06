@@ -9,41 +9,17 @@ on:
 permissions: {}
 
 jobs:
-  release-pr:
-    name: Release PR
-    if: github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
-      pull-requests: write
-    concurrency:
-      group: release-plz-pr-${{ github.ref }}
-      cancel-in-progress: false
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          fetch-depth: 0
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-      - name: Create or update release PR
-        uses: release-plz/action@20b23932963f7971bdff386c3542f07fbec45f42 # v0.5.125
-        with:
-          command: release-pr
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release:
+  release-plz:
     name: Release
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
+      pull-requests: write
       id-token: write # OIDC for crates.io trusted publishing
     concurrency:
-      group: release-plz-release-${{ github.ref }}
+      group: release-plz-${{ github.ref }}
       cancel-in-progress: false
     steps:
       - name: Generate GitHub App token
@@ -59,9 +35,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
-      - name: Publish and tag release
+      - name: Run release-plz
         uses: release-plz/action@20b23932963f7971bdff386c3542f07fbec45f42 # v0.5.125
-        with:
-          command: release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
