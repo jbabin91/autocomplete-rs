@@ -14,7 +14,7 @@ great together.
 2. **Clone your fork:**
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/autocomplete-rs.git
+   git clone https://github.com/jbabin91/autocomplete-rs.git
    cd autocomplete-rs
    ```
 
@@ -72,7 +72,7 @@ Check project issues (`bd ready`) for current phase priorities:
 For significant new features:
 
 1. **Check existing issues** to avoid duplicates
-2. **Open a discussion** on GitHub Discussions
+2. **Open an issue** on GitHub
 3. **Create a beads issue** (`bd create --title="..." --type=feature`)
 4. **Get feedback** before implementing
 5. **Update issue status** as work progresses
@@ -484,11 +484,15 @@ After: 2.1ms avg for 200-char buffer
 
 (For maintainers)
 
-1. Update version in `Cargo.toml`
-2. Update `CHANGELOG.md`
-3. Create git tag: `v0.1.0`
-4. Push tag: `git push --tags`
-5. GitHub Actions builds and publishes to crates.io
+Releases will be automated via [release-plz](https://release-plz.ieni.dev/) +
+[cargo-dist](https://opensource.axo.dev/cargo-dist/) (setup tracked in issue
+`autocomplete-rs-9jz`).
+
+Once configured:
+
+1. release-plz detects conventional commits since last release
+2. Opens a release PR with version bump + CHANGELOG update
+3. Merge triggers cargo-dist to build binaries + publish to crates.io
 
 ## Getting Help
 
@@ -502,16 +506,15 @@ After: 2.1ms avg for 200-char buffer
 
 ### Communication
 
-- **Questions:** GitHub Discussions
+- **Questions:** GitHub Issues
 - **Bugs:** GitHub Issues
-- **Features:** GitHub Discussions → Issue
+- **Features:** GitHub Issues
 - **Security:** Email maintainers privately
 
 ### Response Times
 
 - **Issues/PRs:** Usually within 2-3 days
 - **Security:** Within 24 hours
-- **Discussions:** Best effort
 
 ## Recognition
 

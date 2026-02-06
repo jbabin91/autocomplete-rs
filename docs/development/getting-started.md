@@ -45,7 +45,7 @@ rustup update stable
 
 ```bash
 cd ~/.code/github/rustProjects/  # or your preferred location
-git clone https://github.com/YOUR_USERNAME/autocomplete-rs.git
+git clone https://github.com/jbabin91/autocomplete-rs.git
 cd autocomplete-rs
 ```
 
@@ -212,12 +212,11 @@ autocomplete-rs/
 │   │   └── mod.rs       # Command parsing
 │   ├── tui/
 │   │   └── mod.rs       # Ratatui UI
-│   └── specs/           # Completion specs (future)
+│   └── specs/           # Completion specs (Phase 2 — not yet created)
 ├── shell-integration/
 │   └── zsh.zsh          # ZLE widget
-├── tests/               # Integration tests
-├── benches/             # Performance benchmarks
 ├── .beads/              # Issue tracking (beads)
+├── .github/             # CI workflows, templates, actions
 └── docs/
     ├── adr/             # Architecture decisions
     ├── development/     # This guide
@@ -460,12 +459,11 @@ cargo flamegraph --bin autocomplete-rs -- daemon /tmp/test.sock
 - Read [Project Structure](project-structure.md) to understand the codebase
 - Read [Architecture Overview](../architecture/overview.md) for system design
 - Check project issues (`bd ready`) for what's being built
-- Join development discussions in GitHub Issues
+- Check GitHub Issues for current work
 
 ## Getting Help
 
 - **Issues:** File on GitHub
-- **Questions:** Open a GitHub Discussion
 - **Bugs:** File detailed issue with repro steps
 
 Welcome aboard! 🚀

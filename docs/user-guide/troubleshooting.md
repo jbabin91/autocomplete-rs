@@ -220,7 +220,7 @@ journalctl -u autocomplete-rs --since "1 minute ago"
 **Solution:**
 
 1. Capture logs and file
-   [GitHub issue](https://github.com/YOUR_USERNAME/autocomplete-rs/issues)
+   [GitHub issue](https://github.com/jbabin91/autocomplete-rs/issues)
 2. Include rust backtrace:
 
    ```bash
@@ -451,7 +451,7 @@ implementation!
 - Include screenshot
 
 **Workaround:** None - file
-[issue](https://github.com/YOUR_USERNAME/autocomplete-rs/issues) with details.
+[issue](https://github.com/jbabin91/autocomplete-rs/issues) with details.
 
 ### UI Overlaps Prompt
 
@@ -773,7 +773,7 @@ autocomplete-rs daemon /tmp/autocomplete-rs.sock &
 
 1. Check this troubleshooting guide
 2. Search
-   [existing issues](https://github.com/YOUR_USERNAME/autocomplete-rs/issues)
+   [existing issues](https://github.com/jbabin91/autocomplete-rs/issues)
 3. Try with debug logging:
 
    ```bash
@@ -792,10 +792,10 @@ autocomplete-rs daemon /tmp/autocomplete-rs.sock &
 ### Where to Ask
 
 **Bug Reports:**
-[GitHub Issues](https://github.com/YOUR_USERNAME/autocomplete-rs/issues/new)
+[GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues/new)
 
 **Questions:**
-[GitHub Discussions](https://github.com/YOUR_USERNAME/autocomplete-rs/discussions)
+[GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues)
 
 **Security Issues:** Email maintainers (see README)
 

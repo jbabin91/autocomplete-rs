@@ -23,7 +23,7 @@ Thank you for your interest in contributing to autocomplete-rs! 🎉
 ### 1. Fork and Clone
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/autocomplete-rs.git
+git clone https://github.com/jbabin91/autocomplete-rs.git
 cd autocomplete-rs
 ```
 
@@ -66,86 +66,28 @@ mise run ci
 ### Daily Commands
 
 ```bash
-# Format all files
-mise run fmt
-
-# Check formatting
-mise run fmt-check
-
-# Lint
-mise run lint
-
-# Type check
-mise run check
-
-# Run tests
-mise run test
-
-# Run all CI checks
-mise run ci
+mise run fmt         # Format all files
+mise run lint        # Run clippy
+mise run test        # Run tests
+mise run ci          # Run all CI checks (fmt-check + check + lint + test)
 ```
 
 ### Pre-Commit Hooks
 
-When you commit, `hk` automatically runs (using builtins):
+When you commit, `hk` automatically runs formatting, linting, and type
+checking. Auto-fix is enabled — review fixes with `git diff` and re-stage.
 
-1. ✅ `cargo_fmt` - Rust formatting (hk builtin)
-2. ✅ `cargo_clippy` - Rust linting (hk builtin)
-3. ✅ `cargo_check` - Type checking (hk builtin)
-4. ✅ `prettier` - JSON/Markdown/YAML formatting (hk builtin)
-5. ✅ `taplo` - TOML formatting (hk builtin)
-6. ✅ `markdown_lint` - Markdown linting (hk builtin)
+On commit message, `cocogitto` validates conventional commit format.
 
-**Auto-fix enabled:** Issues are automatically fixed when possible. Review the
-fixes with `git diff` and re-stage with `git add .`
+### Making Changes
 
-### Configuration Files
+1. **Create a branch:** `git checkout -b feat/my-feature`
+2. **Write code and tests**
+3. **Ensure checks pass:** `mise run ci`
+4. **Commit with conventional format:** `git commit -m "feat: add my feature"`
+5. **Push and open PR:** `git push origin feat/my-feature`
 
-| File                 | Purpose                   | Like              |
-| -------------------- | ------------------------- | ----------------- |
-| `mise.toml`          | Tools & tasks             | `package.json`    |
-| `hk.pkl`             | Git hooks (all builtins!) | `.husky/`         |
-| `rustfmt.toml`       | Rust format rules         | part of prettier  |
-| `.markdownlint.json` | Markdown lint rules       | `.markdownlintrc` |
-| `.prettierrc.json`   | Prettier format rules     | `.prettierrc`     |
-| `taplo.toml`         | TOML format rules         | (TOML-specific)   |
-| `clippy.toml`        | Lint rules                | `.eslintrc`       |
-
-## Making Changes
-
-1. **Create a branch:**
-
-   ```bash
-   git checkout -b feature/my-feature
-   ```
-
-2. **Write code and tests:**
-   - Follow existing code style
-   - Add tests for new features
-   - Update documentation
-
-3. **Ensure all checks pass:**
-
-   ```bash
-   mise run ci
-   ```
-
-4. **Commit:**
-
-   ```bash
-   git add .
-   git commit -m "feat: add my feature"
-   ```
-
-   Pre-commit hooks will run automatically.
-
-5. **Push and open PR:**
-
-   ```bash
-   git push origin feature/my-feature
-   ```
-
-   Then open a Pull Request on GitHub.
+Branch naming: `feat/`, `fix/`, `refactor/`, `chore/`
 
 ## Code of Conduct
 
@@ -154,10 +96,8 @@ great together.
 
 ## Getting Help
 
-- **Questions:**
-  [GitHub Discussions](https://github.com/jacebabin/autocomplete-rs/discussions)
 - **Bug Reports:**
-  [GitHub Issues](https://github.com/jacebabin/autocomplete-rs/issues)
+  [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues)
 - **Documentation:** [docs/](docs/)
 
 ## Development Priorities
@@ -173,7 +113,7 @@ Check project issues (`bd ready`) for current phase and priorities:
 **Good First Issues:**
 
 Look for issues tagged
-[`good-first-issue`](https://github.com/jacebabin/autocomplete-rs/labels/good-first-issue):
+[`good-first-issue`](https://github.com/jbabin91/autocomplete-rs/labels/good-first-issue):
 
 - Documentation improvements
 - Simple bug fixes

@@ -103,8 +103,8 @@ autocomplete-rs is designed with security in mind:
 
 - **Security Issues:** Use GitHub Security Advisories (preferred)
 - **General Questions:**
-  [GitHub Discussions](https://github.com/jacebabin/autocomplete-rs/discussions)
-- **Maintainer:** Jace Babin ([@jacebabin](https://github.com/jacebabin))
+  [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues)
+- **Maintainer:** Jace Babin ([@jbabin91](https://github.com/jbabin91))
 
 ---
 

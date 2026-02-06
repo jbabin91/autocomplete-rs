@@ -175,7 +175,6 @@ Install extensions:
 
 - **rust-analyzer** (rust-lang.rust-analyzer)
 - **CodeLLDB** (vadimcn.vscode-lldb)
-- **dprint** (dprint.dprint) - optional, for format-on-save
 
 Add to `.vscode/settings.json`:
 
@@ -185,15 +184,6 @@ Add to `.vscode/settings.json`:
   "editor.formatOnSave": true,
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer"
-  },
-  "[toml]": {
-    "editor.defaultFormatter": "dprint.dprint"
-  },
-  "[markdown]": {
-    "editor.defaultFormatter": "dprint.dprint"
-  },
-  "[json]": {
-    "editor.defaultFormatter": "dprint.dprint"
   }
 }
 ```
@@ -206,30 +196,14 @@ Add to `.vscode/settings.json`:
 
 ## Continuous Integration
 
-Example GitHub Actions:
+CI runs via GitHub Actions (`.github/workflows/ci.yml`) with three jobs:
 
-```yaml
-name: CI
+1. **Lint** — `cargo fmt --check` + `cargo clippy`
+2. **Test** — `cargo test --all-features`
+3. **Conventional Commits** — cocogitto check (PRs only)
 
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      # Install dprint
-      - run: cargo install dprint
-
-      # Format check
-      - run: dprint check
-
-      # Lint and test
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test --all-features
-```
+A shared composite action (`.github/actions/setup-rust/action.yml`) handles
+Rust toolchain + cache setup.
 
 ## Additional Tools (Optional)
 
@@ -269,14 +243,6 @@ cargo tree
 ```
 
 ## Troubleshooting
-
-### "No files found to format" (dprint)
-
-Check which files dprint finds:
-
-```bash
-dprint output-file-paths
-```
 
 ### Pre-commit hook not running
 

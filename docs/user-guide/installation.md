@@ -69,7 +69,7 @@ rustc --version  # Should be 1.85.0 or later
 #### Step 2: Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/autocomplete-rs.git
+git clone https://github.com/jbabin91/autocomplete-rs.git
 cd autocomplete-rs
 ```
 
@@ -108,13 +108,13 @@ Once released, download from GitHub releases:
 
 ```bash
 # macOS (Intel)
-curl -L https://github.com/YOUR_USERNAME/autocomplete-rs/releases/latest/download/autocomplete-rs-x86_64-apple-darwin.tar.gz | tar xz
+curl -L https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-x86_64-apple-darwin.tar.gz | tar xz
 
 # macOS (Apple Silicon)
-curl -L https://github.com/YOUR_USERNAME/autocomplete-rs/releases/latest/download/autocomplete-rs-aarch64-apple-darwin.tar.gz | tar xz
+curl -L https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-aarch64-apple-darwin.tar.gz | tar xz
 
 # Linux (x86_64)
-curl -L https://github.com/YOUR_USERNAME/autocomplete-rs/releases/latest/download/autocomplete-rs-x86_64-unknown-linux-gnu.tar.gz | tar xz
+curl -L https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-x86_64-unknown-linux-gnu.tar.gz | tar xz
 
 # Install
 sudo mv autocomplete-rs /usr/local/bin/
@@ -169,7 +169,7 @@ If you prefer manual setup:
 ```bash
 mkdir -p ~/.config/autocomplete-rs
 curl -o ~/.config/autocomplete-rs/zsh.zsh \
-  https://raw.githubusercontent.com/YOUR_USERNAME/autocomplete-rs/main/shell-integration/zsh.zsh
+  https://raw.githubusercontent.com/jbabin91/autocomplete-rs/main/shell-integration/zsh.zsh
 ```
 
 Or copy from source:
@@ -454,15 +454,15 @@ If nothing appears, check [Troubleshooting](troubleshooting.md).
 
 - Read [Configuration Guide](configuration.md) to customize behavior
 - Check [Troubleshooting](troubleshooting.md) if you encounter issues
-- See [GitHub Issues](https://github.com/YOUR_USERNAME/autocomplete-rs/issues)
+- See [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues)
   for known issues
 
 ## Getting Help
 
 - **Installation Issues:** Check [Troubleshooting](troubleshooting.md)
 - **Bug Reports:** File on
-  [GitHub Issues](https://github.com/YOUR_USERNAME/autocomplete-rs/issues)
-- **Questions:** Ask on
-  [GitHub Discussions](https://github.com/YOUR_USERNAME/autocomplete-rs/discussions)
+  [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues)
+- **Questions:**
+  [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues)
 
 Welcome to autocomplete-rs! 🚀

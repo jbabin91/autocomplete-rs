@@ -45,7 +45,7 @@ Instances of unacceptable behavior may be reported by:
 
 - Opening a private issue
 - Contacting the project maintainer: Jace Babin
-  ([@jacebabin](https://github.com/jacebabin))
+  ([@jbabin91](https://github.com/jbabin91))
 
 All complaints will be reviewed and investigated promptly and fairly.
 
@@ -64,7 +64,7 @@ best practices.
 ## Questions?
 
 If you have questions about this Code of Conduct, please open a discussion in
-[GitHub Discussions](https://github.com/jacebabin/autocomplete-rs/discussions).
+[GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues).
 
 ---
 

@@ -19,7 +19,7 @@ available now.
 mkdir -p ~/.config/autocomplete-rs
 cat > ~/.config/autocomplete-rs/config.toml << 'EOF'
 # autocomplete-rs configuration
-# See: https://github.com/YOUR_USERNAME/autocomplete-rs/blob/main/docs/user-guide/configuration.md
+# See: https://github.com/jbabin91/autocomplete-rs/blob/main/docs/user-guide/configuration.md
 
 [general]
 # Socket path for daemon communication
@@ -660,9 +660,7 @@ Next completion will use defaults.
 
 ## Getting Help
 
-- **Config Questions:**
-  [GitHub Discussions](https://github.com/YOUR_USERNAME/autocomplete-rs/discussions)
 - **Bug Reports:**
-  [GitHub Issues](https://github.com/YOUR_USERNAME/autocomplete-rs/issues)
+  [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues)
 - **Feature Requests:**
-  [GitHub Discussions](https://github.com/YOUR_USERNAME/autocomplete-rs/discussions/categories/ideas)
+  [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues)
