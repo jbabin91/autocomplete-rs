@@ -1,9 +1,7 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  push:
     branches: [main]
 
 permissions: {}
@@ -11,7 +9,6 @@ permissions: {}
 jobs:
   release-plz:
     name: Release
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -19,7 +16,7 @@ jobs:
       pull-requests: write
       id-token: write # OIDC for crates.io trusted publishing
     concurrency:
-      group: release-plz-${{ github.ref }}
+      group: release-plz
       cancel-in-progress: false
     steps:
       - name: Generate GitHub App token
