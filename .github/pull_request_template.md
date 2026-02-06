@@ -1,22 +1,19 @@
 ## Summary
 
-<!-- Brief description of what this PR does and why -->
+<!-- What does this PR do and why? Use bullet points for multiple changes. -->
 
-## Type of Change
+## Resolves
 
-- [ ] feat: New feature
-- [ ] fix: Bug fix
-- [ ] refactor: Code restructuring (no behavior change)
-- [ ] docs: Documentation only
-- [ ] chore: Tooling, config, dependencies
-- [ ] test: Adding or updating tests
+<!-- Link the bead or GitHub issue this PR addresses. -->
+<!-- Examples: -->
+<!-- Bead: `autocomplete-rs-xxx` -->
+<!-- Closes #123 -->
 
-## Testing
+## Test plan
 
 - [ ] `mise run ci` passes locally
 - [ ] New tests added (if applicable)
 - [ ] Existing tests still pass
 
-## Related Issues
-
-<!-- Link beads issues: autocomplete-rs-xxx -->
+<!-- Add manual verification steps if needed: -->
+<!-- - [ ] Manual: description of manual test -->
