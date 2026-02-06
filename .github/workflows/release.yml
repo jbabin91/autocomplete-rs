@@ -25,11 +25,14 @@ jobs:
         with:
           app-id: ${{ secrets.AUTOMATED_COMMIT_SIGNER_APP_ID }}
           private-key: ${{ secrets.AUTOMATED_COMMIT_SIGNER_PRIVATE_KEY }}
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: release-plz/action@20b23932963f7971bdff386c3542f07fbec45f42 # v0.5.125
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: release-plz/action@20b23932963f7971bdff386c3542f07fbec45f42 # v0.5.125
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
