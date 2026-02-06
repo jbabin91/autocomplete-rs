@@ -1,0 +1,38 @@
+name: Release PLZ
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  release-plz:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write # OIDC for crates.io trusted publishing
+    concurrency:
+      group: release-plz
+      cancel-in-progress: false
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
+        with:
+          app-id: ${{ secrets.AUTOMATED_ACTIONS_AGENT_APP_ID }}
+          private-key: ${{ secrets.AUTOMATED_ACTIONS_AGENT_PRIVATE_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Run release-plz
+        uses: release-plz/action@52440b50d383aa252927de395c8b2c1e0a9cf8e9 # v0.5.126
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
