@@ -4,6 +4,8 @@
 > positioning bugs.
 
 [![CI](https://github.com/jbabin91/autocomplete-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/jbabin91/autocomplete-rs/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/autocomplete-rs.svg)](https://crates.io/crates/autocomplete-rs)
+[![docs.rs](https://docs.rs/autocomplete-rs/badge.svg)](https://docs.rs/autocomplete-rs)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status: Pre-Alpha](https://img.shields.io/badge/status-pre--alpha-red.svg)](https://github.com/jbabin91/autocomplete-rs)
@@ -68,7 +70,26 @@ See project issues (`bd list`) for detailed development plan.
 
 ## Quick Start
 
-### From Source (current method)
+### Install
+
+```sh
+# Homebrew (macOS/Linux)
+brew install jbabin91/tap/autocomplete-rs
+
+# Cargo
+cargo install autocomplete-rs
+
+# Cargo binstall (pre-built binary)
+cargo binstall autocomplete-rs
+
+# Shell installer (macOS/Linux)
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-installer.sh | sh
+
+# PowerShell installer (Windows)
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-installer.ps1 | iex"
+```
+
+### From Source
 
 ```sh
 git clone https://github.com/jbabin91/autocomplete-rs.git
