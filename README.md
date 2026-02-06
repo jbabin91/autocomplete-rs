@@ -15,11 +15,11 @@ implemented. Not yet ready for production use.
 
 ## Why autocomplete-rs?
 
-Frustrated with [Amazon Q](https://aws.amazon.com/q/) (formerly Fig) and its
-persistent positioning bugs, I decided to build a better terminal autocomplete
-system from scratch.
+Frustrated with [Kiro CLI](https://kiro.dev/cli/) (formerly Fig, then Amazon Q)
+and its persistent positioning bugs, I decided to build a better terminal
+autocomplete system from scratch.
 
-**The Problem with Amazon Q:**
+**The Problem with Kiro CLI (and its predecessors):**
 
 - Dropdown appears in the wrong location
 - Breaks with multi-monitor setups
@@ -62,7 +62,7 @@ system from scratch.
 
 - [ ] Bash support
 - [ ] Fish support
-- [ ] Windows WSL support
+- [ ] WSL support
 
 See project issues (`bd list`) for detailed development plan.
 
@@ -147,7 +147,7 @@ autocomplete-rs/
 |   +-- main.rs          # CLI entry point (Clap)
 |   +-- daemon/          # Tokio Unix socket server
 |   +-- parser/          # Command buffer parsing (stub)
-|   +-- (tui/)           # Inline ANSI dropdown (not yet implemented)
+|   +-- (dropdown/)      # Inline ANSI dropdown (not yet implemented)
 +-- shell-integration/
 |   +-- zsh.zsh          # ZLE widget
 +-- docs/                # Architecture docs, ADRs, guides
@@ -167,8 +167,8 @@ do.
 
 ## Inspiration & Related Projects
 
-- [Fig/Amazon Q](https://aws.amazon.com/q/) — Original inspiration (and
-  frustration)
+- [Kiro CLI](https://kiro.dev/cli/) (formerly Fig/Amazon Q) — Original
+  inspiration (and frustration)
 - [Fig Autocomplete Specs](https://github.com/withfig/autocomplete) — 600+
   completion specs we'll reuse
 - [Inshellisense](https://github.com/microsoft/inshellisense) — Microsoft's
@@ -187,5 +187,3 @@ do.
 ## License
 
 MIT License — see [LICENSE](LICENSE) file for details.
-
-Copyright 2025 [Jace Babin](https://github.com/jbabin91)

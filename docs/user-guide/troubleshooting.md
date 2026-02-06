@@ -694,10 +694,10 @@ export COLORTERM=truecolor
 
 **Common conflicts:**
 
-**1. Fig/Amazon Q:**
+**1. Kiro CLI (formerly Fig/Amazon Q):**
 
 - Both try to provide completions
-- Uninstall Fig/Amazon Q first
+- Uninstall Kiro CLI first
 - Or disable their autocomplete
 
 **2. zsh-autosuggestions:**

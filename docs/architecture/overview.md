@@ -6,7 +6,7 @@ architecture.
 ## Design Goals
 
 1. **Fast:** <20ms total latency from trigger to display
-2. **Accurate:** Zero positioning bugs (unlike Amazon Q)
+2. **Accurate:** Zero positioning bugs (unlike Kiro CLI/Amazon Q)
 3. **Universal:** Works across all terminals and shells
 4. **Lightweight:** <50MB memory, <10MB binary
 5. **Reliable:** No crashes, graceful degradation

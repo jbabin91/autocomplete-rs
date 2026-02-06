@@ -200,7 +200,7 @@ CI runs via GitHub Actions (`.github/workflows/ci.yml`) with three jobs:
 
 1. **Lint** — `cargo fmt --check` + `cargo clippy`
 2. **Test** — `cargo test --all-features`
-3. **Conventional Commits** — cocogitto check (PRs only)
+3. **PR Title** — amannn/action-semantic-pull-request validates conventional commit format (PRs only)
 
 A shared composite action (`.github/actions/setup-rust/action.yml`) handles
 Rust toolchain + cache setup.
