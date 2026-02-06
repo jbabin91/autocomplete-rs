@@ -10,6 +10,7 @@
   "automerge": true,
   "automergeType": "pr",
   "platformAutomerge": true,
+  "ignorePaths": [".github/workflows/release.yml"],
   "packageRules": [
     {
       "matchUpdateTypes": ["major"],
