@@ -44,10 +44,10 @@ path = "src/main.rs"
 [dependencies]
 # Async runtime
 tokio = { version = "1.48", features = ["full"] }
-tokio-util = { version = "0.7", features = ["rt"] }   # CancellationToken
+tokio-util = { version = "0.7", features = ["rt"] } # CancellationToken
 
 # System
-libc = "0.2"                                           # kill(pid, 0) for PID file
+libc = "0.2" # kill(pid, 0) for PID file
 
 # Serialization
 rmp-serde = "1.1"                                  # MessagePack for efficient spec storage
