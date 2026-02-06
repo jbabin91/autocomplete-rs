@@ -5,6 +5,7 @@
 # Development tools
 [tools]
 # Rust tools
+"cargo:cargo-nextest" = "latest"
 "cargo:taplo-cli" = "latest"
 "cargo:hk" = "latest"
 
@@ -53,7 +54,7 @@ run = [
 
 [tasks.test]
 description = "Run tests"
-run = "cargo test --all-features"
+run = ["cargo nextest run --all-features", "cargo test --all-features --doc"]
 
 [tasks.build]
 description = "Build in debug mode"

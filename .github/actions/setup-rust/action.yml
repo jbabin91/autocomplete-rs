@@ -1,5 +1,5 @@
 name: Setup Rust
-description: Install Rust toolchain and restore cache (repo must already be checked out)
+description: Install Rust toolchain, cargo-nextest, and restore cache (repo must already be checked out)
 
 inputs:
   components:
@@ -14,5 +14,9 @@ runs:
       uses: dtolnay/rust-toolchain@stable
       with:
         components: ${{ inputs.components }}
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@cd06cfcb315894ee98ffbc4582bcafbcbc260bdb # v2
+      with:
+        tool: cargo-nextest
     - name: Restore cargo cache
       uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2

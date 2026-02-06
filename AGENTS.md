@@ -26,11 +26,11 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
 ```sh
 mise run build       # debug build
 mise run release     # optimized build
-mise run test        # cargo test --all-features
+mise run test        # cargo nextest run + doctests
 mise run lint        # clippy
 mise run fmt         # format all files
 mise run ci          # fmt-check + check + lint + test
-cargo test <name>    # run a single test by name
+cargo nextest run -E 'test(name)'  # run a single test by name
 ```
 
 ## Code Style

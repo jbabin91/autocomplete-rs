@@ -53,7 +53,9 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
       - name: Run tests
-        run: cargo test --locked --all-features
+        run: cargo nextest run --locked --all-features
+      - name: Run doctests
+        run: cargo test --locked --all-features --doc
 
   msrv:
     name: MSRV
