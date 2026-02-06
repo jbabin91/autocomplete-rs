@@ -11,6 +11,26 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/jbabin91/autocomplete-rs"
 description = "Fast, universal terminal autocomplete for all shells and terminals"
+exclude = [
+  ".agents/",
+  ".beads/",
+  ".claude/",
+  ".github/",
+  ".markdownlint-cli2.jsonc",
+  ".prettierrc.toml",
+  "cliff.toml",
+  "clippy.toml",
+  "cog.toml",
+  "dist-workspace.toml",
+  "docs/",
+  "hk.pkl",
+  "mise.toml",
+  "PklProject",
+  "PklProject.deps.json",
+  "release-plz.toml",
+  "rustfmt.toml",
+  "taplo.toml",
+]
 
 [[bin]]
 name = "autocomplete-rs"
