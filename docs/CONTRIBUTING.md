@@ -22,14 +22,14 @@ Thank you for your interest in contributing to autocomplete-rs! 🎉
 
 ### 1. Fork and Clone
 
-```bash
+```sh
 git clone https://github.com/jbabin91/autocomplete-rs.git
 cd autocomplete-rs
 ```
 
 ### 2. Install Development Tools
 
-```bash
+```sh
 # Install mise (tool manager)
 cargo install mise
 
@@ -50,7 +50,7 @@ mise will automatically install all required tools:
 
 ### 3. Build and Test
 
-```bash
+```sh
 # Build
 cargo build
 
@@ -65,7 +65,7 @@ mise run ci
 
 ### Daily Commands
 
-```bash
+```sh
 mise run fmt         # Format all files
 mise run lint        # Run clippy
 mise run test        # Run tests

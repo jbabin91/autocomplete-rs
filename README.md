@@ -70,7 +70,7 @@ See project issues (`bd list`) for detailed development plan.
 
 ### From Source (current method)
 
-```bash
+```sh
 git clone https://github.com/jbabin91/autocomplete-rs.git
 cd autocomplete-rs
 cargo build --release
@@ -118,7 +118,7 @@ User types "git checkout " + Alt+Space
 
 ## Development
 
-```bash
+```sh
 # Install tools
 mise install
 

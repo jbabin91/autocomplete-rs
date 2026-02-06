@@ -24,26 +24,26 @@ development environment and make your first contribution.
 
 If you don't have Rust installed:
 
-```bash
+```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 Ensure you have Rust 1.85 or later:
 
-```bash
+```sh
 rustc --version
 # Should show: rustc 1.85.0 or higher
 ```
 
 If you have an older version:
 
-```bash
+```sh
 rustup update stable
 ```
 
 ### 2. Clone the Repository
 
-```bash
+```sh
 cd ~/.code/github/rustProjects/  # or your preferred location
 git clone https://github.com/jbabin91/autocomplete-rs.git
 cd autocomplete-rs
@@ -51,7 +51,7 @@ cd autocomplete-rs
 
 ### 3. Build the Project
 
-```bash
+```sh
 cargo build
 ```
 
@@ -65,7 +65,7 @@ Expected build time: ~2-3 minutes first time, ~30s incremental
 
 ### 4. Run Tests
 
-```bash
+```sh
 cargo test
 ```
 
@@ -79,7 +79,7 @@ All tests should pass. If any fail, check:
 
 To test your changes in your actual shell:
 
-```bash
+```sh
 cargo build --release
 ./target/release/autocomplete-rs install zsh
 ```
@@ -92,7 +92,7 @@ This will:
 
 Restart your shell or run:
 
-```bash
+```sh
 source ~/.zshrc
 ```
 
@@ -102,7 +102,7 @@ source ~/.zshrc
 
 **1. Create a Branch**
 
-```bash
+```sh
 git checkout -b feature/my-awesome-feature
 ```
 
@@ -117,7 +117,7 @@ Edit code in `src/`:
 
 **3. Build and Test**
 
-```bash
+```sh
 # Quick check (compile only)
 cargo check
 
@@ -136,7 +136,7 @@ cargo clippy
 
 **4. Run Locally**
 
-```bash
+```sh
 # Start daemon manually (for debugging)
 ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock
 
@@ -146,7 +146,7 @@ cargo clippy
 
 **5. Debug with Logs**
 
-```bash
+```sh
 # Enable debug logging
 RUST_LOG=debug ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock
 
@@ -158,7 +158,7 @@ RUST_LOG=trace ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock
 
 Since the daemon runs persistently, you need to restart it to see changes:
 
-```bash
+```sh
 # Kill existing daemon
 pkill autocomplete-rs
 
@@ -171,7 +171,7 @@ pkill autocomplete-rs
 
 Create `dev-reload.sh`:
 
-```bash
+```sh
 #!/bin/bash
 pkill autocomplete-rs
 cargo build && ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock &
@@ -261,7 +261,7 @@ let spec = spec_loader.load("my-command")?;
 
 ### Running Benchmarks
 
-```bash
+```sh
 cargo bench
 ```
 
@@ -274,7 +274,7 @@ This measures:
 
 ### Updating Dependencies
 
-```bash
+```sh
 # Check for outdated dependencies
 cargo outdated
 
@@ -295,7 +295,7 @@ Always test thoroughly after updating dependencies!
 
 Solution: Kill existing daemon
 
-```bash
+```sh
 pkill autocomplete-rs
 # or
 rm /tmp/autocomplete-rs.sock
@@ -311,7 +311,7 @@ Check:
 
 Debug:
 
-```bash
+```sh
 RUST_LOG=debug ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock
 ```
 
@@ -327,7 +327,7 @@ Cargo.toml:
 
 ### Using LLDB Debugger
 
-```bash
+```sh
 # Build with debug symbols
 cargo build
 
@@ -360,7 +360,7 @@ trace!("Rendering {} suggestions", suggestions.len());
 
 ### Unit Tests
 
-```bash
+```sh
 # Run all tests
 cargo test
 
@@ -373,7 +373,7 @@ cargo test -- --nocapture
 
 ### Integration Tests
 
-```bash
+```sh
 # Run integration tests
 cargo test --test integration
 ```
@@ -389,13 +389,13 @@ Integration tests in `tests/` verify:
 
 1. Start daemon:
 
-```bash
+```sh
 ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock &
 ```
 
 1. Test completion:
 
-```bash
+```sh
 ./target/debug/autocomplete-rs complete "git checkout " 13
 ```
 
@@ -443,7 +443,7 @@ Before optimizing:
 3. **Optimize** hot paths only
 4. **Verify** with benchmarks again
 
-```bash
+```sh
 # Install cargo-flamegraph
 cargo install flamegraph
 

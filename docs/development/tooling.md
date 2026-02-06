@@ -31,7 +31,7 @@ linters, git hooks, and task running.
 
 We use [mise](https://mise.jdx.dev) to manage all development tools:
 
-```bash
+```sh
 # Install mise
 cargo install mise
 
@@ -54,7 +54,7 @@ That's it! mise will automatically install:
 
 If you prefer not to use mise:
 
-```bash
+```sh
 # Install Rust tools
 cargo install taplo-cli
 cargo install hk
@@ -74,7 +74,7 @@ hk install
 
 ### Using mise (Recommended)
 
-```bash
+```sh
 # Format all files
 mise run fmt
 
@@ -99,7 +99,7 @@ mise run release
 
 ### Direct Commands (Alternative)
 
-```bash
+```sh
 # Format Rust files
 cargo fmt
 
@@ -211,7 +211,7 @@ Rust toolchain + cache setup.
 
 Auto-run checks on file change:
 
-```bash
+```sh
 cargo install cargo-watch
 cargo watch -x check -x test
 ```
@@ -220,7 +220,7 @@ cargo watch -x check -x test
 
 Security vulnerability scanning:
 
-```bash
+```sh
 cargo install cargo-audit
 cargo audit
 ```
@@ -229,7 +229,7 @@ cargo audit
 
 Check for outdated dependencies:
 
-```bash
+```sh
 cargo install cargo-outdated
 cargo outdated
 ```
@@ -238,7 +238,7 @@ cargo outdated
 
 Visualize dependency tree:
 
-```bash
+```sh
 cargo tree
 ```
 
@@ -248,13 +248,13 @@ cargo tree
 
 Reinstall hooks:
 
-```bash
+```sh
 hk install
 ```
 
 Verify installation:
 
-```bash
+```sh
 ls -la .git/hooks/
 ```
 
@@ -262,7 +262,7 @@ ls -la .git/hooks/
 
 Run pre-commit checks without committing:
 
-```bash
+```sh
 hk run pre-commit
 ```
 

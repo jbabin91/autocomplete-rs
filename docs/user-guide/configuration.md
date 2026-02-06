@@ -15,7 +15,7 @@ available now.
 
 ### Creating Config File
 
-```bash
+```sh
 mkdir -p ~/.config/autocomplete-rs
 cat > ~/.config/autocomplete-rs/config.toml << 'EOF'
 # autocomplete-rs configuration
@@ -120,7 +120,7 @@ debug = true
 
 View logs:
 
-```bash
+```sh
 autocomplete-rs daemon /tmp/autocomplete-rs.sock 2> /tmp/autocomplete-debug.log &
 ```
 
@@ -203,7 +203,7 @@ autocomplete-rs auto-detects terminal capabilities:
 
 Check your terminal's capability:
 
-```bash
+```sh
 echo $COLORTERM  # Should show "truecolor" for full color support
 ```
 
@@ -235,13 +235,13 @@ The trigger key is configured in the shell integration:
 
 **Zsh (`~/.zshrc` or `~/.config/autocomplete-rs/zsh.zsh`):**
 
-```bash
+```sh
 bindkey '^[ ' _autocomplete_rs_widget  # Alt+Space
 ```
 
 **Bash (coming in Phase 4):**
 
-```bash
+```sh
 bind -x '"\e ": autocomplete_rs_complete'
 ```
 
@@ -387,7 +387,7 @@ spec_cache_ttl = 0
 
 Add to `~/.zshrc`:
 
-```bash
+```sh
 # Disable autocomplete if in specific directories
 precmd() {
   if [[ $PWD == /slow/nfs/mount/* ]]; then
@@ -421,7 +421,7 @@ Coming soon.
 
 Create different configs for different contexts:
 
-```bash
+```sh
 # Work profile
 ~/.config/autocomplete-rs/config-work.toml
 
@@ -431,7 +431,7 @@ Create different configs for different contexts:
 
 Switch profiles:
 
-```bash
+```sh
 export AUTOCOMPLETE_RS_CONFIG="$HOME/.config/autocomplete-rs/config-work.toml"
 ```
 
@@ -454,7 +454,7 @@ show_descriptions = false # Minimal UI
 
 Override config with environment variables:
 
-```bash
+```sh
 # Socket path
 export AUTOCOMPLETE_RS_SOCKET="/tmp/my-autocomplete.sock"
 
@@ -482,7 +482,7 @@ Priority (highest to lowest):
 
 Validate your config:
 
-```bash
+```sh
 autocomplete-rs config validate
 ```
 
@@ -568,13 +568,13 @@ warning = "#e0af68" # Yellow
 
 Check file location:
 
-```bash
+```sh
 ls -la ~/.config/autocomplete-rs/config.toml
 ```
 
 Check syntax:
 
-```bash
+```sh
 # Install TOML linter
 cargo install taplo-cli
 
@@ -586,7 +586,7 @@ taplo lint ~/.config/autocomplete-rs/config.toml
 
 Check terminal support:
 
-```bash
+```sh
 # Should show "truecolor" or "24bit"
 echo $COLORTERM
 
@@ -632,7 +632,7 @@ If completions are slow:
 
 4. **Check daemon is running:**
 
-   ```bash
+   ```sh
    ps aux | grep autocomplete-rs
    ```
 
@@ -640,13 +640,13 @@ If completions are slow:
 
 Remove config to use defaults:
 
-```bash
+```sh
 mv ~/.config/autocomplete-rs/config.toml ~/.config/autocomplete-rs/config.toml.backup
 ```
 
 Restart daemon:
 
-```bash
+```sh
 pkill autocomplete-rs
 ```
 

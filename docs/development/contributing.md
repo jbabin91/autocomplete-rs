@@ -13,7 +13,7 @@ great together.
 1. **Fork the repository** on GitHub
 2. **Clone your fork:**
 
-   ```bash
+   ```sh
    git clone https://github.com/jbabin91/autocomplete-rs.git
    cd autocomplete-rs
    ```
@@ -22,7 +22,7 @@ great together.
    [Getting Started Guide](getting-started.md)
 4. **Create a branch:**
 
-   ```bash
+   ```sh
    git checkout -b feature/my-contribution
    ```
 
@@ -97,7 +97,7 @@ For significant new features:
 
 ### 2. Test Your Changes
 
-```bash
+```sh
 # Format code
 cargo fmt
 
@@ -127,7 +127,7 @@ If your changes affect:
 
 ### 4. Submit Pull Request
 
-```bash
+```sh
 # Push to your fork
 git push origin feature/my-contribution
 
@@ -345,14 +345,14 @@ We have strict performance requirements:
 
 1. **Profile first:**
 
-   ```bash
+   ```sh
    cargo install flamegraph
    cargo flamegraph --bin autocomplete-rs -- daemon /tmp/test.sock
    ```
 
 2. **Benchmark:**
 
-   ```bash
+   ```sh
    cargo bench
    ```
 
@@ -360,7 +360,7 @@ We have strict performance requirements:
 
 4. **Verify improvement:**
 
-   ```bash
+   ```sh
    cargo bench -- --baseline before
    ```
 

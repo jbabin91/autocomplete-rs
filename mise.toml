@@ -38,8 +38,18 @@ description = "Quick type check"
 run = "cargo check --all-targets --all-features"
 
 [tasks.lint]
-description = "Run clippy linter"
-run = "cargo clippy --all-targets --all-features -- -D warnings"
+description = "Run all linters (clippy + markdownlint)"
+run = [
+  "cargo clippy --all-targets --all-features -- -D warnings",
+  "markdownlint-cli2 '**/*.md'",
+]
+
+[tasks.lint-fix]
+description = "Run linters with auto-fix where supported"
+run = [
+  "cargo clippy --fix --allow-dirty --allow-staged --all-targets --all-features",
+  "markdownlint-cli2 -f '**/*.md'",
+]
 
 [tasks.test]
 description = "Run tests"

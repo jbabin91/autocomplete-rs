@@ -23,7 +23,7 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
 - **Linting:** clippy with `-D warnings` (zero warnings policy)
 - **Commit messages:** Conventional Commits enforced by cocogitto (`cog verify`)
 
-```bash
+```sh
 mise run build       # debug build
 mise run release     # optimized build
 mise run test        # cargo test --all-features
@@ -82,7 +82,7 @@ For simple tasks/chores, use `bd create` directly.
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
 
-   ```bash
+   ```sh
    git pull --rebase
    bd sync
    git push

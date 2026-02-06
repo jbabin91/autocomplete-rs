@@ -407,7 +407,7 @@ Daemon
 
 ### Unix Socket Permissions
 
-```bash
+```sh
 /tmp/autocomplete-rs.sock
   - Owner: user
   - Permissions: 0600 (user read/write only)

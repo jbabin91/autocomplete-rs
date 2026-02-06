@@ -38,7 +38,7 @@ Works with all modern terminals:
 
 Once released:
 
-```bash
+```sh
 cargo install autocomplete-rs
 ```
 
@@ -56,26 +56,26 @@ For early adopters and contributors:
 
 If you don't have Rust installed:
 
-```bash
+```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 Verify installation:
 
-```bash
+```sh
 rustc --version  # Should be 1.85.0 or later
 ```
 
 #### Step 2: Clone Repository
 
-```bash
+```sh
 git clone https://github.com/jbabin91/autocomplete-rs.git
 cd autocomplete-rs
 ```
 
 #### Step 3: Build Release Binary
 
-```bash
+```sh
 cargo build --release
 ```
 
@@ -83,7 +83,7 @@ This creates `target/release/autocomplete-rs` (~5-10MB)
 
 #### Step 4: Install Binary
 
-```bash
+```sh
 # Option A: Copy to ~/.cargo/bin (recommended)
 cp target/release/autocomplete-rs ~/.cargo/bin/
 
@@ -96,7 +96,7 @@ export PATH="$PWD/target/release:$PATH"
 
 Verify installation:
 
-```bash
+```sh
 autocomplete-rs --version
 ```
 
@@ -106,7 +106,7 @@ autocomplete-rs --version
 
 Once released, download from GitHub releases:
 
-```bash
+```sh
 # macOS (Intel)
 curl -L https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-x86_64-apple-darwin.tar.gz | tar xz
 
@@ -124,13 +124,13 @@ sudo mv autocomplete-rs /usr/local/bin/
 
 **Homebrew (macOS/Linux):**
 
-```bash
+```sh
 brew install autocomplete-rs
 ```
 
 **AUR (Arch Linux):**
 
-```bash
+```sh
 yay -S autocomplete-rs
 ```
 
@@ -144,7 +144,7 @@ After installing the binary, you need to integrate with your shell.
 
 The easiest way:
 
-```bash
+```sh
 autocomplete-rs install zsh
 ```
 
@@ -156,7 +156,7 @@ This will:
 
 Restart your shell or run:
 
-```bash
+```sh
 source ~/.zshrc
 ```
 
@@ -166,7 +166,7 @@ If you prefer manual setup:
 
 **Step 1:** Download integration script
 
-```bash
+```sh
 mkdir -p ~/.config/autocomplete-rs
 curl -o ~/.config/autocomplete-rs/zsh.zsh \
   https://raw.githubusercontent.com/jbabin91/autocomplete-rs/main/shell-integration/zsh.zsh
@@ -174,14 +174,14 @@ curl -o ~/.config/autocomplete-rs/zsh.zsh \
 
 Or copy from source:
 
-```bash
+```sh
 mkdir -p ~/.config/autocomplete-rs
 cp shell-integration/zsh.zsh ~/.config/autocomplete-rs/
 ```
 
 **Step 2:** Add to `~/.zshrc`
 
-```bash
+```sh
 # Load autocomplete-rs
 if [ -f ~/.config/autocomplete-rs/zsh.zsh ]; then
   source ~/.config/autocomplete-rs/zsh.zsh
@@ -190,7 +190,7 @@ fi
 
 **Step 3:** Reload shell
 
-```bash
+```sh
 exec zsh
 # or
 source ~/.zshrc
@@ -206,7 +206,7 @@ Test the installation:
 
 Check that the widget is loaded:
 
-```bash
+```sh
 bindkey | grep autocomplete
 # Should show: "^[ " _autocomplete_rs_widget
 ```
@@ -215,7 +215,7 @@ bindkey | grep autocomplete
 
 Not yet implemented. Will use readline's `bind -x`:
 
-```bash
+```sh
 autocomplete-rs install bash
 ```
 
@@ -223,7 +223,7 @@ autocomplete-rs install bash
 
 Not yet implemented. Will use fish's completion system:
 
-```bash
+```sh
 autocomplete-rs install fish
 ```
 
@@ -235,7 +235,7 @@ The daemon starts automatically when you first trigger a completion.
 
 To start the daemon manually:
 
-```bash
+```sh
 autocomplete-rs daemon /tmp/autocomplete-rs.sock &
 ```
 
@@ -247,7 +247,7 @@ This is useful for:
 
 ### Check Daemon Status
 
-```bash
+```sh
 # Check if daemon is running
 ps aux | grep autocomplete-rs
 
@@ -260,7 +260,7 @@ echo '{"buffer":"git checkout ","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
 ### Stop the Daemon
 
-```bash
+```sh
 # Kill daemon
 pkill autocomplete-rs
 
@@ -274,7 +274,7 @@ The daemon will auto-restart on next completion request.
 
 Create config file (optional):
 
-```bash
+```sh
 mkdir -p ~/.config/autocomplete-rs
 cat > ~/.config/autocomplete-rs/config.toml << 'EOF'
 # Socket path (default: /tmp/autocomplete-rs.sock)
@@ -300,7 +300,7 @@ EOF
 
 Edit `~/.config/autocomplete-rs/zsh.zsh` or add to `~/.zshrc`:
 
-```bash
+```sh
 # Use Ctrl+Space instead of Alt+Space
 bindkey '^@' _autocomplete_rs_widget
 
@@ -319,13 +319,13 @@ Common key codes:
 
 Start daemon with custom path:
 
-```bash
+```sh
 autocomplete-rs daemon ~/.cache/my-autocomplete.sock &
 ```
 
 Update shell integration to use same path:
 
-```bash
+```sh
 # In zsh.zsh or .zshrc
 export AUTOCOMPLETE_RS_SOCKET="$HOME/.cache/my-autocomplete.sock"
 ```
@@ -334,7 +334,7 @@ export AUTOCOMPLETE_RS_SOCKET="$HOME/.cache/my-autocomplete.sock"
 
 ### Remove Binary
 
-```bash
+```sh
 # If installed via cargo
 rm ~/.cargo/bin/autocomplete-rs
 
@@ -348,7 +348,7 @@ sudo rm /usr/local/bin/autocomplete-rs
 
 Remove from `~/.zshrc`:
 
-```bash
+```sh
 # Delete these lines:
 if [ -f ~/.config/autocomplete-rs/zsh.zsh ]; then
   source ~/.config/autocomplete-rs/zsh.zsh
@@ -357,26 +357,26 @@ fi
 
 **Remove config directory:**
 
-```bash
+```sh
 rm -rf ~/.config/autocomplete-rs
 ```
 
 **Remove cache:**
 
-```bash
+```sh
 rm -rf ~/.cache/autocomplete-rs
 ```
 
 **Stop daemon:**
 
-```bash
+```sh
 pkill autocomplete-rs
 rm /tmp/autocomplete-rs.sock
 ```
 
 **Reload shell:**
 
-```bash
+```sh
 exec zsh
 ```
 
@@ -384,13 +384,13 @@ exec zsh
 
 ### From Crates.io (Future)
 
-```bash
+```sh
 cargo install autocomplete-rs --force
 ```
 
 ### From Source
 
-```bash
+```sh
 cd autocomplete-rs
 git pull origin main
 cargo build --release
@@ -399,7 +399,7 @@ cp target/release/autocomplete-rs ~/.cargo/bin/
 
 Restart daemon to use new version:
 
-```bash
+```sh
 pkill autocomplete-rs
 # Will auto-restart on next completion
 ```
@@ -410,14 +410,14 @@ After installation, verify everything works:
 
 ### 1. Check Binary
 
-```bash
+```sh
 autocomplete-rs --version
 # Should show version number
 ```
 
 ### 2. Check Daemon
 
-```bash
+```sh
 # Start daemon
 autocomplete-rs daemon /tmp/autocomplete-rs.sock &
 
@@ -433,7 +433,7 @@ ls -la /tmp/autocomplete-rs.sock
 
 ### 3. Test Completion (Manual)
 
-```bash
+```sh
 # Send test request
 autocomplete-rs complete "git checkout " 13
 

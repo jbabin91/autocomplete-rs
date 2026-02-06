@@ -55,7 +55,7 @@ mod tests {
 
 **Run:**
 
-```bash
+```sh
 # All unit tests
 cargo test
 
@@ -122,7 +122,7 @@ async fn test_end_to_end_completion() {
 
 **Run:**
 
-```bash
+```sh
 # All integration tests
 cargo test --test '*'
 
@@ -190,7 +190,7 @@ harness = false
 
 **Run:**
 
-```bash
+```sh
 # All benchmarks
 cargo bench
 
@@ -417,7 +417,7 @@ proptest! {
 
 Create test script:
 
-```bash
+```sh
 #!/bin/bash
 # test-zsh-integration.sh
 
@@ -440,7 +440,7 @@ echo "New cursor: $CURSOR"
 
 Use `expect` for automated shell testing:
 
-```bash
+```sh
 #!/usr/bin/expect
 # tests/zsh-integration.exp
 
@@ -475,13 +475,13 @@ expect "done"
 
 Install tarpaulin:
 
-```bash
+```sh
 cargo install cargo-tarpaulin
 ```
 
 Generate coverage:
 
-```bash
+```sh
 # HTML report
 cargo tarpaulin --out Html
 
@@ -563,7 +563,7 @@ fn test_parse_git_checkout_suggests_branches() {
 
 1. **Run test (should fail):**
 
-```bash
+```sh
 cargo test test_parse_git_checkout
 # Should see: test result: FAILED
 ```
@@ -583,7 +583,7 @@ pub fn parse(&self, buffer: &str, cursor: usize) -> Result<Vec<Suggestion>> {
 
 1. **Run test (should pass):**
 
-```bash
+```sh
 cargo test test_parse_git_checkout
 # Should see: test result: ok
 ```
@@ -600,7 +600,7 @@ pub fn parse(&self, buffer: &str, cursor: usize) -> Result<Vec<Suggestion>> {
 
 1. **Rerun tests (should still pass):**
 
-```bash
+```sh
 cargo test
 ```
 
@@ -608,7 +608,7 @@ cargo test
 
 ### Run Single Test with Output
 
-```bash
+```sh
 cargo test test_name -- --nocapture --test-threads=1
 ```
 

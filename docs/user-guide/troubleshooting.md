@@ -6,7 +6,7 @@ This guide helps resolve common issues with autocomplete-rs.
 
 Run these commands to check system health:
 
-```bash
+```sh
 # 1. Check binary is installed
 which autocomplete-rs
 autocomplete-rs --version
@@ -39,7 +39,7 @@ If any fail, see relevant section below.
 
 1. **Check installation:**
 
-   ```bash
+   ```sh
    ls ~/.cargo/bin/autocomplete-rs
    # or
    ls /usr/local/bin/autocomplete-rs
@@ -47,7 +47,7 @@ If any fail, see relevant section below.
 
 2. **Add to PATH:**
 
-   ```bash
+   ```sh
    # Add to ~/.zshrc or ~/.bashrc
    export PATH="$HOME/.cargo/bin:$PATH"
 
@@ -57,7 +57,7 @@ If any fail, see relevant section below.
 
 3. **Reinstall:**
 
-   ```bash
+   ```sh
    cargo install autocomplete-rs --force
    # or build from source
    cd autocomplete-rs && cargo build --release
@@ -78,7 +78,7 @@ error[E0658]: use of unstable library feature 'edition_2024'
 
 **Solution:**
 
-```bash
+```sh
 rustup update stable
 rustc --version  # Should be 1.85.0+
 ```
@@ -91,19 +91,19 @@ error: linker 'cc' not found
 
 **Solution (macOS):**
 
-```bash
+```sh
 xcode-select --install
 ```
 
 **Solution (Ubuntu/Debian):**
 
-```bash
+```sh
 sudo apt-get install build-essential
 ```
 
 **Solution (Fedora):**
 
-```bash
+```sh
 sudo dnf install gcc
 ```
 
@@ -130,7 +130,7 @@ Verify in `Cargo.toml`:
 
 **Diagnosis:**
 
-```bash
+```sh
 # Try starting daemon manually
 autocomplete-rs daemon /tmp/autocomplete-rs.sock
 
@@ -148,7 +148,7 @@ Error: Address already in use (os error 48)
 
 **Solution:**
 
-```bash
+```sh
 # Kill existing daemon
 pkill autocomplete-rs
 
@@ -167,7 +167,7 @@ Error: Permission denied (os error 13)
 
 **Solution:**
 
-```bash
+```sh
 # Check socket directory permissions
 ls -la /tmp/
 
@@ -186,7 +186,7 @@ Error: No such file or directory (os error 2)
 
 **Solution:**
 
-```bash
+```sh
 # Create directory
 mkdir -p /tmp
 
@@ -200,7 +200,7 @@ mkdir -p ~/.cache/autocomplete-rs
 
 **Diagnosis:**
 
-```bash
+```sh
 # Run in foreground with debug logging
 RUST_LOG=debug autocomplete-rs daemon /tmp/autocomplete-rs.sock
 
@@ -223,7 +223,7 @@ journalctl -u autocomplete-rs --since "1 minute ago"
    [GitHub issue](https://github.com/jbabin91/autocomplete-rs/issues)
 2. Include rust backtrace:
 
-   ```bash
+   ```sh
    RUST_BACKTRACE=1 autocomplete-rs daemon /tmp/autocomplete-rs.sock
    ```
 
@@ -233,7 +233,7 @@ journalctl -u autocomplete-rs --since "1 minute ago"
 
 **Diagnosis:**
 
-```bash
+```sh
 # Test daemon directly
 echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
@@ -244,7 +244,7 @@ echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
 1. **Check socket path matches:**
 
-   ```bash
+   ```sh
    # Daemon socket
    ls -la /tmp/autocomplete-rs.sock
 
@@ -254,7 +254,7 @@ echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
 2. **Check for deadlock (bug):**
 
-   ```bash
+   ```sh
    # Get daemon PID
    ps aux | grep autocomplete-rs | grep daemon
 
@@ -268,7 +268,7 @@ echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
 3. **Restart daemon:**
 
-   ```bash
+   ```sh
    pkill autocomplete-rs
    autocomplete-rs daemon /tmp/autocomplete-rs.sock &
    ```
@@ -283,7 +283,7 @@ echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
 1. **Check widget is loaded:**
 
-   ```bash
+   ```sh
    # Zsh
    zle -la | grep autocomplete
    # Should show: _autocomplete_rs_widget
@@ -291,7 +291,7 @@ echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
 2. **Check key binding:**
 
-   ```bash
+   ```sh
    bindkey | grep autocomplete
    # Should show: "^[ " _autocomplete_rs_widget (or your binding)
    ```
@@ -312,7 +312,7 @@ echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
 **Widget not loaded:**
 
-```bash
+```sh
 # Check integration is sourced
 cat ~/.zshrc | grep autocomplete-rs
 
@@ -329,7 +329,7 @@ source ~/.zshrc
 
 **Key binding wrong:**
 
-```bash
+```sh
 # Check what Alt+Space is bound to
 bindkey "^[ "
 
@@ -341,7 +341,7 @@ bindkey '^[ ' _autocomplete_rs_widget
 
 **Daemon not running:**
 
-```bash
+```sh
 ps aux | grep autocomplete-rs
 
 # If not running, widget should auto-start it
@@ -381,7 +381,7 @@ implementation!
 
 1. **Time each component:**
 
-   ```bash
+   ```sh
    # Daemon startup
    time autocomplete-rs daemon /tmp/test.sock &
 
@@ -394,7 +394,7 @@ implementation!
 
 2. **Check daemon is running:**
 
-   ```bash
+   ```sh
    ps aux | grep autocomplete-rs
    ```
 
@@ -414,7 +414,7 @@ implementation!
 
 1. **Keep daemon warm:**
 
-   ```bash
+   ```sh
    # Start daemon at shell startup
    if ! pgrep autocomplete-rs > /dev/null; then
      autocomplete-rs daemon /tmp/autocomplete-rs.sock &
@@ -473,7 +473,7 @@ implementation!
 
 1. **Check terminal color support:**
 
-   ```bash
+   ```sh
    echo $COLORTERM
    # Should be: "truecolor" or "24bit"
 
@@ -484,7 +484,7 @@ implementation!
 
 2. **Test color output:**
 
-   ```bash
+   ```sh
    # Simple color test
    printf "\033[38;2;255;0;0mRed\033[0m "
    printf "\033[38;2;0;255;0mGreen\033[0m "
@@ -497,14 +497,14 @@ implementation!
 
 **Terminal doesn't support truecolor:**
 
-```bash
+```sh
 # Use 256-color mode (automatic fallback)
 # Or use basic ANSI theme
 ```
 
 **TERM variable wrong:**
 
-```bash
+```sh
 # Add to ~/.zshrc
 export TERM=xterm-256color
 
@@ -536,13 +536,13 @@ export COLORTERM=truecolor
 
 1. **Clear screen:**
 
-   ```bash
+   ```sh
    clear
    ```
 
 2. **Reset terminal:**
 
-   ```bash
+   ```sh
    reset
    ```
 
@@ -552,7 +552,7 @@ export COLORTERM=truecolor
 
 4. **Disable UI temporarily:**
 
-   ```bash
+   ```sh
    # Unset widget
    bindkey -r '^[ '
 
@@ -575,7 +575,7 @@ export COLORTERM=truecolor
 
 1. **Check for busy loop:**
 
-   ```bash
+   ```sh
    # Sample daemon
    sudo sample $(pgrep autocomplete-rs) 5
 
@@ -584,7 +584,7 @@ export COLORTERM=truecolor
 
 2. **Check for stuck request:**
 
-   ```bash
+   ```sh
    # Send SIGQUIT to dump state
    kill -QUIT $(pgrep autocomplete-rs)
 
@@ -593,7 +593,7 @@ export COLORTERM=truecolor
 
 3. **Restart daemon:**
 
-   ```bash
+   ```sh
    pkill autocomplete-rs
    ```
 
@@ -609,14 +609,14 @@ export COLORTERM=truecolor
 
 1. **Check actual usage:**
 
-   ```bash
+   ```sh
    ps aux | grep autocomplete-rs
    # Look at RSS column (real memory)
    ```
 
 2. **Check for memory leak:**
 
-   ```bash
+   ```sh
    # Install heaptrack (Linux)
    heaptrack autocomplete-rs daemon /tmp/autocomplete-rs.sock
 
@@ -626,7 +626,7 @@ export COLORTERM=truecolor
 
 3. **Restart daemon periodically:**
 
-   ```bash
+   ```sh
    # Cron job to restart daily
    0 0 * * * pkill autocomplete-rs
    ```
@@ -653,7 +653,7 @@ export COLORTERM=truecolor
 
 1. **Check ANSI support:**
 
-   ```bash
+   ```sh
    # Test basic escape codes
    printf "\033[1;32mGreen Bold\033[0m\n"
    ```
@@ -711,7 +711,7 @@ export COLORTERM=truecolor
 - May conflict if using same key (Tab)
 - Use different trigger key:
 
-  ```bash
+  ```sh
   bindkey '^[ ' _autocomplete_rs_widget  # Alt+Space
   ```
 
@@ -720,7 +720,7 @@ export COLORTERM=truecolor
 - Check for widget name conflicts
 - Rename if needed:
 
-  ```bash
+  ```sh
   zle -N my_autocomplete_widget _autocomplete_rs_widget
   bindkey '^[ ' my_autocomplete_widget
   ```
@@ -733,7 +733,7 @@ export COLORTERM=truecolor
 
 **Solution:**
 
-```bash
+```sh
 autocomplete-rs daemon /tmp/autocomplete-rs.sock &
 ```
 
@@ -776,13 +776,13 @@ autocomplete-rs daemon /tmp/autocomplete-rs.sock &
    [existing issues](https://github.com/jbabin91/autocomplete-rs/issues)
 3. Try with debug logging:
 
-   ```bash
+   ```sh
    RUST_LOG=debug autocomplete-rs daemon /tmp/autocomplete-rs.sock 2> /tmp/debug.log
    ```
 
 4. Gather version info:
 
-   ```bash
+   ```sh
    autocomplete-rs --version
    rustc --version
    echo $SHELL
@@ -824,7 +824,7 @@ If none of the above helps:
 
 1. **Enable maximum debugging:**
 
-   ```bash
+   ```sh
    RUST_LOG=trace RUST_BACKTRACE=full autocomplete-rs daemon /tmp/autocomplete-rs.sock 2> /tmp/full-debug.log
    ```
 

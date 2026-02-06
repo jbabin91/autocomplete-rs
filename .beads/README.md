@@ -12,7 +12,7 @@ Beads is issue tracking that lives in your repo, making it perfect for AI coding
 
 ### Essential Commands
 
-```bash
+```sh
 # Create new issues
 bd create "Add user authentication"
 
@@ -63,7 +63,7 @@ Issues in Beads are:
 
 Try Beads in your own projects:
 
-```bash
+```sh
 # Install Beads
 curl -sSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
 
