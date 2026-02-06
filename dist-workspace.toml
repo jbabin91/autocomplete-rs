@@ -27,8 +27,8 @@ install-updater = false
 tap = "jbabin91/homebrew-tap"
 # Publish Homebrew formula on release
 publish-jobs = ["homebrew"]
-# Only run plan on PRs (skip full build)
-pr-run-mode = "plan"
+# Don't run on PRs (CI handles PR validation)
+pr-run-mode = "skip"
 # Enable GitHub artifact attestations
 github-attestations = true
 # Allow manual CI edits (SHA pinning)
