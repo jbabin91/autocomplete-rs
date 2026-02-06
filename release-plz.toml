@@ -1,0 +1,11 @@
+[workspace]
+# cargo-dist creates the GitHub Release, not release-plz
+git_release_enable = false
+# Tag push triggers cargo-dist's release workflow
+git_tag_enable = true
+# Generate/update CHANGELOG.md from conventional commits
+changelog_update = true
+# Update dependency versions in lockfile
+dependencies_update = true
+# No public library API to check for semver violations
+semver_check = false
