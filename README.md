@@ -84,9 +84,6 @@ cargo binstall autocomplete-rs
 
 # Shell installer (macOS/Linux)
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-installer.sh | sh
-
-# PowerShell installer (Windows)
-powershell -ExecutionPolicy Bypass -c "irm https://github.com/jbabin91/autocomplete-rs/releases/latest/download/autocomplete-rs-installer.ps1 | iex"
 ```
 
 ### From Source
