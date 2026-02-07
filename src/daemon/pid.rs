@@ -103,8 +103,12 @@ pub fn derive_pid_path(socket_path: &Path) -> PathBuf {
 /// Uses `kill(pid, 0)` which checks existence without sending a signal.
 /// On macOS, `EPERM` means the process exists but belongs to a different user.
 pub fn is_process_alive(pid: u32) -> bool {
+    let Ok(pid) = libc::pid_t::try_from(pid) else {
+        // PID overflows pid_t (i32) — not a valid process
+        return false;
+    };
     // Safety: kill(pid, 0) is safe — it only checks if the process exists.
-    let ret = unsafe { libc::kill(pid as libc::pid_t, 0) };
+    let ret = unsafe { libc::kill(pid, 0) };
     if ret == 0 {
         return true;
     }

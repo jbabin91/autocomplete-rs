@@ -153,13 +153,18 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
                 Ok(Ok(_)) => {
                     println!("Daemon responded unexpectedly: {}", ack_line.trim());
                 }
-                Ok(Err(_)) => println!("Daemon stopped (connection closed)"),
+                Ok(Err(e)) => println!("Daemon stopped (connection closed: {e})"),
                 Err(_) => println!("Daemon stop requested (timed out waiting for ack)"),
             }
         }
-        Err(_) => {
-            // Can't connect, remove stale socket
-            std::fs::remove_file(socket_path)?;
+        Err(e) => {
+            // Can't connect — remove stale socket if it's still there
+            eprintln!("Could not connect to daemon: {e}");
+            if let Err(e) = std::fs::remove_file(socket_path) {
+                if e.kind() != std::io::ErrorKind::NotFound {
+                    return Err(e).context(format!("failed to remove stale socket: {socket_path}"));
+                }
+            }
             println!("Removed stale socket (daemon was not running)");
         }
     }
@@ -181,8 +186,8 @@ async fn status_command(socket_path: &str) -> Result<()> {
         Ok(_stream) => {
             println!("Daemon is running on {}", socket_path);
         }
-        Err(_) => {
-            println!("Socket exists but daemon is not responding (stale socket)");
+        Err(e) => {
+            println!("Socket exists but daemon is not responding (stale socket: {e})");
         }
     }
 
