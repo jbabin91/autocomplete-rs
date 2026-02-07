@@ -71,7 +71,7 @@ Config: `deny.toml` — enforces dependency policies:
 
 ## Release pipeline
 
-1. Push to main → **Release PLZ** creates/updates a release PR (version bump + changelog)
+1. Push to main → **Release PLZ** creates/updates a release PR (version bump + changelog), but only if at least one commit matches `^(feat|fix|perf|refactor|revert)`. Commits like `docs:`, `ci:`, `chore:` still appear in the changelog but don't trigger a release on their own.
 2. Merge release PR → **Release PLZ** publishes to crates.io (OIDC) and tags the version
 3. Version tag → **Release** (cargo-dist) builds binaries, creates GitHub Release, publishes Homebrew formula
 

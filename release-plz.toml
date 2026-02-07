@@ -9,3 +9,7 @@ changelog_update = true
 dependencies_update = true
 # No public library API to check for semver violations
 semver_check = false
+# Only bump version when commits change runtime behavior.
+# docs/style/test/ci/build/chore commits still appear in the changelog
+# but don't trigger a release on their own.
+release_commits = "^(feat|fix|perf|refactor|revert)"
