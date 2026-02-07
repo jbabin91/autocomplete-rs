@@ -67,6 +67,8 @@ cargo nextest run -E 'test(name)'  # run a single test by name
 - Breaking changes: `feat!:` or `BREAKING CHANGE:` footer
 - Enforced locally by hk commit-msg hook (`cog verify`)
 - Enforced in CI by PR title validation (`amannn/action-semantic-pull-request`)
+- **Commit timing:** See the `commit-discipline` skill for rules. In short: don't commit
+  during active back-and-forth; commit when working autonomously or when asked.
 
 **Workflow formulas:** Use `bd mol pour <formula>` for structured work.
 
