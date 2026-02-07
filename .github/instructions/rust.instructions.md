@@ -118,6 +118,9 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
   caller-enforced rather than API-enforced, document it as such
 - Flag public RAII guards and builder methods missing `#[must_use]` — dropping a guard
   immediately negates its effect, and ignoring a builder return silently discards config
+- Flag hardcoded Rust version numbers (e.g. "1.88+") in documentation or comments — the
+  canonical MSRV is `rust-version` in `Cargo.toml`. Docs should reference the config file,
+  not repeat the value (repeated values drift on every bump)
 
 ## Testing
 

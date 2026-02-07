@@ -1,6 +1,6 @@
 # rustfmt configuration
 # See: https://rust-lang.github.io/rustfmt/
-# Only uses stable features (works with stable Rust 1.85+)
+# Only uses stable features (works with the MSRV in Cargo.toml)
 
 # Edition to use (should match Cargo.toml)
 edition = "2024"

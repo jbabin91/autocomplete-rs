@@ -7,7 +7,7 @@ development environment and make your first contribution.
 
 ### Required
 
-- **Rust** 1.85+ (for Rust 2024 Edition support)
+- **Rust** at the MSRV specified in [`Cargo.toml`](../../Cargo.toml) (Rust 2024 Edition)
 - **Git** 2.0+
 - **A Unix-like OS** (macOS or Linux)
   - Windows support via WSL planned for future
@@ -28,11 +28,11 @@ If you don't have Rust installed:
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Ensure you have Rust 1.85 or later:
+Ensure you have at least the `rust-version` specified in `Cargo.toml`:
 
 ```sh
 rustc --version
-# Should show: rustc 1.85.0 or higher
+# Should meet or exceed the rust-version in Cargo.toml
 ```
 
 If you have an older version:
@@ -87,7 +87,7 @@ mise run test
 
 All tests should pass. If any fail, check:
 
-- You're on Rust 1.85+
+- You're on the Rust version specified in `Cargo.toml`
 - You're on a Unix-like system
 - No autocomplete-rs daemon is already running
 

@@ -61,7 +61,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Verify installation:
 
 ```sh
-rustc --version  # Should be 1.85.0 or later
+rustc --version  # Should meet the rust-version in Cargo.toml
 ```
 
 #### Step 2: Clone Repository

@@ -6,7 +6,7 @@
 [![CI](https://github.com/jbabin91/autocomplete-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/jbabin91/autocomplete-rs/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/autocomplete-rs.svg)](https://crates.io/crates/autocomplete-rs)
 [![docs.rs](https://docs.rs/autocomplete-rs/badge.svg)](https://docs.rs/autocomplete-rs)
-[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fjbabin91%2Fautocomplete-rs%2Fmain%2FCargo.toml&query=%24.package%5B%22rust-version%22%5D&label=rust&color=orange&suffix=%2B)](https://www.rust-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status: Pre-Alpha](https://img.shields.io/badge/status-pre--alpha-red.svg)](https://github.com/jbabin91/autocomplete-rs)
 
@@ -97,7 +97,7 @@ cp target/release/autocomplete-rs ~/.cargo/bin/
 
 ### Requirements
 
-- **Rust:** 1.85+ (Rust 2024 Edition)
+- **Rust:** See `rust-version` in [`Cargo.toml`](Cargo.toml) (Rust 2024 Edition)
 - **OS:** macOS or Linux
 - **Shell:** Zsh 5.8+ (Bash and Fish planned for Phase 4)
 - **Terminal:** Any modern terminal emulator

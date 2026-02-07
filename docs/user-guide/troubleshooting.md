@@ -80,7 +80,7 @@ error[E0658]: use of unstable library feature 'edition_2024'
 
 ```sh
 rustup update stable
-rustc --version  # Should be 1.85.0+
+rustc --version  # Should meet the rust-version in Cargo.toml
 ```
 
 **2. Missing dependencies:**

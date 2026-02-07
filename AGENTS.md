@@ -29,7 +29,7 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
 
 ## Development
 
-- **Rust 2024 Edition** (1.88+)
+- **Rust 2024 Edition** (MSRV in `Cargo.toml` `rust-version`)
 - **Task runner:** mise (see mise.toml)
 - **Git hooks:** hk (see hk.pkl) — runs fmt, clippy, check on pre-commit; commit-msg validation; tests on pre-push
 - **Formatting:** rustfmt (100 char width), prettier for non-Rust files, taplo for TOML, markdownlint-cli2 for markdown

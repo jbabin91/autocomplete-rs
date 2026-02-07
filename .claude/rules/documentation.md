@@ -38,3 +38,14 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 - Use future tense or markers for planned features ("Phase 2 will add...")
 - Link to beads issues (`bd list`, `bd ready`) instead of removed ROADMAP.md
 - Keep ADRs immutable once accepted (add new ADRs to supersede)
+
+## Single Source of Truth
+
+- **MSRV / Rust version**: `Cargo.toml` `rust-version` field is the canonical
+  source. Never hardcode version numbers (e.g. "1.88+") in prose — reference
+  `Cargo.toml` instead. CI already reads it dynamically. The README badge uses a
+  dynamic shields.io query against `Cargo.toml` on `main`.
+- **Edition**: `Cargo.toml` `edition` field. `rustfmt.toml` mirrors it but the
+  canonical source is Cargo.
+- When a value is defined in a config file, docs should say "see X in Y" rather
+  than repeating the value — repeated values drift out of sync on every bump.
