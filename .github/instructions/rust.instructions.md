@@ -25,6 +25,8 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 - Flag `let _ =` on `Result` values in production code — file operations must check
   `ErrorKind::NotFound` (expected) vs real errors (permission denied, disk full). Use
   `return Err(e).context(...)` in functions, `tracing::warn!` in Drop impls
+- Flag `let _ =` on channel `send()`/`try_send()` — log the failure (at minimum
+  `debug!`) so channel-closed vs channel-full conditions are diagnosable
 - Flag `Err(_)` that discards error details when the error type has multiple failure
   modes (e.g. `io::Error` could be `PermissionDenied`, `NotFound`, `BrokenPipe`). Only
   discard when the error type is single-meaning (e.g. `tokio::time::Elapsed` always
@@ -84,10 +86,15 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 
 ## Numeric Safety
 
-- Flag `as` casts between integer types that could overflow (e.g. `u32 as i32`) — use
-  `TryFrom`/`try_into()` with a fallback for conversions where the source range exceeds
-  the target type. Only use `as` when the conversion is guaranteed lossless (e.g.
-  `u16 as u32`) or when the truncation is intentional and documented
+- Flag `as` casts between integer types that could overflow (e.g. `u64 as i64`) — use
+  `TryFrom`/`try_into()` with a fallback (e.g. `.unwrap_or(i64::MAX)`) for conversions
+  where the source range exceeds the target type
+- For lossless widening, flag `as` and prefer `From` trait (e.g. `i64::from(u32_val)`)
+  — the compiler enforces that the conversion is actually lossless, whereas `as` silently
+  compiles even when a future type change makes the cast lossy
+- Flag `row.get(idx).ok()` in database code — this hides decode/type errors by
+  converting them to `None`. For nullable columns, use typed extraction
+  (`row.get::<Option<T>>(idx).context("column_name")?`) so only SQL NULL becomes `None`
 
 ## Code Style
 
@@ -101,6 +108,11 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 - Protocol message fallback parsing must check for `"type"` field presence — if JSON
   has a `"type"` field but fails to parse as a known variant, return an error instead
   of silently falling back to a bare request type
+- Doc comments must match actual behavior — flag "silently dropped" when code logs a
+  warning, or "read-only" when the API doesn't enforce it. If a constraint is
+  caller-enforced rather than API-enforced, document it as such
+- Flag public RAII guards and builder methods missing `#[must_use]` — dropping a guard
+  immediately negates its effect, and ignoring a builder return silently discards config
 
 ## Testing
 
@@ -117,3 +129,7 @@ See `docs/development/testing.md` for full testing patterns and conventions.
   exit but ignoring whether the shutdown response was a valid `ShutdownAck`)
 - Test comments must match what the assertion actually checks — flag misleading
   comments that describe a weaker check than the code enforces
+- Flag `sleep()`-based waits for spawned task/actor completion — await the
+  `JoinHandle` after sending a shutdown signal for deterministic behavior.
+  Fixed sleeps are flaky under CI load and slow the suite. `sleep` is only
+  acceptable for polling loops with retry (e.g. waiting for a socket)

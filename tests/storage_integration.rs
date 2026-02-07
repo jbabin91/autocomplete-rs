@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use autocomplete_rs::storage::events::{DiagnosticCategory, Severity};
 use autocomplete_rs::storage::{self, StorageEvent};
 
@@ -79,17 +77,14 @@ async fn full_lifecycle_with_tempdir() {
     // Shut down the actor (flushes remaining events)
     handle.shutdown().await;
 
-    // Give the actor a moment to fully close
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    // Open read-only and query the report
+    // Open and query the report
     let conn = storage::open_readonly(&db_path).await.unwrap();
     let report = storage::query_diagnose_report(&conn).await.unwrap();
 
     // Verify sessions
     assert_eq!(report.recent_sessions.len(), 1);
     assert_eq!(report.recent_sessions[0].session_id, session_id);
-    assert_eq!(report.recent_sessions[0].pid, std::process::id() as i64);
+    assert_eq!(report.recent_sessions[0].pid, i64::from(std::process::id()));
     assert_eq!(
         report.recent_sessions[0].stop_reason.as_deref(),
         Some("shutdown")

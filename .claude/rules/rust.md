@@ -15,6 +15,8 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   - Functions: `return Err(e).context("what failed")`
   - Drop impls: `tracing::warn!` (can't propagate errors)
   - Tests: `panic!` (surfaces failures in test output)
+  - Channel sends (`send()`, `try_send()`): at minimum `debug!`/`warn!`
+    the failure — a closed or full channel is diagnosable info, not noise
 - Never `Err(_)` when the error type has multiple failure modes (`io::Error`,
   `anyhow::Error`). Only discard single-meaning errors (`tokio::time::Elapsed`,
   `TryAcquireError`)
@@ -25,14 +27,22 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   socket file on `ConnectionRefused` (definitely stale). Other connect
   errors (`PermissionDenied`, transient FS errors) could mean a live
   daemon — deleting its socket would break it
+- Keep doc comments in sync with behavior — if a function logs on error,
+  don't document it as "silently dropped" (and vice versa)
 
 ## Type Safety
 
 - Use `TryFrom`/`try_into()` for numeric conversions that could overflow
-  (e.g. `u32` to `i32`). Only use `as` when lossless is guaranteed
-  (`u16 as u32`) or truncation is intentional and documented
+  (e.g. `u64` to `i64`). Prefer clamping (`unwrap_or(i64::MAX)`) over
+  panicking when overflow is non-critical (e.g. metrics storage)
+- For lossless widening, prefer `From` trait (`i64::from(u32_val)`) over
+  `as` — the compiler enforces that the conversion is actually lossless.
+  Reserve `as` for cases where `From` isn't available
 - Public types derive `Debug`. Serde types derive both `Serialize` and
   `Deserialize` unless single-direction
+- Add `#[must_use]` to RAII guards whose Drop has side effects (e.g.
+  `ConnectionGuard` decrementing a counter) and builder methods that
+  return `Self` — prevents silent no-ops when the return value is ignored
 
 ## Protocol
 
@@ -62,6 +72,11 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - Test helpers must assert every intermediate result — no `let _ =`
 - Wrap I/O test helpers in `tokio::time::timeout` to prevent hangs
 - Atomic counters for unique socket paths, not timestamps or random values
+- When testing spawned tasks/actors, await the `JoinHandle` after sending
+  a shutdown signal — never use `sleep()` to "wait for processing". Fixed
+  sleeps are flaky under load and slow down the suite
+- `sleep`-based waits are acceptable only for polling loops with retry
+  (e.g. waiting for a socket to become ready) or async file cleanup
 
 ## Tooling
 

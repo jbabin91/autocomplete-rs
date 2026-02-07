@@ -113,7 +113,7 @@ async fn write_event(tx: &libsql::Transaction, event: StorageEvent) -> Result<()
             tx.execute(
                 "INSERT INTO daemon_sessions (session_id, pid, version, mode, socket_path) \
                  VALUES (?1, ?2, ?3, ?4, ?5)",
-                libsql::params![session_id, pid as i64, version, mode, socket_path],
+                libsql::params![session_id, i64::from(pid), version, mode, socket_path],
             )
             .await?;
         }
@@ -154,16 +154,15 @@ async fn write_event(tx: &libsql::Transaction, event: StorageEvent) -> Result<()
             active_connections,
             uptime_secs,
         } => {
+            let total_requests = i64::try_from(total_requests).unwrap_or(i64::MAX);
+            let active_connections = i64::try_from(active_connections).unwrap_or(i64::MAX);
+            let uptime_secs = i64::try_from(uptime_secs).unwrap_or(i64::MAX);
+
             tx.execute(
                 "INSERT INTO metrics_snapshots \
                  (session_id, total_requests, active_connections, uptime_secs) \
                  VALUES (?1, ?2, ?3, ?4)",
-                libsql::params![
-                    session_id,
-                    total_requests as i64,
-                    active_connections as i64,
-                    uptime_secs as i64
-                ],
+                libsql::params![session_id, total_requests, active_connections, uptime_secs],
             )
             .await?;
         }
@@ -184,7 +183,12 @@ mod tests {
 
     static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-    async fn setup() -> (Connection, mpsc::Sender<StorageEvent>, tempfile::TempDir) {
+    async fn setup() -> (
+        Connection,
+        mpsc::Sender<StorageEvent>,
+        tokio::task::JoinHandle<()>,
+        tempfile::TempDir,
+    ) {
         let dir = tempfile::tempdir().unwrap();
         let id = COUNTER.fetch_add(1, Ordering::Relaxed);
         let db_path = dir.path().join(format!("test-{id}.db"));
@@ -196,14 +200,14 @@ mod tests {
         let actor_conn = db.connect().unwrap();
         let (tx, rx) = mpsc::channel(1024);
 
-        tokio::spawn(run(actor_conn, rx));
+        let handle = tokio::spawn(run(actor_conn, rx));
 
-        (conn, tx, dir)
+        (conn, tx, handle, dir)
     }
 
     #[tokio::test]
     async fn session_lifecycle() {
-        let (conn, tx, _dir) = setup().await;
+        let (conn, tx, actor_handle, _dir) = setup().await;
 
         tx.send(StorageEvent::SessionStart {
             session_id: "sess-1".into(),
@@ -223,8 +227,7 @@ mod tests {
         .unwrap();
 
         tx.send(StorageEvent::Flush).await.unwrap();
-        // Give actor time to process
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        actor_handle.await.unwrap();
 
         let mut rows = conn
             .query(
@@ -242,7 +245,7 @@ mod tests {
 
     #[tokio::test]
     async fn diagnostic_event_persisted() {
-        let (conn, tx, _dir) = setup().await;
+        let (conn, tx, actor_handle, _dir) = setup().await;
 
         tx.send(StorageEvent::Diagnostic {
             session_id: "sess-2".into(),
@@ -256,7 +259,7 @@ mod tests {
         .unwrap();
 
         tx.send(StorageEvent::Flush).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        actor_handle.await.unwrap();
 
         let mut rows = conn
             .query(
@@ -276,7 +279,7 @@ mod tests {
 
     #[tokio::test]
     async fn metrics_snapshot_persisted() {
-        let (conn, tx, _dir) = setup().await;
+        let (conn, tx, actor_handle, _dir) = setup().await;
 
         tx.send(StorageEvent::MetricsSnapshot {
             session_id: "sess-3".into(),
@@ -288,7 +291,7 @@ mod tests {
         .unwrap();
 
         tx.send(StorageEvent::Flush).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        actor_handle.await.unwrap();
 
         let mut rows = conn
             .query(

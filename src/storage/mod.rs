@@ -35,7 +35,9 @@ impl StorageHandle {
     /// Send a `Flush` sentinel and wait for the actor to exit (with timeout).
     pub async fn shutdown(self) {
         // Best-effort send of Flush — channel may already be closed
-        let _ = self.sender.send(StorageEvent::Flush).await;
+        if let Err(e) = self.sender.send(StorageEvent::Flush).await {
+            debug!("failed to send Flush to storage actor (channel likely closed): {e}");
+        }
 
         let abort = self.actor_handle.abort_handle();
         match tokio::time::timeout(SHUTDOWN_TIMEOUT, self.actor_handle).await {
@@ -80,7 +82,10 @@ pub async fn init(db_path: &Path) -> Result<StorageHandle> {
     })
 }
 
-/// Open a read-only connection to the database (for the diagnose command).
+/// Open a connection to the database intended for read-only use (e.g. the diagnose command).
+///
+/// Note: libsql does not expose a read-only connection mode, so callers are
+/// responsible for not issuing writes through this connection.
 pub async fn open_readonly(db_path: &Path) -> Result<Connection> {
     let db = libsql::Builder::new_local(db_path)
         .build()

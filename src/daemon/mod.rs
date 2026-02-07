@@ -88,11 +88,13 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
     };
 
     // Emit session stop (best-effort — storage_handle may have sender)
-    if let Some(ref handle) = storage_handle {
-        let _ = handle.sender.try_send(StorageEvent::SessionStop {
+    if let Some(ref handle) = storage_handle
+        && let Err(e) = handle.sender.try_send(StorageEvent::SessionStop {
             session_id,
             reason: reason.to_string(),
-        });
+        })
+    {
+        tracing::warn!("failed to emit session stop event: {e}");
     }
 
     // Shut down storage actor

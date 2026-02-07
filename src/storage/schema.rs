@@ -36,7 +36,7 @@ async fn current_version(conn: &Connection) -> Result<u32> {
     match row {
         Some(row) => {
             let version: i64 = row.get(0).context("failed to get version column")?;
-            Ok(version as u32)
+            u32::try_from(version).context("schema_version value out of range for u32")
         }
         None => Ok(0),
     }

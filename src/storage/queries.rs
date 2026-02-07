@@ -87,8 +87,8 @@ async fn query_recent_sessions(conn: &Connection) -> Result<Vec<SessionSummary>>
             mode: row.get(3).context("mode")?,
             socket_path: row.get(4).context("socket_path")?,
             started_at: row.get(5).context("started_at")?,
-            stopped_at: row.get(6).ok(),
-            stop_reason: row.get(7).ok(),
+            stopped_at: row.get::<Option<String>>(6).context("stopped_at")?,
+            stop_reason: row.get::<Option<String>>(7).context("stop_reason")?,
         });
     }
     Ok(sessions)
@@ -110,12 +110,12 @@ async fn query_recent_errors(conn: &Connection) -> Result<Vec<DiagnosticEventRow
     while let Some(row) = rows.next().await.context("failed to read diagnostic row")? {
         events.push(DiagnosticEventRow {
             session_id: row.get(0).context("session_id")?,
-            request_id: row.get(1).ok(),
+            request_id: row.get::<Option<String>>(1).context("request_id")?,
             timestamp: row.get(2).context("timestamp")?,
             severity: row.get(3).context("severity")?,
             category: row.get(4).context("category")?,
             message: row.get(5).context("message")?,
-            context: row.get(6).ok(),
+            context: row.get::<Option<String>>(6).context("context")?,
         });
     }
     Ok(events)

@@ -17,7 +17,9 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 
 ## What Actually Exists Today
 
-- Daemon: basic Unix socket server with hardcoded empty suggestions
+- Daemon: Unix socket server with hardcoded empty suggestions
+- Storage: local libSQL database for session lifecycle, diagnostics, and metrics
+- CLI: `daemon`, `stop`, `status`, `complete`, `install`, `diagnose` subcommands
 - Parser: stub (returns empty vec)
 - Inline dropdown: not yet implemented (old Ratatui TUI removed)
 - Shell integration: zsh ZLE widget (functional but no real completions)

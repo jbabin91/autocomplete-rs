@@ -50,12 +50,14 @@ impl DaemonState {
     }
 
     /// Set the storage event sender.
+    #[must_use]
     pub fn with_storage(mut self, sender: StorageEventSender) -> Self {
         self.storage = Some(sender);
         self
     }
 
     /// Set the session ID.
+    #[must_use]
     pub fn with_session_id(mut self, session_id: String) -> Self {
         self.session_id = session_id;
         self
@@ -64,7 +66,7 @@ impl DaemonState {
     /// Emit a storage event (non-blocking, best-effort).
     ///
     /// Uses `try_send()` to avoid awaiting on the channel. If the channel is
-    /// full or absent, the event is silently dropped — storage events are
+    /// full or absent, the event is dropped with a warning — storage events are
     /// observability data, not business-critical.
     pub fn emit_storage_event(&self, event: StorageEvent) {
         if let Some(ref sender) = self.storage
@@ -75,6 +77,7 @@ impl DaemonState {
     }
 
     /// Increment active connections, returning a guard that decrements on drop.
+    #[must_use = "dropping the guard immediately decrements active_connections"]
     pub fn connection_guard(&self) -> ConnectionGuard {
         self.active_connections.fetch_add(1, Ordering::Relaxed);
         ConnectionGuard {
