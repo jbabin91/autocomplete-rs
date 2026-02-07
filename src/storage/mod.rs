@@ -8,10 +8,10 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
-use libsql::Connection;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tracing::debug;
+use turso::Connection;
 
 pub use self::events::{DiagnosticCategory, Severity, StorageEvent};
 pub use self::queries::{DiagnoseReport, query_diagnose_report};
@@ -74,7 +74,11 @@ impl StorageHandle {
 pub async fn init(db_path: &Path) -> Result<StorageHandle> {
     ensure_data_dir(db_path)?;
 
-    let db = libsql::Builder::new_local(db_path)
+    let db_path_str = db_path
+        .to_str()
+        .context("database path is not valid UTF-8")?;
+
+    let db = turso::Builder::new_local(db_path_str)
         .build()
         .await
         .context("failed to open storage database")?;
@@ -99,10 +103,14 @@ pub async fn init(db_path: &Path) -> Result<StorageHandle> {
 
 /// Open a connection to the database intended for read-only use (e.g. the diagnose command).
 ///
-/// Note: libsql does not expose a read-only connection mode, so callers are
+/// Note: turso does not expose a read-only connection mode, so callers are
 /// responsible for not issuing writes through this connection.
 pub async fn open_readonly(db_path: &Path) -> Result<Connection> {
-    let db = libsql::Builder::new_local(db_path)
+    let db_path_str = db_path
+        .to_str()
+        .context("database path is not valid UTF-8")?;
+
+    let db = turso::Builder::new_local(db_path_str)
         .build()
         .await
         .context("failed to open storage database")?;

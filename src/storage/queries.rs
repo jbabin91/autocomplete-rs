@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
-use libsql::Connection;
 use serde::Serialize;
+use turso::Connection;
 
 /// Complete diagnostic report for the `diagnose` CLI command.
 #[derive(Debug, Serialize)]
@@ -172,10 +172,7 @@ mod tests {
     use crate::storage::schema::run_migrations;
 
     async fn setup() -> Connection {
-        let db = libsql::Builder::new_local(":memory:")
-            .build()
-            .await
-            .unwrap();
+        let db = turso::Builder::new_local(":memory:").build().await.unwrap();
         let conn = db.connect().unwrap();
         run_migrations(&conn).await.unwrap();
         conn

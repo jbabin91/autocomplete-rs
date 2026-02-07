@@ -71,15 +71,7 @@ git clone https://github.com/jbabin91/autocomplete-rs.git
 cd autocomplete-rs
 ```
 
-#### Step 3: Install Build Dependencies
-
-The storage layer (libsql) requires a C compiler and CMake:
-
-- **macOS:** `xcode-select --install` (provides clang), then `brew install cmake`
-- **Ubuntu/Debian:** `sudo apt-get install build-essential cmake`
-- **Fedora:** `sudo dnf install gcc cmake`
-
-#### Step 4: Build Release Binary
+#### Step 3: Build Release Binary
 
 ```sh
 cargo build --release
@@ -87,7 +79,7 @@ cargo build --release
 
 This creates `target/release/autocomplete-rs` (~5-10MB)
 
-#### Step 4: Install Binary
+#### Step 4: Install Binary (Optional)
 
 ```sh
 # Option A: Copy to ~/.cargo/bin (recommended)

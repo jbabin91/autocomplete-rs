@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use libsql::Connection;
+use turso::Connection;
 
 /// Run all pending migrations, returning the final schema version.
 pub async fn run_migrations(conn: &Connection) -> Result<u32> {
@@ -101,10 +101,7 @@ mod tests {
     use super::*;
 
     async fn in_memory_conn() -> Connection {
-        let db = libsql::Builder::new_local(":memory:")
-            .build()
-            .await
-            .unwrap();
+        let db = turso::Builder::new_local(":memory:").build().await.unwrap();
         db.connect().unwrap()
     }
 

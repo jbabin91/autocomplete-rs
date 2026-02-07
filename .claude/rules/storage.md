@@ -7,9 +7,9 @@ paths:
 
 ## Architecture
 
-- **libSQL** with `core` feature for local-only embedded SQLite — no
-  network, no replication overhead. Upgrade path to Turso remote sync
-  later by changing to `features = ["core", "replication"]`
+- **turso** (pure-Rust SQLite rewrite) for local-only embedded storage —
+  no native build dependencies (no cmake, cc, or bindgen). Zero C
+  compilation required for `cargo install`
 - **Channel+Actor pattern** keeps DB writes off the completion hot path:
   `mpsc::Sender<StorageEvent>` in `DaemonState`, background actor owns
   the `Connection` and batches writes into transactions
@@ -26,7 +26,7 @@ paths:
 
 ## Database Queries
 
-- **Always use parameterized queries** (`libsql::params![]`) — never
+- **Always use parameterized queries** (`turso::params![]`) — never
   interpolate user data into SQL strings
 - **Nullable columns**: decode as `row.get::<Option<T>>(idx)` with
   `.context()` — never use `.ok()` to convert errors to `None`, which
@@ -37,7 +37,7 @@ paths:
 
 ## Numeric Conversions for DB Params
 
-- SQLite/libSQL stores integers as `i64`. When writing Rust `u64`
+- SQLite/turso stores integers as `i64`. When writing Rust `u64`
   counters (metrics), use `i64::try_from(val).unwrap_or(i64::MAX)` to
   clamp on overflow instead of `as i64` which wraps silently
 - For `u32` → `i64` (e.g. PID), use `i64::from(val)` — lossless and
@@ -61,7 +61,7 @@ paths:
   await it after sending `Flush` — never use `sleep()` for
   synchronization
 - Use file-based tempdir DBs for actor tests (not `:memory:`) — in-memory
-  libSQL doesn't share state across multiple `db.connect()` calls
+  turso doesn't share state across multiple `db.connect()` calls
 - `ensure_data_dir()` enforces 0700 permissions — use a subdirectory
   within `tempdir()` for integration tests since tempdir creates with
   0755

@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use libsql::Connection;
 use tokio::sync::mpsc;
 use tracing::{debug, warn};
+use turso::Connection;
 
 use super::events::StorageEvent;
 
@@ -79,7 +79,7 @@ async fn flush_batch(conn: &Connection, batch: &mut Vec<StorageEvent>) {
     let count = batch.len();
     debug!(count, "storage actor: flushing batch");
 
-    let tx = match conn.transaction().await {
+    let tx = match conn.unchecked_transaction().await {
         Ok(tx) => tx,
         Err(e) => {
             warn!("storage: failed to begin transaction: {e}");
@@ -101,7 +101,7 @@ async fn flush_batch(conn: &Connection, batch: &mut Vec<StorageEvent>) {
 }
 
 /// Write a single event to the database within a transaction.
-async fn write_event(tx: &libsql::Transaction, event: StorageEvent) -> Result<()> {
+async fn write_event(tx: &turso::transaction::Transaction<'_>, event: StorageEvent) -> Result<()> {
     match event {
         StorageEvent::SessionStart {
             session_id,
@@ -113,7 +113,7 @@ async fn write_event(tx: &libsql::Transaction, event: StorageEvent) -> Result<()
             tx.execute(
                 "INSERT INTO daemon_sessions (session_id, pid, version, mode, socket_path) \
                  VALUES (?1, ?2, ?3, ?4, ?5)",
-                libsql::params![session_id, i64::from(pid), version, mode, socket_path],
+                turso::params![session_id, i64::from(pid), version, mode, socket_path],
             )
             .await?;
         }
@@ -121,7 +121,7 @@ async fn write_event(tx: &libsql::Transaction, event: StorageEvent) -> Result<()
             tx.execute(
                 "UPDATE daemon_sessions SET stopped_at = datetime('now'), stop_reason = ?1 \
                  WHERE session_id = ?2",
-                libsql::params![reason, session_id],
+                turso::params![reason, session_id],
             )
             .await?;
         }
@@ -137,7 +137,7 @@ async fn write_event(tx: &libsql::Transaction, event: StorageEvent) -> Result<()
                 "INSERT INTO diagnostic_events \
                  (session_id, request_id, severity, category, message, context) \
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                libsql::params![
+                turso::params![
                     session_id,
                     request_id,
                     severity.to_string(),
@@ -162,7 +162,7 @@ async fn write_event(tx: &libsql::Transaction, event: StorageEvent) -> Result<()
                 "INSERT INTO metrics_snapshots \
                  (session_id, total_requests, active_connections, uptime_secs) \
                  VALUES (?1, ?2, ?3, ?4)",
-                libsql::params![session_id, total_requests, active_connections, uptime_secs],
+                turso::params![session_id, total_requests, active_connections, uptime_secs],
             )
             .await?;
         }
@@ -193,7 +193,10 @@ mod tests {
         let id = COUNTER.fetch_add(1, Ordering::Relaxed);
         let db_path = dir.path().join(format!("test-{id}.db"));
 
-        let db = libsql::Builder::new_local(&db_path).build().await.unwrap();
+        let db = turso::Builder::new_local(db_path.to_str().unwrap())
+            .build()
+            .await
+            .unwrap();
         let conn = db.connect().unwrap();
         run_migrations(&conn).await.unwrap();
 
