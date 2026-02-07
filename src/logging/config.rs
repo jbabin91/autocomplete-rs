@@ -25,7 +25,9 @@ pub fn detect_mode() -> Mode {
 
 /// Return the default log directory: `~/.autocomplete-rs/logs/`.
 pub fn default_log_dir() -> PathBuf {
-    dirs_or_home().join(".autocomplete-rs").join("logs")
+    crate::paths::home_dir()
+        .join(".autocomplete-rs")
+        .join("logs")
 }
 
 /// Return a custom log directory from env, or the default.
@@ -122,13 +124,6 @@ pub fn cleanup_old_logs(dir: &Path, days: u32) -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Fallback home directory resolution.
-fn dirs_or_home() -> PathBuf {
-    std::env::var("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/tmp"))
 }
 
 #[cfg(test)]

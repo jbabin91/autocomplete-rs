@@ -120,7 +120,7 @@ pub async fn open_readonly(db_path: &Path) -> Result<Connection> {
 
 /// Return the default database path: `~/.autocomplete-rs/autocomplete.db`.
 pub fn default_db_path() -> PathBuf {
-    dirs_or_home()
+    crate::paths::home_dir()
         .join(".autocomplete-rs")
         .join("autocomplete.db")
 }
@@ -154,11 +154,4 @@ fn ensure_data_dir(db_path: &Path) -> Result<()> {
             .context("failed to set data directory permissions")?;
         Ok(())
     }
-}
-
-/// Fallback home directory resolution.
-fn dirs_or_home() -> PathBuf {
-    std::env::var("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/tmp"))
 }
