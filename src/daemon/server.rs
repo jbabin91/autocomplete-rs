@@ -50,6 +50,10 @@ pub async fn run(listener: UnixListener, state: DaemonState, socket_path: &Path)
                 break;
             }
 
+            // Reap completed connection tasks so the JoinSet doesn't grow
+            // without bound in a long-running daemon.
+            Some(_) = tasks.join_next() => continue,
+
             // Accept new connections
             result = listener.accept() => {
                 match result {

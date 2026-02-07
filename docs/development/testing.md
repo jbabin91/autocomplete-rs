@@ -362,23 +362,16 @@ fn test_with_git_spec() {
 ```rust
 #[tokio::test]
 async fn test_daemon_startup() {
-    let socket = "/tmp/test.sock";
+    let socket = temp_socket_path(); // atomic counter, not hardcoded
 
-    // Spawn daemon in background
-    let handle = tokio::spawn(async move {
-        daemon::start(socket).await
-    });
-
-    // Wait for startup
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let handle = start_daemon(&socket).await;
 
     // Test connection
-    let stream = UnixStream::connect(socket).await;
+    let stream = UnixStream::connect(&socket).await;
     assert!(stream.is_ok());
 
-    // Cleanup
-    handle.abort();
-    std::fs::remove_file(socket).unwrap();
+    // Graceful shutdown — grab AbortHandle before timeout to avoid task leak
+    shutdown_daemon(&socket, handle).await;
 }
 ```
 

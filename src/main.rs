@@ -167,14 +167,21 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
             }
         }
         Err(e) => {
-            // Can't connect — remove stale socket if it's still there
-            eprintln!("Could not connect to daemon: {e}");
-            if let Err(e) = std::fs::remove_file(socket_path) {
-                if e.kind() != std::io::ErrorKind::NotFound {
-                    return Err(e).context(format!("failed to remove stale socket: {socket_path}"));
+            // Only remove the socket if the error indicates nothing is listening
+            // (ConnectionRefused). Other errors (PermissionDenied, transient FS
+            // errors) could mean a live daemon we can't reach — deleting its
+            // socket would break it.
+            if e.kind() == std::io::ErrorKind::ConnectionRefused {
+                if let Err(rm_err) = std::fs::remove_file(socket_path) {
+                    if rm_err.kind() != std::io::ErrorKind::NotFound {
+                        return Err(rm_err)
+                            .context(format!("failed to remove stale socket: {socket_path}"));
+                    }
                 }
+                println!("Removed stale socket (daemon was not running)");
+            } else {
+                eprintln!("Could not connect to daemon: {e}");
             }
-            println!("Removed stale socket (daemon was not running)");
         }
     }
 

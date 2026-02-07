@@ -52,6 +52,9 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
   open-ended socket I/O (a stalled client can block handler tasks indefinitely)
 - Signal futures (`signal::ctrl_c()`) must be created once outside loops and pinned
   — flag re-creation inside `select!` loops (wasteful re-registration per iteration)
+- Long-running `select!` loops with a `JoinSet` must include a `tasks.join_next()`
+  branch to reap completed tasks — flag loops that only drain at shutdown (the JoinSet
+  grows without bound as finished tasks are retained until joined)
 - After `JoinSet::abort_all()`, call `while tasks.join_next().await.is_some() {}`
   to observe cancelled tasks — flag bare `abort_all()` without draining
 - Flag `timeout(join_handle).await` without an `AbortHandle` — dropping a `JoinHandle`
@@ -62,6 +65,9 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 
 - Socket paths and temp files must be cleaned up via RAII (Drop) — flag manual cleanup
   in happy-path-only code
+- Flag stale-socket deletion that triggers on any connect error — only `ConnectionRefused`
+  means "definitely stale". Other errors (`PermissionDenied`, transient FS) could indicate
+  a live daemon; deleting its socket would break it
 - Semaphore-based backpressure (`try_acquire_owned`) for connection limiting — flag
   unbounded accept loops
 - PID files use `kill(pid, 0)` liveness checks — flag file-existence-only checks
