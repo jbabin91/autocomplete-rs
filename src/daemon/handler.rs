@@ -124,11 +124,18 @@ fn parse_message(line: &str) -> ParsedMessage {
         };
     }
 
-    // If the JSON has a "type" field, it was intended as a DaemonMessage but had an
-    // unrecognized type value — don't silently fall back to CompletionRequest.
+    // If the JSON has a "type" field, it was intended as a DaemonMessage — don't
+    // silently fall back to CompletionRequest. Distinguish unknown types from known
+    // types with invalid payloads.
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
-        if value.get("type").is_some() {
-            return ParsedMessage::Error(format!("unknown message type: {}", value["type"]));
+        if let Some(ty) = value.get("type") {
+            let known = matches!(ty.as_str(), Some("complete" | "shutdown"));
+            if known {
+                return ParsedMessage::Error(format!(
+                    "invalid payload for message type {ty}: check field types"
+                ));
+            }
+            return ParsedMessage::Error(format!("unknown message type: {ty}"));
         }
     }
 
@@ -269,6 +276,19 @@ mod tests {
         let resp = roundtrip(r#"{"type":"unknown","buffer":"ls","cursor":2}"#, &state).await;
         let parsed: ErrorResponse = serde_json::from_str(&resp).unwrap();
         assert!(parsed.error.contains("unknown message type"));
+    }
+
+    #[tokio::test]
+    async fn known_type_with_bad_payload_reports_invalid_payload() {
+        let state = make_state();
+        // Valid type but wrong field types — should say "invalid payload", not "unknown type"
+        let resp = roundtrip(r#"{"type":"complete","buffer":123,"cursor":"abc"}"#, &state).await;
+        let parsed: ErrorResponse = serde_json::from_str(&resp).unwrap();
+        assert!(
+            parsed.error.contains("invalid payload"),
+            "expected 'invalid payload' error, got: {}",
+            parsed.error
+        );
     }
 
     #[tokio::test]

@@ -82,6 +82,13 @@ async fn start_daemon(socket_path: &Path) -> tokio::task::JoinHandle<()> {
     panic!("daemon did not start in time");
 }
 
+/// Shut down the daemon and assert it exits within the timeout.
+async fn shutdown_daemon(socket_path: &Path, handle: tokio::task::JoinHandle<()>) {
+    let _ = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
+    let result = tokio::time::timeout(Duration::from_secs(2), handle).await;
+    assert!(result.is_ok(), "daemon did not exit within timeout");
+}
+
 /// Send a JSON line to the daemon and read the response.
 async fn send_request(socket_path: &Path, json: &str) -> String {
     let stream = UnixStream::connect(socket_path).await.unwrap();
@@ -107,9 +114,7 @@ async fn start_connect_complete() {
     let parsed: CompletionResponse = serde_json::from_str(&resp).unwrap();
     assert!(parsed.suggestions.is_empty());
 
-    // Cleanup: send shutdown
-    let _ = send_request(&path, r#"{"type":"shutdown"}"#).await;
-    let _ = tokio::time::timeout(Duration::from_secs(2), handle).await;
+    shutdown_daemon(&path, handle).await;
 }
 
 #[tokio::test]
@@ -147,8 +152,7 @@ async fn socket_permissions() {
         "socket should not be group/other accessible"
     );
 
-    let _ = send_request(&path, r#"{"type":"shutdown"}"#).await;
-    let _ = tokio::time::timeout(Duration::from_secs(2), handle).await;
+    shutdown_daemon(&path, handle).await;
 }
 
 #[tokio::test]
@@ -174,8 +178,7 @@ async fn concurrent_connections() {
         h.await.unwrap();
     }
 
-    let _ = send_request(&path, r#"{"type":"shutdown"}"#).await;
-    let _ = tokio::time::timeout(Duration::from_secs(2), handle).await;
+    shutdown_daemon(&path, handle).await;
 }
 
 #[tokio::test]
@@ -187,8 +190,7 @@ async fn malformed_json_returns_error() {
     let parsed: ErrorResponse = serde_json::from_str(&resp).unwrap();
     assert!(parsed.error.contains("invalid JSON"));
 
-    let _ = send_request(&path, r#"{"type":"shutdown"}"#).await;
-    let _ = tokio::time::timeout(Duration::from_secs(2), handle).await;
+    shutdown_daemon(&path, handle).await;
 }
 
 #[tokio::test]
@@ -211,6 +213,5 @@ async fn envelope_and_bare_request_both_work() {
     let resp2 = send_request(&path, r#"{"type":"complete","buffer":"ls","cursor":2}"#).await;
     let _: CompletionResponse = serde_json::from_str(&resp2).unwrap();
 
-    let _ = send_request(&path, r#"{"type":"shutdown"}"#).await;
-    let _ = tokio::time::timeout(Duration::from_secs(2), handle).await;
+    shutdown_daemon(&path, handle).await;
 }
