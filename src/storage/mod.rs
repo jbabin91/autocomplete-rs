@@ -115,6 +115,12 @@ fn ensure_data_dir(db_path: &Path) -> Result<()> {
 
     if dir.exists() {
         let metadata = fs::metadata(dir).context("failed to read data directory metadata")?;
+        if !metadata.is_dir() {
+            bail!(
+                "data directory path {} exists but is not a directory",
+                dir.display()
+            );
+        }
         let perms = metadata.permissions().mode() & 0o777;
         if perms & 0o077 != 0 {
             bail!(

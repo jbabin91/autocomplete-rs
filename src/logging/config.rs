@@ -57,6 +57,12 @@ pub fn console_enabled(mode: &Mode) -> bool {
 pub fn ensure_log_dir(path: &Path) -> Result<()> {
     if path.exists() {
         let metadata = fs::metadata(path).context("failed to read log directory metadata")?;
+        if !metadata.is_dir() {
+            bail!(
+                "log directory path {} exists but is not a directory",
+                path.display()
+            );
+        }
         let perms = metadata.permissions().mode() & 0o777;
         if perms & 0o077 != 0 {
             bail!(

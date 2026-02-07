@@ -80,6 +80,9 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 - PID files use `kill(pid, 0)` liveness checks — flag file-existence-only checks
 - File creation for single-instance enforcement must use `OpenOptions::create_new(true)`
   for atomicity — flag check-then-write patterns (TOCTOU race)
+- Directory validation (`ensure_*_dir` helpers) must check `metadata.is_dir()` after
+  `path.exists()` — flag code that assumes an existing path is a directory without
+  verifying (a file at the path produces a cryptic error later)
 
 ## Type Design
 
