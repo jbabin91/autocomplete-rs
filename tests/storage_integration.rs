@@ -132,8 +132,7 @@ async fn data_dir_permissions() {
     use std::os::unix::fs::PermissionsExt;
     let mode = metadata.permissions().mode() & 0o777;
     assert_eq!(
-        mode & 0o077,
-        0,
-        "data directory should not be group/other accessible"
+        mode, 0o700,
+        "data directory should have exact 0700 permissions"
     );
 }

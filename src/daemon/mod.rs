@@ -11,6 +11,7 @@ use tokio::net::UnixListener;
 use tracing::info;
 
 use crate::engine::{CompletionEngine, StubEngine};
+use crate::logging;
 use crate::storage::{self, StorageEvent, StorageHandle};
 
 use self::pid::PidFile;
@@ -57,11 +58,7 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
     info!("daemon listening on {}", socket_path);
 
     let session_id = uuid::Uuid::new_v4().to_string();
-    let mode = if std::env::var("AUTOCOMPLETE_DEV").as_deref() == Ok("1") {
-        "development"
-    } else {
-        "production"
-    };
+    let mode = logging::detect_mode();
 
     let mut state = DaemonState::new(engine).with_session_id(session_id.clone());
     if let Some(ref handle) = storage_handle {
@@ -78,7 +75,7 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
     });
 
     // Run the accept loop (blocks until shutdown)
-    let shutdown_reason = server::run(listener, state, path, &session_id).await;
+    let shutdown_reason = server::run(listener, state, path).await;
 
     // Determine stop reason
     let reason = if shutdown_reason.is_ok() {

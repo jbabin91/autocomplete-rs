@@ -22,12 +22,7 @@ const METRICS_INTERVAL: Duration = Duration::from_secs(60);
 ///
 /// Sets socket permissions to `0o600`, accepts connections with semaphore-based
 /// backpressure, and orchestrates graceful shutdown.
-pub async fn run(
-    listener: UnixListener,
-    state: DaemonState,
-    socket_path: &Path,
-    session_id: &str,
-) -> Result<()> {
+pub async fn run(listener: UnixListener, state: DaemonState, socket_path: &Path) -> Result<()> {
     // Set socket permissions to owner-only (0600)
     set_socket_permissions(socket_path)?;
 
@@ -68,7 +63,7 @@ pub async fn run(
             // Periodic metrics snapshot
             _ = metrics_interval.tick() => {
                 state.emit_storage_event(StorageEvent::MetricsSnapshot {
-                    session_id: session_id.to_string(),
+                    session_id: state.session_id.clone(),
                     total_requests: state.total_requests.load(Ordering::Relaxed),
                     active_connections: state.active_connections.load(Ordering::Relaxed),
                     uptime_secs: start_time.elapsed().as_secs(),

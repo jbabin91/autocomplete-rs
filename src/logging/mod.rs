@@ -10,6 +10,7 @@ use anyhow::{Context, Result};
 use tracing::info;
 use tracing_appender::non_blocking::WorkerGuard;
 
+pub use self::config::detect_mode;
 pub use self::fields::new_request_id;
 pub use self::privacy::{RedactedField, redact_buffer, redact_sensitive_patterns, should_redact};
 
@@ -23,6 +24,16 @@ pub enum Mode {
     /// `RUST_LOG` set: env-controlled level, optional console, JSON file, buffers redacted
     /// unless `AUTOCOMPLETE_LOG_FULL_BUFFERS=1`.
     Troubleshooting,
+}
+
+impl std::fmt::Display for Mode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Production => f.write_str("production"),
+            Self::Development => f.write_str("development"),
+            Self::Troubleshooting => f.write_str("troubleshooting"),
+        }
+    }
 }
 
 /// Configuration for the logging subsystem.

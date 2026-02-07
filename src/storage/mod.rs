@@ -142,7 +142,7 @@ fn ensure_data_dir(db_path: &Path) -> Result<()> {
         let perms = metadata.permissions().mode() & 0o777;
         if perms & 0o077 != 0 {
             bail!(
-                "data directory {} has insecure permissions {:o} (expected 0700)",
+                "data directory {} has insecure permissions {:o} (must not be group/other accessible)",
                 dir.display(),
                 perms
             );
