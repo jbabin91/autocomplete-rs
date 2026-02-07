@@ -10,25 +10,40 @@ use tracing::{debug, error, info, warn};
 
 use super::handler;
 use super::state::DaemonState;
+use crate::storage::StorageEvent;
 
 /// Timeout for draining in-flight connections during shutdown.
 const DRAIN_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Interval between periodic metrics snapshots.
+const METRICS_INTERVAL: Duration = Duration::from_secs(60);
 
 /// Run the daemon accept loop until shutdown.
 ///
 /// Sets socket permissions to `0o600`, accepts connections with semaphore-based
 /// backpressure, and orchestrates graceful shutdown.
-pub async fn run(listener: UnixListener, state: DaemonState, socket_path: &Path) -> Result<()> {
+pub async fn run(
+    listener: UnixListener,
+    state: DaemonState,
+    socket_path: &Path,
+    session_id: &str,
+) -> Result<()> {
     // Set socket permissions to owner-only (0600)
     set_socket_permissions(socket_path)?;
 
     let mut tasks = JoinSet::new();
     let mut conn_counter: u64 = 0;
+    let start_time = tokio::time::Instant::now();
 
     info!("daemon accepting connections on {}", socket_path.display());
 
     // Create signal future once, outside the loop, to avoid re-registering per iteration.
     let mut sigint = std::pin::pin!(signal::ctrl_c());
+
+    // Metrics snapshot timer
+    let mut metrics_interval = tokio::time::interval(METRICS_INTERVAL);
+    // Skip the first immediate tick
+    metrics_interval.tick().await;
 
     loop {
         tokio::select! {
@@ -48,6 +63,16 @@ pub async fn run(listener: UnixListener, state: DaemonState, socket_path: &Path)
                 }
                 state.cancel.cancel();
                 break;
+            }
+
+            // Periodic metrics snapshot
+            _ = metrics_interval.tick() => {
+                state.emit_storage_event(StorageEvent::MetricsSnapshot {
+                    session_id: session_id.to_string(),
+                    total_requests: state.total_requests.load(Ordering::Relaxed),
+                    active_connections: state.active_connections.load(Ordering::Relaxed),
+                    uptime_secs: start_time.elapsed().as_secs(),
+                });
             }
 
             // Reap completed connection tasks so the JoinSet doesn't grow

@@ -1,8 +1,10 @@
+use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
 use autocomplete_rs::daemon;
 use autocomplete_rs::protocol::{CompletionRequest, DaemonMessage, PROTOCOL_VERSION, ShutdownAck};
+use autocomplete_rs::storage;
 use clap::{Parser, Subcommand};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
@@ -53,6 +55,15 @@ enum Commands {
         /// Shell to install for (zsh, bash, fish)
         shell: String,
     },
+    /// Show diagnostic report from the storage database
+    Diagnose {
+        /// Path to the storage database
+        #[arg(long, default_value_os_t = storage::default_db_path())]
+        db: PathBuf,
+        /// Output as JSON instead of human-readable format
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[tokio::main]
@@ -84,6 +95,9 @@ async fn main() -> Result<()> {
         }
         Commands::Install { shell } => {
             install_command(&shell)?;
+        }
+        Commands::Diagnose { db, json } => {
+            diagnose_command(&db, json).await?;
         }
     }
 
@@ -229,5 +243,112 @@ fn install_command(shell: &str) -> Result<()> {
             );
         }
     }
+    Ok(())
+}
+
+/// Show diagnostic report from the storage database.
+async fn diagnose_command(db_path: &std::path::Path, json: bool) -> Result<()> {
+    if !db_path.exists() {
+        println!("No storage database found at {}", db_path.display());
+        println!("The daemon creates this database on first run.");
+        return Ok(());
+    }
+
+    let conn = storage::open_readonly(db_path)
+        .await
+        .context("failed to open storage database")?;
+
+    let report = storage::query_diagnose_report(&conn)
+        .await
+        .context("failed to query diagnostic report")?;
+
+    if json {
+        let output = serde_json::to_string_pretty(&report)?;
+        println!("{output}");
+        return Ok(());
+    }
+
+    // Human-readable output
+    println!("autocomplete-rs diagnostic report");
+    println!("=================================");
+    println!();
+
+    // System info
+    println!("System:");
+    println!("  Version:  {}", env!("CARGO_PKG_VERSION"));
+    println!(
+        "  OS:       {} {}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+    if let Ok(shell) = std::env::var("SHELL") {
+        println!("  Shell:    {shell}");
+    }
+    println!("  DB path:  {}", db_path.display());
+    if let Ok(metadata) = std::fs::metadata(db_path) {
+        let size_kb = metadata.len() / 1024;
+        println!("  DB size:  {size_kb} KB");
+    }
+    let log_dir = autocomplete_rs::logging::default_log_dir();
+    println!("  Log dir:  {}", log_dir.display());
+    println!();
+
+    // Recent sessions
+    if report.recent_sessions.is_empty() {
+        println!("Sessions: (none)");
+    } else {
+        println!("Recent sessions ({}):", report.recent_sessions.len());
+        for s in &report.recent_sessions {
+            let status = match &s.stop_reason {
+                Some(reason) => format!("stopped ({reason})"),
+                None => "running".to_string(),
+            };
+            println!(
+                "  {} | PID {} | v{} | {} | {}",
+                s.started_at, s.pid, s.version, s.mode, status
+            );
+        }
+    }
+    println!();
+
+    // Latest metrics
+    if let Some(ref m) = report.latest_metrics {
+        let hours = m.uptime_secs / 3600;
+        let mins = (m.uptime_secs % 3600) / 60;
+        let secs = m.uptime_secs % 60;
+        println!("Latest metrics:");
+        println!("  Uptime:       {hours}h {mins}m {secs}s");
+        println!("  Requests:     {}", m.total_requests);
+        println!("  Connections:  {}", m.active_connections);
+        println!("  Recorded at:  {}", m.timestamp);
+    } else {
+        println!("Latest metrics: (none)");
+    }
+    println!();
+
+    // Error counts by category (last 24h)
+    if report.error_counts_by_category.is_empty() {
+        println!("Errors (last 24h): (none)");
+    } else {
+        println!("Errors by category (last 24h):");
+        for c in &report.error_counts_by_category {
+            println!("  {}: {}", c.category, c.count);
+        }
+    }
+    println!();
+
+    // Recent errors
+    if report.recent_errors.is_empty() {
+        println!("Recent errors/warnings: (none)");
+    } else {
+        println!("Recent errors/warnings ({}):", report.recent_errors.len());
+        for e in &report.recent_errors {
+            println!(
+                "  [{}] {} | {} | {}",
+                e.timestamp, e.severity, e.category, e.message
+            );
+        }
+    }
+
     Ok(())
 }

@@ -5,10 +5,13 @@ use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWrite
 use tokio::time::timeout;
 use tracing::{debug, instrument, warn};
 
+use crate::logging::redact_sensitive_patterns;
 use crate::protocol::{
     CompletionRequest, DaemonMessage, ErrorResponse, MAX_REQUEST_SIZE, ShutdownAck,
     validate_request,
 };
+use crate::storage::StorageEvent;
+use crate::storage::events::{DiagnosticCategory, Severity};
 
 use super::state::DaemonState;
 
@@ -50,6 +53,14 @@ where
         }
         Err(_) => {
             debug!("read timeout");
+            state.emit_storage_event(StorageEvent::Diagnostic {
+                session_id: state.session_id.clone(),
+                request_id: None,
+                severity: Severity::Warning,
+                category: DiagnosticCategory::Connection,
+                message: "read timeout".into(),
+                context: None,
+            });
             let err = ErrorResponse {
                 error: "request timed out".into(),
             };
@@ -66,6 +77,14 @@ where
 
     // If the line doesn't end with a newline, the request was truncated by the size limit
     if !line.ends_with('\n') {
+        state.emit_storage_event(StorageEvent::Diagnostic {
+            session_id: state.session_id.clone(),
+            request_id: None,
+            severity: Severity::Warning,
+            category: DiagnosticCategory::Connection,
+            message: format!("request too large (exceeded {MAX_REQUEST_SIZE} byte limit)"),
+            context: None,
+        });
         let err = ErrorResponse {
             error: format!(
                 "request too large (exceeded {} byte limit)",
@@ -93,6 +112,14 @@ where
         }
         ParsedMessage::Error(msg) => {
             warn!("malformed request: {}", msg);
+            state.emit_storage_event(StorageEvent::Diagnostic {
+                session_id: state.session_id.clone(),
+                request_id: None,
+                severity: Severity::Warning,
+                category: DiagnosticCategory::Protocol,
+                message: redact_sensitive_patterns(&msg),
+                context: None,
+            });
             let err = ErrorResponse { error: msg };
             write_json(&mut writer, &err).await?;
             return Ok(());
@@ -101,6 +128,14 @@ where
 
     // Validate the request
     if let Err(e) = validate_request(&request) {
+        state.emit_storage_event(StorageEvent::Diagnostic {
+            session_id: state.session_id.clone(),
+            request_id: None,
+            severity: Severity::Warning,
+            category: DiagnosticCategory::Protocol,
+            message: redact_sensitive_patterns(&e.to_string()),
+            context: None,
+        });
         let err = ErrorResponse {
             error: e.to_string(),
         };

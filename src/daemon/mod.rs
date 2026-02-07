@@ -11,6 +11,7 @@ use tokio::net::UnixListener;
 use tracing::info;
 
 use crate::engine::{CompletionEngine, StubEngine};
+use crate::storage::{self, StorageEvent, StorageHandle};
 
 use self::pid::PidFile;
 use self::state::DaemonState;
@@ -31,6 +32,19 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
     let _pid_file = PidFile::acquire(path)?;
     info!("PID file acquired");
 
+    // Initialize storage — degrade gracefully if it fails
+    let storage_handle: Option<StorageHandle> =
+        match storage::init(&storage::default_db_path()).await {
+            Ok(handle) => {
+                info!("storage layer initialized");
+                Some(handle)
+            }
+            Err(e) => {
+                tracing::warn!("storage init failed, running in degraded mode: {e}");
+                None
+            }
+        };
+
     // Remove existing socket if it exists (stale from a crash)
     if let Err(e) = std::fs::remove_file(path) {
         if e.kind() != std::io::ErrorKind::NotFound {
@@ -43,10 +57,49 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
         .with_context(|| format!("failed to bind to socket: {}", socket_path))?;
     info!("daemon listening on {}", socket_path);
 
-    let state = DaemonState::new(engine);
+    let session_id = uuid::Uuid::new_v4().to_string();
+    let mode = if std::env::var("AUTOCOMPLETE_DEV").as_deref() == Ok("1") {
+        "development"
+    } else {
+        "production"
+    };
+
+    let mut state = DaemonState::new(engine).with_session_id(session_id.clone());
+    if let Some(ref handle) = storage_handle {
+        state = state.with_storage(handle.sender.clone());
+    }
+
+    // Emit session start
+    state.emit_storage_event(StorageEvent::SessionStart {
+        session_id: session_id.clone(),
+        pid: std::process::id(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        mode: mode.to_string(),
+        socket_path: socket_path.to_string(),
+    });
 
     // Run the accept loop (blocks until shutdown)
-    let result = server::run(listener, state, path).await;
+    let shutdown_reason = server::run(listener, state, path, &session_id).await;
+
+    // Determine stop reason
+    let reason = if shutdown_reason.is_ok() {
+        "shutdown"
+    } else {
+        "error"
+    };
+
+    // Emit session stop (best-effort — storage_handle may have sender)
+    if let Some(ref handle) = storage_handle {
+        let _ = handle.sender.try_send(StorageEvent::SessionStop {
+            session_id,
+            reason: reason.to_string(),
+        });
+    }
+
+    // Shut down storage actor
+    if let Some(handle) = storage_handle {
+        handle.shutdown().await;
+    }
 
     // Cleanup socket file (PID file cleaned up by Drop)
     if let Err(e) = std::fs::remove_file(path) {
@@ -55,5 +108,5 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
         }
     }
 
-    result
+    shutdown_reason
 }

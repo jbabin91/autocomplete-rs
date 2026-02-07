@@ -5,6 +5,7 @@ use tokio::sync::Semaphore;
 use tokio_util::sync::CancellationToken;
 
 use crate::engine::CompletionEngine;
+use crate::storage::{StorageEvent, StorageEventSender};
 
 /// Maximum number of concurrent connections the daemon will accept.
 pub const MAX_CONCURRENT_CONNECTIONS: usize = 100;
@@ -26,6 +27,12 @@ pub struct DaemonState {
 
     /// Currently active connection count.
     pub active_connections: Arc<AtomicU64>,
+
+    /// Optional storage event sender for persistence.
+    pub storage: Option<StorageEventSender>,
+
+    /// Session ID for correlating events across tables.
+    pub session_id: String,
 }
 
 impl DaemonState {
@@ -37,6 +44,33 @@ impl DaemonState {
             cancel: CancellationToken::new(),
             total_requests: Arc::new(AtomicU64::new(0)),
             active_connections: Arc::new(AtomicU64::new(0)),
+            storage: None,
+            session_id: String::new(),
+        }
+    }
+
+    /// Set the storage event sender.
+    pub fn with_storage(mut self, sender: StorageEventSender) -> Self {
+        self.storage = Some(sender);
+        self
+    }
+
+    /// Set the session ID.
+    pub fn with_session_id(mut self, session_id: String) -> Self {
+        self.session_id = session_id;
+        self
+    }
+
+    /// Emit a storage event (non-blocking, best-effort).
+    ///
+    /// Uses `try_send()` to avoid awaiting on the channel. If the channel is
+    /// full or absent, the event is silently dropped — storage events are
+    /// observability data, not business-critical.
+    pub fn emit_storage_event(&self, event: StorageEvent) {
+        if let Some(ref sender) = self.storage {
+            if let Err(e) = sender.try_send(event) {
+                tracing::warn!("storage event dropped: {e}");
+            }
         }
     }
 

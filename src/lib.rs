@@ -3,3 +3,4 @@ pub mod engine;
 pub mod logging;
 pub mod parser;
 pub mod protocol;
+pub mod storage;
