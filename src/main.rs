@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
 
     // Initialize logging only for the daemon subcommand
     if matches!(cli.command, Commands::Daemon { .. }) {
-        tracing_subscriber::fmt::init();
+        autocomplete_rs::logging::init().context("failed to initialize logging")?;
     }
 
     match cli.command {
