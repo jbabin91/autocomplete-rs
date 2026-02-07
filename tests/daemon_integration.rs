@@ -112,19 +112,26 @@ async fn shutdown_daemon(socket_path: &Path, handle: tokio::task::JoinHandle<()>
 }
 
 /// Send a JSON line to the daemon and read the response.
+///
+/// Wraps the entire operation in a 5-second timeout to prevent test hangs
+/// if the daemon fails to respond.
 async fn send_request(socket_path: &Path, json: &str) -> String {
-    let stream = UnixStream::connect(socket_path).await.unwrap();
-    let (reader, mut writer) = stream.into_split();
-    let mut reader = BufReader::new(reader);
+    tokio::time::timeout(Duration::from_secs(5), async {
+        let stream = UnixStream::connect(socket_path).await.unwrap();
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
 
-    writer.write_all(json.as_bytes()).await.unwrap();
-    writer.write_all(b"\n").await.unwrap();
-    writer.flush().await.unwrap();
-    drop(writer);
+        writer.write_all(json.as_bytes()).await.unwrap();
+        writer.write_all(b"\n").await.unwrap();
+        writer.flush().await.unwrap();
+        drop(writer);
 
-    let mut response = String::new();
-    reader.read_line(&mut response).await.unwrap();
-    response.trim().to_string()
+        let mut response = String::new();
+        reader.read_line(&mut response).await.unwrap();
+        response.trim().to_string()
+    })
+    .await
+    .expect("send_request timed out after 5s")
 }
 
 #[tokio::test]

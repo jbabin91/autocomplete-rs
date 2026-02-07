@@ -22,7 +22,7 @@ hooks {
       ["cargo_clippy"] {
         glob = "*.rs"
         check = "cargo clippy --locked --all-targets --all-features -- -D warnings"
-        fix = "cargo clippy --fix --allow-dirty --allow-staged --all-targets --all-features"
+        fix = "cargo clippy --fix --allow-dirty --allow-staged --locked --all-targets --all-features"
       }
       ["cargo_check"] {
         glob = "*.rs"

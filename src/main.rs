@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use autocomplete_rs::daemon;
-use autocomplete_rs::protocol::{CompletionRequest, DaemonMessage, PROTOCOL_VERSION};
+use autocomplete_rs::protocol::{CompletionRequest, DaemonMessage, PROTOCOL_VERSION, ShutdownAck};
 use clap::{Parser, Subcommand};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
@@ -147,13 +147,22 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
             match tokio::time::timeout(Duration::from_secs(5), reader.read_line(&mut ack_line))
                 .await
             {
-                Ok(Ok(_)) if ack_line.contains("shutting_down") => {
-                    println!("Daemon stopped");
+                Ok(Ok(0)) => {
+                    // EOF — daemon closed the connection without responding
+                    println!("Daemon stopped (connection closed)");
                 }
-                Ok(Ok(_)) => {
-                    println!("Daemon responded unexpectedly: {}", ack_line.trim());
-                }
-                Ok(Err(e)) => println!("Daemon stopped (connection closed: {e})"),
+                Ok(Ok(_)) => match serde_json::from_str::<ShutdownAck>(&ack_line) {
+                    Ok(ack) if ack.status == "shutting_down" => {
+                        println!("Daemon stopped");
+                    }
+                    Ok(ack) => {
+                        println!("Daemon responded with unexpected status: {}", ack.status);
+                    }
+                    Err(_) => {
+                        println!("Daemon responded unexpectedly: {}", ack_line.trim());
+                    }
+                },
+                Ok(Err(e)) => println!("Daemon stopped (read error: {e})"),
                 Err(_) => println!("Daemon stop requested (timed out waiting for ack)"),
             }
         }
