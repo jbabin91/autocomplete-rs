@@ -112,8 +112,12 @@ pub async fn start_with_engine(
     // 1. Acquire PID file (single-instance enforcement)
     let _pid_file = PidFile::acquire(path)?;
 
-    // 2. Remove stale socket + bind
-    let _ = std::fs::remove_file(path);
+    // 2. Remove stale socket + bind (NotFound is expected; real errors propagate)
+    if let Err(e) = std::fs::remove_file(path) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            return Err(e).with_context(|| format!("failed to remove stale socket: {}", socket_path));
+        }
+    }
     let listener = UnixListener::bind(path)?;
 
     // 3. Create shared state (DaemonState is Clone, not wrapped in Arc)

@@ -419,8 +419,9 @@ proptest! {
 
     #[test]
     fn test_parser_never_panics(buffer in ".*", cursor in 0..1000usize) {
-        // Property: parser should never panic, even with random input
-        let _ = parse_buffer(&buffer, cursor);
+        // Property: parser should never panic, even with random input.
+        // Result intentionally discarded — we only care about no-panic.
+        drop(parse_buffer(&buffer, cursor));
     }
 }
 ```
