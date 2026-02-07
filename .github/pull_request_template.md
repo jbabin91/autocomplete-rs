@@ -1,22 +1,7 @@
 ## Summary
 
-<!-- Brief description of what this PR does and why -->
+<!-- What changed and why? Bullet points for multiple changes. -->
 
-## Type of Change
+## Resolves
 
-- [ ] feat: New feature
-- [ ] fix: Bug fix
-- [ ] refactor: Code restructuring (no behavior change)
-- [ ] docs: Documentation only
-- [ ] chore: Tooling, config, dependencies
-- [ ] test: Adding or updating tests
-
-## Testing
-
-- [ ] `mise run ci` passes locally
-- [ ] New tests added (if applicable)
-- [ ] Existing tests still pass
-
-## Related Issues
-
-<!-- Link beads issues: autocomplete-rs-xxx -->
+<!-- Bead: `autocomplete-rs-xxx` / Closes #123 -->

@@ -42,7 +42,7 @@ autocomplete system from scratch.
 
 ### Phase 1 — MVP (current)
 
-- [ ] Daemon with Unix socket IPC
+- [x] Daemon with Unix socket IPC
 - [ ] Command buffer parser with tokenizer
 - [ ] Inline ANSI completion dropdown
 - [ ] Hardcoded git completion spec
@@ -162,10 +162,13 @@ See [AGENTS.md](AGENTS.md) for full development guidelines.
 ```sh
 autocomplete-rs/
 +-- src/
+|   +-- lib.rs           # Library crate root
 |   +-- main.rs          # CLI entry point (Clap)
+|   +-- protocol.rs      # Shared IPC types and validation
+|   +-- engine.rs        # CompletionEngine trait
 |   +-- daemon/          # Tokio Unix socket server
 |   +-- parser/          # Command buffer parsing (stub)
-|   +-- (dropdown/)      # Inline ANSI dropdown (not yet implemented)
++-- tests/               # Integration tests
 +-- shell-integration/
 |   +-- zsh.zsh          # ZLE widget
 +-- docs/                # Architecture docs, ADRs, guides

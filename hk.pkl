@@ -12,14 +12,33 @@ hooks {
     fix = true
     stash = "git"
     steps {
-      // Rust tools (builtins)
-      ["cargo_fmt"] = Builtins.cargo_fmt
-      ["cargo_clippy"] = Builtins.cargo_clippy
-      ["cargo_check"] = Builtins.cargo_check
+      // Rust tools — overridden from builtins to match CI flags exactly.
+      // Builtins use minimal flags; CI uses --all-targets --all-features.
+      ["cargo_fmt"] {
+        glob = "*.rs"
+        check = "cargo fmt --all -- --check"
+        fix = "cargo fmt --all"
+      }
+      ["cargo_clippy"] {
+        glob = "*.rs"
+        check = "cargo clippy --locked --all-targets --all-features -- -D warnings"
+        fix = "cargo clippy --fix --allow-dirty --allow-staged --locked --all-targets --all-features"
+      }
+      ["cargo_check"] {
+        glob = "*.rs"
+        check = "cargo check --locked --all-targets --all-features -q"
+      }
 
-      // Non-Rust formatting (builtins)
+      // Non-Rust formatting
       ["prettier"] = Builtins.prettier
-      ["taplo"] = Builtins.taplo
+
+      // taplo: override builtin to use `taplo fmt` (formatting check)
+      // instead of `taplo check` (syntax-only validation).
+      ["taplo"] {
+        glob = "*.toml"
+        check = "taplo fmt --check {{files}}"
+        fix = "taplo fmt {{files}}"
+      }
 
       // Markdown linting (custom - uses markdownlint-cli2)
       ["markdown_lint"] {
@@ -39,7 +58,7 @@ hooks {
   ["pre-push"] {
     steps {
       ["test"] {
-        check = "cargo test --all-features"
+        check = "cargo nextest run --locked --all-features --no-tests=warn"
       }
 
       // Beads: sync before push

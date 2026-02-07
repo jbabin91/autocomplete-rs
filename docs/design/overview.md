@@ -1,8 +1,7 @@
-# Architecture Overview — Design Spec
+# Architecture Overview
 
-> **This is a design specification, not documentation.** It describes the
-> intended architecture. Actual documentation will be written after
-> implementation.
+> **Status:** Daemon implemented (Phase 1). Parser, specs, and inline dropdown
+> are still design specifications awaiting implementation.
 
 This document provides a high-level overview of autocomplete-rs system
 architecture.
@@ -68,10 +67,11 @@ User Types: "git che" + Alt+Space
        │
        ▼
 ┌──────────────────────────────────────────────────────────┐
-│ 2. DAEMON SERVER (src/daemon/mod.rs)                     │
-│    - Tokio async listener receives connection           │
-│    - Deserializes JSON request                          │
-│    - Spawns handler task                                │
+│ 2. DAEMON SERVER (src/daemon/)             [Implemented] │
+│    - mod.rs: facade — start() + PID file                │
+│    - server.rs: accept loop + shutdown orchestration    │
+│    - handler.rs: per-connection handling + timeouts     │
+│    - state.rs: shared engine + semaphore + metrics      │
 │    - <1ms overhead                                       │
 └──────────────────────────────────────────────────────────┘
        │
@@ -104,7 +104,7 @@ User Types: "git che" + Alt+Space
        │
        ▼
 ┌──────────────────────────────────────────────────────────┐
-│ 6. DAEMON RESPONSE (src/daemon/mod.rs)                  │
+│ 6. DAEMON RESPONSE (src/daemon/handler.rs)              │
 │    - Serializes suggestions to JSON                     │
 │    - Sends response through socket                      │
 │    - Closes connection                                  │
@@ -308,11 +308,12 @@ vec![
 
 ### State Management
 
-**Daemon State:**
+**Daemon State (implemented in `src/daemon/state.rs`):**
 
-- Unix socket listener (persistent)
-- Connection pool (per-connection state)
-- Spec cache (LRU, shared across connections)
+- `Arc<dyn CompletionEngine>` — completion backend (StubEngine for Phase 1)
+- `Arc<Semaphore>` — caps concurrent connections at 100
+- `CancellationToken` — cross-task shutdown coordination
+- Atomic metrics: `total_requests`, `active_connections`
 - No user session state (stateless requests)
 
 **Shell Integration State:**
@@ -377,7 +378,7 @@ Breakdown:
 
 1. **Graceful degradation:** If daemon fails, no completions (not shell crash)
 2. **Auto-recovery:** Shell integration restarts daemon if needed
-3. **Timeouts:** 1s connection timeout, 100ms request timeout
+3. **Timeouts:** 1s read timeout per connection, 100KB size limit
 4. **Logging:** Debug logs for troubleshooting, silent in production
 
 ### Error Propagation

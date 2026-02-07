@@ -31,21 +31,23 @@ Provides patterns for the `gh` CLI to interact with GitHub repositories, service
 
 ## Common Workflows
 
-| Workflow             | Commands                                                                                      |
-| -------------------- | --------------------------------------------------------------------------------------------- |
-| Quick PR             | `git push -u origin feat` then `gh pr create --fill`                                          |
-| Draft PR             | `gh pr create --draft --fill` then `gh pr ready` when done                                    |
-| Review and merge     | `gh pr checkout 45` then `gh pr review --approve` then `gh pr merge --squash --delete-branch` |
-| Auto-merge PR        | `gh pr merge --auto --squash` (waits for required checks to pass)                             |
-| Check CI             | `gh pr checks` then `gh run watch`                                                            |
-| Rerun failed CI      | `gh run rerun <run-id> --failed`                                                              |
-| Create release       | `gh release create v1.0.0 --generate-notes`                                                   |
-| Search code          | `gh search code "handleAuth" --repo owner/repo`                                               |
-| Add issue to project | `gh project item-add 1 --owner @me --url <issue-url>`                                         |
-| Verify artifact      | `gh attestation verify artifact.tar.gz --owner owner`                                         |
-| Trigger workflow     | `gh workflow run deploy.yml -f environment=production`                                        |
-| Revert merged PR     | `gh pr revert 45`                                                                             |
-| Sync fork            | `gh repo sync` to update fork from upstream                                                   |
+| Workflow             | Commands                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------- |
+| Quick PR             | `git push -u origin feat` then `gh pr create --fill`                                              |
+| Draft PR             | `gh pr create --draft --fill` then `gh pr ready` when done                                        |
+| Review and merge     | `gh pr checkout 45` then `gh pr review --approve` then `gh pr merge --squash --delete-branch`     |
+| Auto-merge PR        | `gh pr merge --auto --squash` (waits for required checks to pass)                                 |
+| Check CI             | `gh pr checks` then `gh run watch`                                                                |
+| Rerun failed CI      | `gh run rerun <run-id> --failed`                                                                  |
+| Create release       | `gh release create v1.0.0 --generate-notes`                                                       |
+| Search code          | `gh search code "handleAuth" --repo owner/repo`                                                   |
+| Add issue to project | `gh project item-add 1 --owner @me --url <issue-url>`                                             |
+| Verify artifact      | `gh attestation verify artifact.tar.gz --owner owner`                                             |
+| Trigger workflow     | `gh workflow run deploy.yml -f environment=production`                                            |
+| Revert merged PR     | `gh pr revert 45`                                                                                 |
+| Reply to PR threads  | `gh api graphql` with `addPullRequestReviewThreadReply` — for inline responses to review comments |
+| Resolve PR threads   | `gh api graphql` with `resolveReviewThread` mutation (see PR reference)                           |
+| Sync fork            | `gh repo sync` to update fork from upstream                                                       |
 
 ## Output Formatting
 
@@ -77,18 +79,20 @@ The `gh` CLI requires authentication before most commands work. Run `gh auth sta
 
 ## Common Mistakes
 
-| Mistake                                                         | Correct Pattern                                                          |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Running `gh pr create` without pushing the branch first         | Push with `git push -u origin branch` before creating a PR               |
-| Using `gh pr merge` without checking CI status                  | Run `gh pr checks` first or use `gh pr merge --auto` to wait for checks  |
-| Forgetting `--fill` when creating PRs from well-written commits | Use `gh pr create --fill` to auto-populate title and body from commits   |
-| Using REST API when GraphQL is more efficient for nested data   | Use `gh api graphql` for queries needing related objects in one call     |
-| Not authenticating with correct scopes                          | Run `gh auth status` to verify scopes, `gh auth refresh -s scope` to add |
-| Using `gh project` commands without specifying `--owner`        | Always pass `--owner @me` or `--owner org-name` for project commands     |
-| Manually downloading CI artifacts                               | Use `gh run download <run-id>` to download artifacts programmatically    |
-| Not using `--json` for scripting                                | Add `--json field1,field2` and `--jq` for machine-readable output        |
-| Merging without `--delete-branch`                               | Use `gh pr merge --squash --delete-branch` to clean up after merge       |
-| Running `gh api` POST without `-f` fields                       | Use `-f key=value` for string fields, `-F` for typed fields              |
+| Mistake                                                         | Correct Pattern                                                                    |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Running `gh pr create` without pushing the branch first         | Push with `git push -u origin branch` before creating a PR                         |
+| Using `gh pr merge` without checking CI status                  | Run `gh pr checks` first or use `gh pr merge --auto` to wait for checks            |
+| Forgetting `--fill` when creating PRs from well-written commits | Use `gh pr create --fill` to auto-populate title and body from commits             |
+| Using REST API when GraphQL is more efficient for nested data   | Use `gh api graphql` for queries needing related objects in one call               |
+| Not authenticating with correct scopes                          | Run `gh auth status` to verify scopes, `gh auth refresh -s scope` to add           |
+| Using `gh project` commands without specifying `--owner`        | Always pass `--owner @me` or `--owner org-name` for project commands               |
+| Manually downloading CI artifacts                               | Use `gh run download <run-id>` to download artifacts programmatically              |
+| Not using `--json` for scripting                                | Add `--json field1,field2` and `--jq` for machine-readable output                  |
+| Merging without `--delete-branch`                               | Use `gh pr merge --squash --delete-branch` to clean up after merge                 |
+| Running `gh api` POST without `-f` fields                       | Use `-f key=value` for string fields, `-F` for typed fields                        |
+| REST API returning fewer results than expected                  | Default `per_page` is 30 — use `--paginate` or `?per_page=100` for full results    |
+| Using `addComment` to respond to review comments                | Use `addPullRequestReviewThreadReply` for inline thread replies (see PR reference) |
 
 ## Delegation
 
@@ -100,7 +104,7 @@ The `gh` CLI requires authentication before most commands work. Run `gh auth sta
 
 - [Repos & Auth](references/repos-auth.md) -- Authentication, repository management, configuration, extensions, aliases
 - [Issues](references/issues.md) -- Issue CRUD, labels, assignments, pinning, transferring, development branches
-- [Pull Requests](references/pull-requests.md) -- PR creation, review, merge, checkout, checks, diff, auto-merge
+- [Pull Requests](references/pull-requests.md) -- PR creation, review, merge, checkout, checks, diff, auto-merge, review thread resolution
 - [Actions](references/actions.md) -- Workflow runs, manual triggers, secrets, variables, caches, artifact downloads
 - [Releases & Search](references/releases-search.md) -- Releases, attestation verification, search, gists, SSH/GPG keys
 - [Projects & API](references/projects-api.md) -- Projects v2 management, REST API, GraphQL API, rulesets, status

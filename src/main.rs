@@ -1,10 +1,13 @@
+use std::time::Duration;
+
 use anyhow::{Context, Result};
+use autocomplete_rs::daemon;
+use autocomplete_rs::protocol::{CompletionRequest, DaemonMessage, PROTOCOL_VERSION, ShutdownAck};
 use clap::{Parser, Subcommand};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
-mod daemon;
-mod parser;
+const DEFAULT_SOCKET: &str = "/tmp/autocomplete-rs.sock";
 
 #[derive(Parser)]
 #[command(name = "autocomplete-rs")]
@@ -19,19 +22,19 @@ enum Commands {
     /// Start the autocomplete daemon
     Daemon {
         /// Unix socket path
-        #[arg(short, long, default_value = "/tmp/autocomplete-rs.sock")]
+        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
         socket: String,
     },
     /// Stop the running daemon
     Stop {
         /// Unix socket path
-        #[arg(short, long, default_value = "/tmp/autocomplete-rs.sock")]
+        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
         socket: String,
     },
     /// Check daemon status
     Status {
         /// Unix socket path
-        #[arg(short, long, default_value = "/tmp/autocomplete-rs.sock")]
+        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
         socket: String,
     },
     /// Get completion suggestions for a command buffer
@@ -42,7 +45,7 @@ enum Commands {
         #[arg(short, long)]
         cursor: usize,
         /// Unix socket path
-        #[arg(short, long, default_value = "/tmp/autocomplete-rs.sock")]
+        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
         socket: String,
     },
     /// Install shell integration
@@ -54,12 +57,12 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize logging (only for daemon, suppress for complete command)
-    if std::env::args().any(|arg| arg == "daemon") {
+    let cli = Cli::parse();
+
+    // Initialize logging only for the daemon subcommand
+    if matches!(cli.command, Commands::Daemon { .. }) {
         tracing_subscriber::fmt::init();
     }
-
-    let cli = Cli::parse();
 
     match cli.command {
         Commands::Daemon { socket } => {
@@ -97,13 +100,13 @@ async fn complete_command(buffer: &str, cursor: usize, socket_path: &str) -> Res
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
 
-    // Send request
-    let request = daemon::CompletionRequest {
+    // Send request using the DaemonMessage envelope
+    let msg = DaemonMessage::Complete(CompletionRequest {
         buffer: buffer.to_string(),
         cursor,
-        version: 1,
-    };
-    let request_json = serde_json::to_string(&request)?;
+        version: PROTOCOL_VERSION,
+    });
+    let request_json = serde_json::to_string(&msg)?;
     writer.write_all(request_json.as_bytes()).await?;
     writer.write_all(b"\n").await?;
     writer.flush().await?;
@@ -113,13 +116,12 @@ async fn complete_command(buffer: &str, cursor: usize, socket_path: &str) -> Res
     reader.read_line(&mut response_line).await?;
 
     // Output raw response for shell integration to consume
-    // TODO: Replace with inline ANSI dropdown rendering (Phase 1)
     print!("{}", response_line.trim());
 
     Ok(())
 }
 
-/// Stop the running daemon
+/// Stop the running daemon by sending a shutdown message over the socket.
 async fn stop_daemon(socket_path: &str) -> Result<()> {
     use std::path::Path;
 
@@ -128,19 +130,58 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
         return Ok(());
     }
 
-    // Try to connect to send shutdown signal
     match UnixStream::connect(socket_path).await {
-        Ok(_stream) => {
-            // Connection successful means daemon is running
-            // For now, we'll just remove the socket and let the daemon detect it
-            // In a production system, you'd send a shutdown message
-            std::fs::remove_file(socket_path)?;
-            println!("Daemon stopped");
+        Ok(stream) => {
+            let (reader, mut writer) = stream.into_split();
+            let mut reader = BufReader::new(reader);
+
+            // Send shutdown message
+            let msg = DaemonMessage::Shutdown;
+            let json = serde_json::to_string(&msg)?;
+            writer.write_all(json.as_bytes()).await?;
+            writer.write_all(b"\n").await?;
+            writer.flush().await?;
+
+            // Wait for acknowledgement with timeout
+            let mut ack_line = String::new();
+            match tokio::time::timeout(Duration::from_secs(5), reader.read_line(&mut ack_line))
+                .await
+            {
+                Ok(Ok(0)) => {
+                    // EOF — daemon closed the connection without responding
+                    println!("Daemon stopped (connection closed)");
+                }
+                Ok(Ok(_)) => match serde_json::from_str::<ShutdownAck>(&ack_line) {
+                    Ok(ack) if ack.status == "shutting_down" => {
+                        println!("Daemon stopped");
+                    }
+                    Ok(ack) => {
+                        println!("Daemon responded with unexpected status: {}", ack.status);
+                    }
+                    Err(_) => {
+                        println!("Daemon responded unexpectedly: {}", ack_line.trim());
+                    }
+                },
+                Ok(Err(e)) => println!("Daemon stopped (read error: {e})"),
+                Err(_) => println!("Daemon stop requested (timed out waiting for ack)"),
+            }
         }
-        Err(_) => {
-            // Can't connect, remove stale socket
-            std::fs::remove_file(socket_path)?;
-            println!("Removed stale socket (daemon was not running)");
+        Err(e) => {
+            // Only remove the socket if the error indicates nothing is listening
+            // (ConnectionRefused). Other errors (PermissionDenied, transient FS
+            // errors) could mean a live daemon we can't reach — deleting its
+            // socket would break it.
+            if e.kind() == std::io::ErrorKind::ConnectionRefused {
+                if let Err(rm_err) = std::fs::remove_file(socket_path) {
+                    if rm_err.kind() != std::io::ErrorKind::NotFound {
+                        return Err(rm_err)
+                            .context(format!("failed to remove stale socket: {socket_path}"));
+                    }
+                }
+                println!("Removed stale socket (daemon was not running)");
+            } else {
+                eprintln!("Could not connect to daemon: {e}");
+            }
         }
     }
 
@@ -161,8 +202,8 @@ async fn status_command(socket_path: &str) -> Result<()> {
         Ok(_stream) => {
             println!("Daemon is running on {}", socket_path);
         }
-        Err(_) => {
-            println!("Socket exists but daemon is not responding (stale socket)");
+        Err(e) => {
+            println!("Socket exists but daemon is not responding (stale socket: {e})");
         }
     }
 

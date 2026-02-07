@@ -80,54 +80,67 @@ cargo nextest run --no-capture
 
 **Location:** `tests/` directory
 
-**Example:**
+**Example:** See `tests/daemon_integration.rs` for the real tests. Key patterns:
 
 ```rust
-// tests/completion_flow.rs
-use autocomplete_rs::{daemon, parser};
-use std::path::Path;
-use tokio::net::UnixStream;
+// Unique socket paths via atomic counter (not timestamps or random values)
+static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+fn temp_socket_path() -> PathBuf {
+    let id = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+    PathBuf::from(format!("/tmp/autocomplete-rs-test-{}-{}.sock", std::process::id(), id))
+}
 
-#[tokio::test]
-async fn test_end_to_end_completion() {
-    // Start daemon
-    let socket_path = "/tmp/test-autocomplete.sock";
-    tokio::spawn(async {
-        daemon::start(socket_path).await.unwrap();
-    });
-
-    // Wait for daemon to start
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    // Connect and send request
-    let mut stream = UnixStream::connect(socket_path).await.unwrap();
-    let request = json!({
-        "buffer": "git checkout ",
-        "cursor": 13
-    });
-    stream.write_all(request.to_string().as_bytes()).await.unwrap();
-
-    // Read response
-    let mut response = String::new();
-    stream.read_to_string(&mut response).await.unwrap();
-
-    let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
-    assert!(parsed["suggestions"].is_array());
-    assert!(!parsed["suggestions"].as_array().unwrap().is_empty());
-
-    // Cleanup
-    std::fs::remove_file(socket_path).unwrap();
+// Helper that asserts every step — never discard intermediate results.
+// Grabs an AbortHandle before awaiting so the task is cancelled on timeout
+// instead of silently leaked (dropping a JoinHandle detaches the task).
+async fn shutdown_daemon(socket_path: &Path, handle: JoinHandle<()>) {
+    let resp = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
+    let ack: serde_json::Value =
+        serde_json::from_str(&resp).expect("shutdown response is valid JSON");
+    assert_eq!(ack["status"], "shutting_down", "expected ShutdownAck, got: {resp}");
+    let abort = handle.abort_handle();
+    match tokio::time::timeout(Duration::from_secs(2), handle).await {
+        Ok(result) => result.expect("daemon task panicked"),
+        Err(_) => {
+            abort.abort();
+            panic!("daemon did not exit within timeout — task aborted");
+        }
+    }
 }
 ```
 
 **Run:**
 
 ```sh
-# All integration tests
-cargo test --test '*'
+# All integration tests (flags defined in mise.toml)
+mise run test
 
 # Specific test file
-cargo test --test completion_flow
+cargo nextest run --test completion_flow
+```
+
+**Test helper timeouts:** Wrap I/O helpers in `tokio::time::timeout` to convert hangs
+into deterministic failures:
+
+```rust
+async fn send_request(socket_path: &Path, json: &str) -> String {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        let stream = UnixStream::connect(socket_path).await.unwrap();
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+
+        writer.write_all(json.as_bytes()).await.unwrap();
+        writer.write_all(b"\n").await.unwrap();
+        writer.flush().await.unwrap();
+        drop(writer);
+
+        let mut response = String::new();
+        reader.read_line(&mut response).await.unwrap();
+        response.trim().to_string()
+    })
+    .await
+    .expect("send_request timed out after 5s")
+}
 ```
 
 **Best Practices:**
@@ -137,6 +150,7 @@ cargo test --test completion_flow
 - Use tokio::test for async tests
 - Test error conditions
 - Verify end-to-end behavior
+- Wrap test helpers that do I/O in timeouts to prevent CI hangs
 
 ### Performance Benchmarks
 
@@ -348,23 +362,16 @@ fn test_with_git_spec() {
 ```rust
 #[tokio::test]
 async fn test_daemon_startup() {
-    let socket = "/tmp/test.sock";
+    let socket = temp_socket_path(); // atomic counter, not hardcoded
 
-    // Spawn daemon in background
-    let handle = tokio::spawn(async move {
-        daemon::start(socket).await
-    });
-
-    // Wait for startup
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    let handle = start_daemon(&socket).await;
 
     // Test connection
-    let stream = UnixStream::connect(socket).await;
+    let stream = UnixStream::connect(&socket).await;
     assert!(stream.is_ok());
 
-    // Cleanup
-    handle.abort();
-    std::fs::remove_file(socket).unwrap();
+    // Graceful shutdown — grab AbortHandle before timeout to avoid task leak
+    shutdown_daemon(&socket, handle).await;
 }
 ```
 
@@ -405,8 +412,9 @@ proptest! {
 
     #[test]
     fn test_parser_never_panics(buffer in ".*", cursor in 0..1000usize) {
-        // Property: parser should never panic, even with random input
-        let _ = parse_buffer(&buffer, cursor);
+        // Property: parser should never panic, even with random input.
+        // Result intentionally discarded — we only care about no-panic.
+        drop(parse_buffer(&buffer, cursor));
     }
 }
 ```
@@ -500,13 +508,9 @@ cargo tarpaulin --out Lcov | genhtml -o coverage/
 
 ## Continuous Integration
 
-Tests run as part of the CI workflow (`.github/workflows/ci.yml`). The **Test**
-job uses the `run-tests` composite action which runs
-`cargo nextest run --locked --all-features`. It depends on the **Format** job
-passing first (fail-fast gate).
-
-See [Tooling Guide — Continuous Integration](tooling.md#continuous-integration)
-and `.claude/rules/github-actions.md` for full CI/CD documentation.
+Tests run in CI via the `run-tests` composite action. See
+`.github/actions/run-tests/action.yml` for the exact command and
+`.claude/rules/github-actions.md` for full CI/CD documentation.
 
 ## Test-Driven Development (TDD)
 
@@ -530,8 +534,8 @@ fn test_parse_git_checkout_suggests_branches() {
 1. **Run test (should fail):**
 
 ```sh
-cargo test test_parse_git_checkout
-# Should see: test result: FAILED
+cargo nextest run -E 'test(test_parse_git_checkout)'
+# Should see: FAIL
 ```
 
 1. **Implement minimum code to pass:**
@@ -550,8 +554,8 @@ pub fn parse(&self, buffer: &str, cursor: usize) -> Result<Vec<Suggestion>> {
 1. **Run test (should pass):**
 
 ```sh
-cargo test test_parse_git_checkout
-# Should see: test result: ok
+cargo nextest run -E 'test(test_parse_git_checkout)'
+# Should see: PASS
 ```
 
 1. **Refactor:**
@@ -567,7 +571,7 @@ pub fn parse(&self, buffer: &str, cursor: usize) -> Result<Vec<Suggestion>> {
 1. **Rerun tests (should still pass):**
 
 ```sh
-cargo test
+mise run test
 ```
 
 ## Debugging Failing Tests
@@ -575,7 +579,7 @@ cargo test
 ### Run Single Test with Output
 
 ```sh
-cargo test test_name -- --nocapture --test-threads=1
+cargo nextest run -E 'test(test_name)' --no-capture
 ```
 
 ### Use dbg! Macro

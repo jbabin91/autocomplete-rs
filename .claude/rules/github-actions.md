@@ -22,15 +22,17 @@ paths:
 
 ## CI jobs
 
-| Job       | Purpose                                                            |
-| --------- | ------------------------------------------------------------------ |
-| Lint      | `cargo clippy --locked --all-targets --all-features`               |
-| Test      | `cargo nextest run --locked --all-features`                        |
-| MSRV      | `cargo check --locked` with Rust version from `Cargo.toml`         |
-| Deny      | `cargo-deny` — license compliance, advisory, bans, source policies |
-| Format    | `cargo fmt` + `taplo` + `prettier` + `markdownlint-cli2`           |
-| PR Title  | Conventional commit format validation (PRs only)                   |
-| CI Status | Gate job aggregating all results into a summary table              |
+| Job       | Purpose                                             | Source of truth                              |
+| --------- | --------------------------------------------------- | -------------------------------------------- |
+| Format    | Formatting checks (fail-fast gate)                  | `.github/actions/static-analysis/action.yml` |
+| Lint      | Clippy linting                                      | `ci.yml` lint job                            |
+| Test      | Test suite via nextest                              | `.github/actions/run-tests/action.yml`       |
+| MSRV      | Check with minimum supported Rust version           | `ci.yml` msrv job                            |
+| Deny      | License, advisory, bans, source policy              | `deny.toml`                                  |
+| PR Title  | Conventional commit format validation (PRs only)    | `ci.yml` pr-title job                        |
+| CI Status | Gate job aggregating all results into summary table | `ci.yml` ci-status job                       |
+
+For exact command flags, read the CI files directly — do not duplicate them here.
 
 `ci-status` is the only required check in the GitHub ruleset. Skipped jobs (e.g., on release-plz branches) pass the gate.
 
@@ -47,12 +49,14 @@ paths:
 
 Reusable actions in `.github/actions/`:
 
-| Action            | Purpose                                                              |
-| ----------------- | -------------------------------------------------------------------- |
-| `setup-rust`      | Installs stable Rust (rustfmt + clippy), cargo-nextest, rust-cache   |
-| `setup-mise`      | Installs mise with taplo, prettier, markdownlint-cli2                |
-| `static-analysis` | Runs `cargo fmt --check`, taplo, prettier, markdownlint (no install) |
-| `run-tests`       | Runs `cargo nextest run --locked --all-features` (no install)        |
+| Action            | Purpose                                          |
+| ----------------- | ------------------------------------------------ |
+| `setup-rust`      | Installs Rust, cargo-nextest, rust-cache         |
+| `setup-mise`      | Installs mise with taplo, prettier, markdownlint |
+| `static-analysis` | Runs all formatting checks (no install)          |
+| `run-tests`       | Runs test suite via nextest (no install)         |
+
+Each action's `action.yml` contains the exact commands — read those files for flags.
 
 **Design pattern**: Setup actions install tools. Run actions execute checks and assume tools are already available. Jobs compose them: `checkout` → `setup-*` → `run-*`.
 

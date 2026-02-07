@@ -133,45 +133,10 @@ git push origin feature/my-contribution
 # Create PR on GitHub
 ```
 
-**PR Template:**
-
-```markdown
-## Description
-
-Brief description of changes
-
-## Motivation
-
-Why is this change needed?
-
-## Changes
-
-- List key changes
-- Highlight breaking changes
-- Note any new dependencies
-
-## Testing
-
-- [ ] Added unit tests
-- [ ] Added integration tests
-- [ ] Manual testing completed
-- [ ] Performance benchmarks (if applicable)
-
-## Documentation
-
-- [ ] Updated rustdoc comments
-- [ ] Updated user guide (if applicable)
-- [ ] Updated developer docs (if applicable)
-- [ ] Created/updated ADR (if architectural change)
-
-## Checklist
-
-- [ ] Code follows style guidelines
-- [ ] All tests pass
-- [ ] No clippy warnings
-- [ ] Documentation is updated
-- [ ] Commit messages follow conventions
-```
+The repository includes a PR template at
+[`.github/pull_request_template.md`](../../.github/pull_request_template.md) that
+GitHub fills in automatically when you open a PR. Fill out each section — at
+minimum, provide a summary and link the related bead or GitHub issue.
 
 ## Code Style
 

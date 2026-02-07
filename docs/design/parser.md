@@ -790,7 +790,8 @@ use proptest::prelude::*;
 proptest! {
     #[test]
     fn test_tokenize_never_panics(s in "\\PC*") {
-        let _ = tokenize(&s);
+        // Result intentionally discarded — we only care about no-panic.
+        drop(tokenize(&s));
     }
 
     #[test]
