@@ -111,6 +111,30 @@ mise run test
 cargo nextest run --test completion_flow
 ```
 
+**Test helper timeouts:** Wrap I/O helpers in `tokio::time::timeout` to convert hangs
+into deterministic failures:
+
+```rust
+async fn send_request(socket_path: &Path, json: &str) -> String {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        let stream = UnixStream::connect(socket_path).await.unwrap();
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+
+        writer.write_all(json.as_bytes()).await.unwrap();
+        writer.write_all(b"\n").await.unwrap();
+        writer.flush().await.unwrap();
+        drop(writer);
+
+        let mut response = String::new();
+        reader.read_line(&mut response).await.unwrap();
+        response.trim().to_string()
+    })
+    .await
+    .expect("send_request timed out after 5s")
+}
+```
+
 **Best Practices:**
 
 - Test realistic scenarios
@@ -118,6 +142,7 @@ cargo nextest run --test completion_flow
 - Use tokio::test for async tests
 - Test error conditions
 - Verify end-to-end behavior
+- Wrap test helpers that do I/O in timeouts to prevent CI hangs
 
 ### Performance Benchmarks
 

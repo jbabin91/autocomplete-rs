@@ -12,6 +12,8 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 - CI enforces rustfmt, clippy, and test passing — don't duplicate those checks
 - Focus on what CI can't catch: race conditions, missing timeouts, unguarded resource
   cleanup, doc/code divergence, and flag consistency across CI/hooks/mise
+- Hook parity: `check` and `fix` commands in hk.pkl must use identical flags (e.g. both
+  must include `--locked` if CI uses it) — flag asymmetry between check/fix paths
 
 ## Error Handling
 
@@ -20,11 +22,21 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 - Library-facing errors use `thiserror` derive macros — flag raw `impl Error` when
   `thiserror` would be clearer
 - Flag `unwrap()` and `expect()` outside of tests and known-safe const contexts
+- Flag `let _ =` on `Result` values in production code — file operations must check
+  `ErrorKind::NotFound` (expected) vs real errors (permission denied, disk full). Use
+  `return Err(e).context(...)` in functions, `tracing::warn!` in Drop impls
+- Flag `Err(_)` that discards error details when the error type has multiple failure
+  modes (e.g. `io::Error` could be `PermissionDenied`, `NotFound`, `BrokenPipe`). Only
+  discard when the error type is single-meaning (e.g. `tokio::time::Elapsed` always
+  means "timed out", `TryAcquireError` for semaphore backpressure)
 - Verify `?` propagation returns meaningful context — prefer `.context("msg")` from
   anyhow on fallible operations that cross module boundaries
 - Error messages must distinguish failure modes — flag generic messages that conflate
   different causes (e.g. "unknown type" for both unrecognized types and valid types
   with malformed payloads)
+- Protocol responses must be parsed structurally (deserialize into typed structs) — flag
+  substring matching on JSON strings (e.g. `line.contains("shutting_down")` is fragile
+  and can produce false positives from error messages containing the same text)
 
 ## Async & Tokio Patterns
 
@@ -60,6 +72,13 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 - Tagged enums (`#[serde(tag = "type")]`) for protocol messages — flag untagged enums
   in IPC boundaries
 - Prefer `Arc<dyn Trait>` for dependency injection over concrete types in daemon state
+
+## Numeric Safety
+
+- Flag `as` casts between integer types that could overflow (e.g. `u32 as i32`) — use
+  `TryFrom`/`try_into()` with a fallback for conversions where the source range exceeds
+  the target type. Only use `as` when the conversion is guaranteed lossless (e.g.
+  `u16 as u32`) or when the truncation is intentional and documented
 
 ## Code Style
 

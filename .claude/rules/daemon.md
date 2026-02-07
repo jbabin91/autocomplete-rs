@@ -20,6 +20,7 @@ paths:
   - `{"type":"complete","buffer":"...","cursor":N}` — completion request
   - `{"type":"shutdown"}` — graceful shutdown request
 - **Backward compatibility**: Bare `CompletionRequest` without `"type"` field is accepted (handler falls back). If JSON has a `"type"` field, the handler distinguishes unknown types ("unknown message type") from known types with invalid payloads ("invalid payload for message type") — prevents masking protocol bugs.
+- **Dog-food the primary protocol**: The CLI client (`complete_command`, `stop_daemon`) must use `DaemonMessage` envelope format, not bare requests. The backward-compat path exists only for third-party integrations — our own code should exercise the primary code path.
 - Response types:
   - `CompletionResponse { suggestions: Vec<Suggestion> }` — success
   - `ErrorResponse { error: String }` — validation failure or malformed JSON
@@ -37,6 +38,7 @@ paths:
 - Individual connection failures must NOT crash the daemon
 - Semaphore-based backpressure (100 concurrent connections max)
 - 1-second read timeout per connection, 1-second write timeout per response
+- Always handle zero-byte `read_line` as a separate case (EOF/disconnect) — do not fall through to JSON parsing, which would give a confusing error
 
 ## Socket Lifecycle
 
