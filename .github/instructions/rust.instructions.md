@@ -83,8 +83,9 @@ See `docs/development/testing.md` for full testing patterns and conventions.
   not timestamps or random values
 - `#[tokio::test]` for async tests
 - Flag tests without assertions or with only `assert!(true)`
-- Test cleanup (shutdown, teardown) must assert on results — flag `let _ =` patterns
-  that silently ignore whether cleanup succeeded, as leaked tasks/sockets affect
-  parallel test runs
+- Test helpers must assert on every intermediate result, not just the final outcome
+  — flag `let _ =` patterns anywhere in test code (including inside helpers). A helper
+  that asserts only the last step masks failures in earlier steps (e.g. asserting daemon
+  exit but ignoring whether the shutdown response was a valid `ShutdownAck`)
 - Test comments must match what the assertion actually checks — flag misleading
   comments that describe a weaker check than the code enforces

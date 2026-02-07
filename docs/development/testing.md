@@ -90,9 +90,12 @@ fn temp_socket_path() -> PathBuf {
     PathBuf::from(format!("/tmp/autocomplete-rs-test-{}-{}.sock", std::process::id(), id))
 }
 
-// Helper that asserts shutdown succeeds — never ignore cleanup results
+// Helper that asserts every step — never discard intermediate results
 async fn shutdown_daemon(socket_path: &Path, handle: JoinHandle<()>) {
-    let _ = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
+    let resp = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
+    let ack: serde_json::Value =
+        serde_json::from_str(&resp).expect("shutdown response is valid JSON");
+    assert_eq!(ack["status"], "shutting_down", "expected ShutdownAck, got: {resp}");
     let result = tokio::time::timeout(Duration::from_secs(2), handle).await;
     assert!(result.is_ok(), "daemon did not exit within timeout");
 }
