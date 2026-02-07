@@ -45,6 +45,9 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - `tokio::time::timeout` on all socket I/O (reads AND writes)
 - Track spawned tasks in `JoinSet` — no orphan tasks
 - After `abort_all()`, drain with `while tasks.join_next().await.is_some() {}`
+- Dropping a `JoinHandle` detaches the task (it keeps running). When using
+  `timeout(handle).await`, grab an `AbortHandle` first so the task can be
+  explicitly aborted on timeout instead of silently leaked
 
 ## Testing
 

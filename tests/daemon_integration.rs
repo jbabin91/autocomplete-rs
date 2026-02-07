@@ -99,6 +99,9 @@ async fn start_daemon(socket_path: &Path) -> tokio::task::JoinHandle<()> {
 }
 
 /// Shut down the daemon, assert the shutdown ack, and assert it exits within the timeout.
+///
+/// Grabs an `AbortHandle` before awaiting so the task is cancelled on timeout
+/// instead of silently leaked (dropping a `JoinHandle` detaches the task).
 async fn shutdown_daemon(socket_path: &Path, handle: tokio::task::JoinHandle<()>) {
     let resp = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
     let ack: serde_json::Value =
@@ -107,8 +110,14 @@ async fn shutdown_daemon(socket_path: &Path, handle: tokio::task::JoinHandle<()>
         ack["status"], "shutting_down",
         "expected ShutdownAck, got: {resp}"
     );
-    let result = tokio::time::timeout(Duration::from_secs(2), handle).await;
-    assert!(result.is_ok(), "daemon did not exit within timeout");
+    let abort = handle.abort_handle();
+    match tokio::time::timeout(Duration::from_secs(2), handle).await {
+        Ok(result) => result.expect("daemon task panicked"),
+        Err(_) => {
+            abort.abort();
+            panic!("daemon did not exit within timeout — task aborted");
+        }
+    }
 }
 
 /// Send a JSON line to the daemon and read the response.
@@ -156,8 +165,14 @@ async fn shutdown_message_clean_exit() {
     assert_eq!(ack.status, "shutting_down");
 
     // Daemon should exit cleanly
-    let result = tokio::time::timeout(Duration::from_secs(2), handle).await;
-    assert!(result.is_ok(), "daemon did not exit in time");
+    let abort = handle.abort_handle();
+    match tokio::time::timeout(Duration::from_secs(2), handle).await {
+        Ok(result) => result.expect("daemon task panicked"),
+        Err(_) => {
+            abort.abort();
+            panic!("daemon did not exit in time — task aborted");
+        }
+    }
 
     // Socket should be cleaned up
     tokio::time::sleep(Duration::from_millis(50)).await;

@@ -54,6 +54,9 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
   — flag re-creation inside `select!` loops (wasteful re-registration per iteration)
 - After `JoinSet::abort_all()`, call `while tasks.join_next().await.is_some() {}`
   to observe cancelled tasks — flag bare `abort_all()` without draining
+- Flag `timeout(join_handle).await` without an `AbortHandle` — dropping a `JoinHandle`
+  detaches the task (it keeps running). Grab `handle.abort_handle()` before the timeout
+  and call `abort()` on timeout to prevent silent task leaks
 
 ## Resource Management
 

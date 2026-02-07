@@ -57,12 +57,12 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize logging (only for daemon, suppress for complete command)
-    if std::env::args().any(|arg| arg == "daemon") {
+    let cli = Cli::parse();
+
+    // Initialize logging only for the daemon subcommand
+    if matches!(cli.command, Commands::Daemon { .. }) {
         tracing_subscriber::fmt::init();
     }
-
-    let cli = Cli::parse();
 
     match cli.command {
         Commands::Daemon { socket } => {

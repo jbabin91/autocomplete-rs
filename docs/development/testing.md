@@ -90,14 +90,22 @@ fn temp_socket_path() -> PathBuf {
     PathBuf::from(format!("/tmp/autocomplete-rs-test-{}-{}.sock", std::process::id(), id))
 }
 
-// Helper that asserts every step — never discard intermediate results
+// Helper that asserts every step — never discard intermediate results.
+// Grabs an AbortHandle before awaiting so the task is cancelled on timeout
+// instead of silently leaked (dropping a JoinHandle detaches the task).
 async fn shutdown_daemon(socket_path: &Path, handle: JoinHandle<()>) {
     let resp = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
     let ack: serde_json::Value =
         serde_json::from_str(&resp).expect("shutdown response is valid JSON");
     assert_eq!(ack["status"], "shutting_down", "expected ShutdownAck, got: {resp}");
-    let result = tokio::time::timeout(Duration::from_secs(2), handle).await;
-    assert!(result.is_ok(), "daemon did not exit within timeout");
+    let abort = handle.abort_handle();
+    match tokio::time::timeout(Duration::from_secs(2), handle).await {
+        Ok(result) => result.expect("daemon task panicked"),
+        Err(_) => {
+            abort.abort();
+            panic!("daemon did not exit within timeout — task aborted");
+        }
+    }
 }
 ```
 
