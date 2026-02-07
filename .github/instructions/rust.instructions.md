@@ -9,13 +9,10 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 
 ## Review Approach
 
-- Start with protocol types (`src/protocol.rs`) and engine traits (`src/engine.rs`) to
-  understand the data flow before reviewing handler or server code
-- For daemon changes, trace the request lifecycle: accept → handler → engine → response
-- Focus review effort on safety boundaries: socket I/O, PID file races, shutdown
-  coordination, and untrusted input parsing
-- CI already enforces formatting, clippy, and test passing — don't flag style issues
-  that automated tools catch
+- Focus on correctness, safety boundaries, and race conditions — not style
+- CI already enforces formatting, clippy, and test passing — don't flag issues that
+  automated tools catch
+- Flag missing error context, unguarded resource cleanup, and unbounded I/O
 
 ## Error Handling
 
