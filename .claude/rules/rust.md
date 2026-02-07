@@ -68,9 +68,9 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   `tasks.join_next()` branch to reap completed tasks — otherwise the
   JoinSet grows without bound (finished tasks are retained until joined)
 - After `abort_all()`, drain with `while tasks.join_next().await.is_some() {}`
-- Dropping a `JoinHandle` detaches the task (it keeps running). When using
-  `timeout(handle).await`, grab an `AbortHandle` first so the task can be
-  explicitly aborted on timeout instead of silently leaked
+- Avoid `timeout(join_handle).await` — it consumes the handle, so on timeout
+  the task is detached and can't be observed. Use `select!` with `sleep` +
+  `&mut handle` instead, then `abort()` + `handle.await` to observe cancellation
 
 ## Testing
 

@@ -44,17 +44,27 @@ impl StorageHandle {
             }
         }
 
+        // Use select! instead of timeout() so the JoinHandle isn't consumed
+        // on timeout — we can still abort and observe the task afterward.
         let abort = self.actor_handle.abort_handle();
-        match tokio::time::timeout(SHUTDOWN_TIMEOUT, self.actor_handle).await {
-            Ok(Ok(())) => debug!("storage actor shut down cleanly"),
-            Ok(Err(e)) => {
+        let mut handle = self.actor_handle;
+
+        let join_result = tokio::select! {
+            res = &mut handle => res,
+            () = tokio::time::sleep(SHUTDOWN_TIMEOUT) => {
+                tracing::warn!("storage actor shutdown timed out, aborting");
+                abort.abort();
+                // Observe the cancellation so the task doesn't outlive shutdown.
+                handle.await
+            }
+        };
+
+        match join_result {
+            Ok(()) => debug!("storage actor shut down cleanly"),
+            Err(e) => {
                 if !e.is_cancelled() {
                     tracing::warn!("storage actor panicked: {e}");
                 }
-            }
-            Err(_) => {
-                tracing::warn!("storage actor shutdown timed out, aborting");
-                abort.abort();
             }
         }
     }

@@ -64,9 +64,10 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
   grows without bound as finished tasks are retained until joined)
 - After `JoinSet::abort_all()`, call `while tasks.join_next().await.is_some() {}`
   to observe cancelled tasks — flag bare `abort_all()` without draining
-- Flag `timeout(join_handle).await` without an `AbortHandle` — dropping a `JoinHandle`
-  detaches the task (it keeps running). Grab `handle.abort_handle()` before the timeout
-  and call `abort()` on timeout to prevent silent task leaks
+- Flag `timeout(join_handle).await` — `timeout()` consumes the `JoinHandle`, so on
+  timeout the task is detached (keeps running) and can't be observed. Prefer
+  `tokio::select!` with `sleep` + `&mut handle` so the handle survives timeout, then
+  call `abort()` and `handle.await` to observe cancellation
 
 ## Resource Management
 

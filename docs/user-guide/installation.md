@@ -75,7 +75,7 @@ cd autocomplete-rs
 
 The storage layer (libsql) requires a C compiler and CMake:
 
-- **macOS:** `xcode-select --install` (provides clang + CMake)
+- **macOS:** `xcode-select --install` (provides clang), then `brew install cmake`
 - **Ubuntu/Debian:** `sudo apt-get install build-essential cmake`
 - **Fedora:** `sudo dnf install gcc cmake`
 
