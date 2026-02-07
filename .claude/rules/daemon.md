@@ -60,7 +60,11 @@ paths:
   for reliable delivery — sessions should not remain "running" in the DB
 - Session lifecycle: `SessionStart` before accept loop, `SessionStop`
   after, both correlated by `session_id` (UUID v4)
-- Metrics snapshots emitted every 60 seconds from the server accept loop
+- Session `mode` is determined by `logging::detect_mode()` — reuses the
+  same logic as the logging subsystem (production/development/troubleshooting).
+  `logging::Mode` implements `Display` for serialization
+- Metrics snapshots emitted every 60 seconds from the server accept loop,
+  using `state.session_id` (no separate session_id parameter)
 - Diagnostic events emitted on handler error paths (timeout, protocol,
   validation) with privacy redaction applied before storage
 - Session stop event sent directly on `handle.sender` (not through

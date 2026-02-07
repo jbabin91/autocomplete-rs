@@ -22,6 +22,7 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
   - `schema.rs` — version-tracked migrations (v1: sessions, diagnostics, metrics)
   - `actor.rs` — background write actor with batched transactions (channel+actor pattern)
   - `queries.rs` — read queries for `diagnose` command (`DiagnoseReport`)
+- **Shared utilities** (`src/paths.rs`) — `pub(crate)` helpers used across modules (e.g. `home_dir()` for `$HOME` resolution).
 - **Inline Dropdown** — Not yet implemented. Will render completions inline below the cursor using raw ANSI escape codes via crossterm (no alternate screen, no Ratatui).
 - **Parser** (`src/parser/`) — stub. Intended to tokenize the shell buffer and match against completion specs. Will implement `CompletionEngine` trait.
 - **Shell integration** (`shell-integration/zsh.zsh`) — ZLE widget that captures the buffer/cursor, calls the client, and inserts the selected completion.

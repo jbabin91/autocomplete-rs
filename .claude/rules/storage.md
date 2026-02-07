@@ -25,6 +25,21 @@ paths:
   `tokio::time::timeout` to prevent blocking shutdown if the actor is
   stalled
 
+## turso API Notes
+
+Key differences from the `libsql` crate (turso is API-compatible but
+not identical):
+
+- `Builder::new_local()` takes `&str` not `&Path` — convert with
+  `path.to_str().context("database path is not valid UTF-8")?`
+- `Transaction` has a lifetime: `turso::transaction::Transaction<'conn>`
+  (not `turso::Transaction`, which is an empty struct at the crate root)
+- `conn.transaction()` requires `&mut Connection` — use
+  `conn.unchecked_transaction()` for shared `&Connection` (e.g. in the
+  actor which owns a non-mut connection)
+- `Transaction<'_>` implements `Deref<Target=Connection>`, so `execute`
+  / `query` work directly on `&tx`
+
 ## Database Queries
 
 - **Always use parameterized queries** (`turso::params![]`) — never
@@ -63,6 +78,8 @@ paths:
   synchronization
 - Use file-based tempdir DBs for actor tests (not `:memory:`) — in-memory
   turso doesn't share state across multiple `db.connect()` calls
-- `ensure_data_dir()` enforces 0700 permissions — use a subdirectory
-  within `tempdir()` for integration tests since tempdir creates with
-  0755
+- `ensure_data_dir()` rejects group/other access (checks `perms & 0o077`)
+  and creates new directories with 0700 — use a subdirectory within
+  `tempdir()` for integration tests since tempdir creates with 0755
+- Permission tests should assert exact `0o700` for directories created
+  by `ensure_data_dir()`, not just `mode & 0o077 == 0`

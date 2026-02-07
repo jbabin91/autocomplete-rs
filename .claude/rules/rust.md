@@ -84,6 +84,15 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - `sleep`-based waits are acceptable only for polling loops with retry
   (e.g. waiting for a socket to become ready) or async file cleanup
 
+## Shared Helpers
+
+- Cross-module utilities live in `src/paths.rs` (`pub(crate)`) — e.g.
+  `home_dir()` for resolving `$HOME` with `/tmp` fallback. Don't
+  duplicate small helpers across modules; extract to a shared location
+- When adding behavior that multiple modules need (mode detection,
+  path resolution), prefer re-exporting from the owning module rather
+  than duplicating the logic
+
 ## Tooling
 
 - Hook `check` and `fix` commands must use identical flags (e.g. both
