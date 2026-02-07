@@ -9,10 +9,9 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 
 ## Review Approach
 
-- Focus on correctness, safety boundaries, and race conditions — not style
-- CI already enforces formatting, clippy, and test passing — don't flag issues that
-  automated tools catch
-- Flag missing error context, unguarded resource cleanup, and unbounded I/O
+- CI enforces rustfmt, clippy, and test passing — don't duplicate those checks
+- Focus on what CI can't catch: race conditions, missing timeouts, unguarded resource
+  cleanup, doc/code divergence, and flag consistency across CI/hooks/mise
 
 ## Error Handling
 
