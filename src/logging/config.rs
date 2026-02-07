@@ -107,12 +107,11 @@ pub fn cleanup_old_logs(dir: &Path, days: u32) -> Result<()> {
             .modified()
             .context("failed to read modification time")?;
 
-        if modified < cutoff {
-            if let Err(e) = fs::remove_file(&path) {
-                if e.kind() != std::io::ErrorKind::NotFound {
-                    warn!("failed to remove old log {}: {}", path.display(), e);
-                }
-            }
+        if modified < cutoff
+            && let Err(e) = fs::remove_file(&path)
+            && e.kind() != std::io::ErrorKind::NotFound
+        {
+            warn!("failed to remove old log {}: {}", path.display(), e);
         }
     }
 

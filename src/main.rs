@@ -186,11 +186,11 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
             // errors) could mean a live daemon we can't reach — deleting its
             // socket would break it.
             if e.kind() == std::io::ErrorKind::ConnectionRefused {
-                if let Err(rm_err) = std::fs::remove_file(socket_path) {
-                    if rm_err.kind() != std::io::ErrorKind::NotFound {
-                        return Err(rm_err)
-                            .context(format!("failed to remove stale socket: {socket_path}"));
-                    }
+                if let Err(rm_err) = std::fs::remove_file(socket_path)
+                    && rm_err.kind() != std::io::ErrorKind::NotFound
+                {
+                    return Err(rm_err)
+                        .context(format!("failed to remove stale socket: {socket_path}"));
                 }
                 println!("Removed stale socket (daemon was not running)");
             } else {

@@ -29,14 +29,14 @@ async fn start_daemon(socket_path: &Path) -> tokio::task::JoinHandle<()> {
     let cancel = state.cancel.clone();
 
     // Remove stale socket (NotFound is expected; anything else is a real problem)
-    if let Err(e) = std::fs::remove_file(&path) {
-        if e.kind() != std::io::ErrorKind::NotFound {
-            panic!(
-                "failed to remove stale test socket {}: {}",
-                path.display(),
-                e
-            );
-        }
+    if let Err(e) = std::fs::remove_file(&path)
+        && e.kind() != std::io::ErrorKind::NotFound
+    {
+        panic!(
+            "failed to remove stale test socket {}: {}",
+            path.display(),
+            e
+        );
     }
 
     let listener = tokio::net::UnixListener::bind(&path).unwrap();
@@ -78,10 +78,10 @@ async fn start_daemon(socket_path: &Path) -> tokio::task::JoinHandle<()> {
         // Drain tasks
         while tasks.join_next().await.is_some() {}
 
-        if let Err(e) = std::fs::remove_file(&path2) {
-            if e.kind() != std::io::ErrorKind::NotFound {
-                panic!("failed to clean up test socket {}: {}", path2.display(), e);
-            }
+        if let Err(e) = std::fs::remove_file(&path2)
+            && e.kind() != std::io::ErrorKind::NotFound
+        {
+            panic!("failed to clean up test socket {}: {}", path2.display(), e);
         }
     });
 

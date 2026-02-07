@@ -67,10 +67,10 @@ impl DaemonState {
     /// full or absent, the event is silently dropped — storage events are
     /// observability data, not business-critical.
     pub fn emit_storage_event(&self, event: StorageEvent) {
-        if let Some(ref sender) = self.storage {
-            if let Err(e) = sender.try_send(event) {
-                tracing::warn!("storage event dropped: {e}");
-            }
+        if let Some(ref sender) = self.storage
+            && let Err(e) = sender.try_send(event)
+        {
+            tracing::warn!("storage event dropped: {e}");
         }
     }
 

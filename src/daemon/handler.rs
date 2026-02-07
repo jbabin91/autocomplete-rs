@@ -174,16 +174,16 @@ fn parse_message(line: &str) -> ParsedMessage {
     // If the JSON has a "type" field, it was intended as a DaemonMessage — don't
     // silently fall back to CompletionRequest. Distinguish unknown types from known
     // types with invalid payloads.
-    if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
-        if let Some(ty) = value.get("type") {
-            let known = matches!(ty.as_str(), Some("complete" | "shutdown"));
-            if known {
-                return ParsedMessage::Error(format!(
-                    "invalid payload for message type {ty}: check field types"
-                ));
-            }
-            return ParsedMessage::Error(format!("unknown message type: {ty}"));
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(line)
+        && let Some(ty) = value.get("type")
+    {
+        let known = matches!(ty.as_str(), Some("complete" | "shutdown"));
+        if known {
+            return ParsedMessage::Error(format!(
+                "invalid payload for message type {ty}: check field types"
+            ));
         }
+        return ParsedMessage::Error(format!("unknown message type: {ty}"));
     }
 
     // Fall back to bare CompletionRequest (backward compat — no "type" field)
