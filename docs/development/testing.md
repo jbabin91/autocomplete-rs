@@ -80,43 +80,21 @@ cargo nextest run --no-capture
 
 **Location:** `tests/` directory
 
-**Example:**
+**Example:** See `tests/daemon_integration.rs` for the real tests. Key patterns:
 
 ```rust
-// tests/completion_flow.rs
-use autocomplete_rs::{daemon, parser};
-use std::path::Path;
-use tokio::net::UnixStream;
+// Unique socket paths via atomic counter (not timestamps or random values)
+static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+fn temp_socket_path() -> PathBuf {
+    let id = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+    PathBuf::from(format!("/tmp/autocomplete-rs-test-{}-{}.sock", std::process::id(), id))
+}
 
-#[tokio::test]
-async fn test_end_to_end_completion() {
-    // Start daemon
-    let socket_path = "/tmp/test-autocomplete.sock";
-    tokio::spawn(async {
-        daemon::start(socket_path).await.unwrap();
-    });
-
-    // Wait for daemon to start
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    // Connect and send request
-    let mut stream = UnixStream::connect(socket_path).await.unwrap();
-    let request = json!({
-        "buffer": "git checkout ",
-        "cursor": 13
-    });
-    stream.write_all(request.to_string().as_bytes()).await.unwrap();
-
-    // Read response
-    let mut response = String::new();
-    stream.read_to_string(&mut response).await.unwrap();
-
-    let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
-    assert!(parsed["suggestions"].is_array());
-    assert!(!parsed["suggestions"].as_array().unwrap().is_empty());
-
-    // Cleanup
-    std::fs::remove_file(socket_path).unwrap();
+// Helper that asserts shutdown succeeds — never ignore cleanup results
+async fn shutdown_daemon(socket_path: &Path, handle: JoinHandle<()>) {
+    let _ = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
+    let result = tokio::time::timeout(Duration::from_secs(2), handle).await;
+    assert!(result.is_ok(), "daemon did not exit within timeout");
 }
 ```
 

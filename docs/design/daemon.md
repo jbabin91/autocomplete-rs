@@ -177,21 +177,26 @@ Shutdown is triggered by either Ctrl+C (SIGINT) or a `DaemonMessage::Shutdown`
 sent over the socket. Both paths cancel the shared `CancellationToken`.
 
 ```rust
-// src/daemon/server.rs — biased select in accept loop
-tokio::select! {
-    biased;  // Check cancellation first
-    _ = state.cancel.cancelled() => break,  // Shutdown message
-    _ = signal::ctrl_c() => {
-        state.cancel.cancel();
-        break;
+// src/daemon/server.rs — signal pinned once, biased select in accept loop
+let mut sigint = std::pin::pin!(signal::ctrl_c());
+
+loop {
+    tokio::select! {
+        biased;  // Check cancellation first
+        _ = state.cancel.cancelled() => break,  // Shutdown message
+        result = &mut sigint => {
+            state.cancel.cancel();
+            break;
+        }
+        result = listener.accept() => { /* handle connection */ }
     }
-    result = listener.accept() => { /* handle connection */ }
 }
 
 // After loop exits:
 // 1. Drain in-flight tasks (5s timeout via JoinSet)
-// 2. Clean up socket file
-// 3. PID file cleaned up automatically via Drop
+// 2. abort_all() + join remaining tasks on timeout
+// 3. Clean up socket file
+// 4. PID file cleaned up automatically via Drop
 ```
 
 ## Concurrency

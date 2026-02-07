@@ -134,6 +134,23 @@ gh api graphql --paginate -f query='
 '
 ```
 
+### Introspect mutation input fields
+
+Useful for debugging when a mutation fails or you're unsure of the input schema:
+
+```sh
+gh api graphql -f query='
+  query {
+    __type(name: "AddPullRequestReviewThreadReplyInput") {
+      inputFields {
+        name
+        type { name kind ofType { name } }
+      }
+    }
+  }
+' --jq '.data.__type.inputFields[] | "\(.name): \(.type.name // .type.ofType.name)"'
+```
+
 ## Rulesets
 
 View and check repository rulesets:

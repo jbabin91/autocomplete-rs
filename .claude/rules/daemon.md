@@ -19,7 +19,7 @@ paths:
 - **Envelope format**: `DaemonMessage` tagged enum with `"type"` field:
   - `{"type":"complete","buffer":"...","cursor":N}` — completion request
   - `{"type":"shutdown"}` — graceful shutdown request
-- **Backward compatibility**: Bare `CompletionRequest` without `"type"` field is accepted (handler falls back). But if JSON has a `"type"` field that doesn't match a known variant, the handler returns an error instead of falling back — prevents masking protocol bugs.
+- **Backward compatibility**: Bare `CompletionRequest` without `"type"` field is accepted (handler falls back). If JSON has a `"type"` field, the handler distinguishes unknown types ("unknown message type") from known types with invalid payloads ("invalid payload for message type") — prevents masking protocol bugs.
 - Response types:
   - `CompletionResponse { suggestions: Vec<Suggestion> }` — success
   - `ErrorResponse { error: String }` — validation failure or malformed JSON
@@ -30,8 +30,9 @@ paths:
 ## Async Patterns
 
 - Tokio runtime with `tokio::spawn` for per-connection tasks tracked in `JoinSet`
-- `tokio::select!` with biased polling: cancellation → Ctrl+C → accept
+- `tokio::select!` with biased polling: cancellation → Ctrl+C → accept. Signal future (`ctrl_c()`) is created once and pinned outside the loop — not recreated per iteration.
 - `CancellationToken` (from tokio-util) for cross-task shutdown coordination
+- Graceful shutdown drains in-flight tasks with a 5s timeout, then `abort_all()` + `join_next()` to observe cancelled tasks
 - Stream split into reader/writer: `stream.into_split()` with `BufReader` for line reading
 - Individual connection failures must NOT crash the daemon
 - Semaphore-based backpressure (100 concurrent connections max)

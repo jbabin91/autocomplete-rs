@@ -130,6 +130,55 @@ gh api graphql -F owner="owner" -F repo="repo" -F pr=45 \
     | {id, path: .comments.nodes[0].path, snippet: .comments.nodes[0].body[:80]}'
 ```
 
+### Reply to a thread
+
+Use `addPullRequestReviewThreadReply` to reply inline within an existing thread. This is the correct way to respond to review comments — do NOT use `addComment` or create a new review, as those add standalone comments instead of threaded replies.
+
+```sh
+cat > /tmp/reply.graphql << 'QUERY'
+mutation($threadId: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(
+    input: { pullRequestReviewThreadId: $threadId, body: $body }
+  ) {
+    comment { id }
+  }
+}
+QUERY
+
+gh api graphql -f query="$(cat /tmp/reply.graphql)" \
+  -f threadId="PRRT_kwDO..." \
+  -f body="Fixed in abc1234 — description of what changed."
+```
+
+### Reply and resolve a thread
+
+The most common workflow: reply with context, then resolve. Use both mutations in sequence.
+
+```sh
+# Reply first
+gh api graphql -f query="$(cat /tmp/reply.graphql)" \
+  -f threadId="PRRT_kwDO..." \
+  -f body="Fixed — extracted helper to avoid duplication."
+
+# Then resolve
+gh api graphql -f query="$(cat /tmp/resolve.graphql)" \
+  -f threadId="PRRT_kwDO..."
+```
+
+### Batch reply and resolve
+
+```sh
+# Reply to and resolve multiple threads
+REPLY=$(cat /tmp/reply.graphql)
+RESOLVE=$(cat /tmp/resolve.graphql)
+
+for tid in PRRT_abc PRRT_def PRRT_ghi; do
+  gh api graphql -f query="$REPLY" -f threadId="$tid" \
+    -f body="Fixed — see commit abc1234."
+  gh api graphql -f query="$RESOLVE" -f threadId="$tid"
+done
+```
+
 ### Resolve a single thread
 
 ```sh
@@ -174,9 +223,16 @@ gh api graphql -f query="$(cat /tmp/unresolve.graphql)" \
   -f threadId="PRRT_kwDO..."
 ```
 
+### When to reply vs. resolve vs. new comment
+
+- **Reply and resolve:** You fixed the issue or are deferring with an explanation — the reviewer deserves context
+- **Resolve only:** The comment is outdated (code no longer exists) or already addressed by a prior commit
+- **Reply only (don't resolve):** You disagree or need discussion before resolving
+- **New PR comment** (`gh pr comment 45 --body "..."`): General communication that isn't a response to a specific review thread — status updates, summaries, questions for the reviewer
+
 Thread fields reference:
 
-- `id` -- node ID (starts with `PRRT_`), used in resolve/unresolve mutations
+- `id` -- node ID (starts with `PRRT_`), used in resolve/unresolve/reply mutations
 - `isResolved` -- whether the thread is marked resolved
 - `isOutdated` -- `true` when subsequent commits changed the lines the comment was on
 - `comments.nodes[].path` -- file path the comment is on
