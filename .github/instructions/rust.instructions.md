@@ -27,6 +27,11 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
   `return Err(e).context(...)` in functions, `tracing::warn!` in Drop impls
 - Flag `let _ =` on channel `send()`/`try_send()` — log the failure (at minimum
   `debug!`) so channel-closed vs channel-full conditions are diagnosable
+- Flag `send().await` without `tokio::time::timeout` in shutdown paths — a stalled
+  receiver or full channel can block shutdown indefinitely. Always wrap in a timeout
+- Flag `try_send()` for lifecycle-critical events (session stop, flush) on shutdown
+  paths — these should use `send().await` with timeout for reliable delivery since
+  dropped events leave stale state in the database
 - Flag `Err(_)` that discards error details when the error type has multiple failure
   modes (e.g. `io::Error` could be `PermissionDenied`, `NotFound`, `BrokenPipe`). Only
   discard when the error type is single-meaning (e.g. `tokio::time::Elapsed` always

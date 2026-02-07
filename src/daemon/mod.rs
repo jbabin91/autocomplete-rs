@@ -87,17 +87,27 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
         "error"
     };
 
-    // Emit session stop (best-effort — storage_handle may have sender)
-    if let Some(ref handle) = storage_handle
-        && let Err(e) = handle.sender.try_send(StorageEvent::SessionStop {
+    // Emit session stop — use send().await with timeout (not try_send) since
+    // this is the shutdown path, not the hot path, and we want reliable delivery
+    // so sessions don't remain "running" in the DB.
+    if let Some(ref handle) = storage_handle {
+        let stop_event = StorageEvent::SessionStop {
             session_id,
             reason: reason.to_string(),
-        })
-    {
-        tracing::warn!("failed to emit session stop event: {e}");
+        };
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            handle.sender.send(stop_event),
+        )
+        .await
+        {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => tracing::warn!("failed to emit session stop event: {e}"),
+            Err(_) => tracing::warn!("timed out sending session stop event"),
+        }
     }
 
-    // Shut down storage actor
+    // Shut down storage actor (flushes remaining events including SessionStop)
     if let Some(handle) = storage_handle {
         handle.shutdown().await;
     }

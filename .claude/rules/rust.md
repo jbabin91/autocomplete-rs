@@ -17,6 +17,12 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   - Tests: `panic!` (surfaces failures in test output)
   - Channel sends (`send()`, `try_send()`): at minimum `debug!`/`warn!`
     the failure — a closed or full channel is diagnosable info, not noise
+- Choose `try_send()` vs `send().await` based on path criticality:
+  - **Hot path** (per-request): `try_send()` — non-blocking, drop on
+    backpressure, warn and move on
+  - **Shutdown path** (session stop, flush): `send().await` with
+    `tokio::time::timeout` — reliable delivery matters, but must not
+    block shutdown indefinitely
 - Never `Err(_)` when the error type has multiple failure modes (`io::Error`,
   `anyhow::Error`). Only discard single-meaning errors (`tokio::time::Elapsed`,
   `TryAcquireError`)

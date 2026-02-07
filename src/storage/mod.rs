@@ -34,9 +34,14 @@ pub struct StorageHandle {
 impl StorageHandle {
     /// Send a `Flush` sentinel and wait for the actor to exit (with timeout).
     pub async fn shutdown(self) {
-        // Best-effort send of Flush — channel may already be closed
-        if let Err(e) = self.sender.send(StorageEvent::Flush).await {
-            debug!("failed to send Flush to storage actor (channel likely closed): {e}");
+        // Best-effort send of Flush with timeout — if the actor is stalled
+        // or the channel is full, don't block shutdown indefinitely.
+        match tokio::time::timeout(SHUTDOWN_TIMEOUT, self.sender.send(StorageEvent::Flush)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => debug!("failed to send Flush to storage actor (channel closed): {e}"),
+            Err(_) => {
+                tracing::warn!("timed out sending Flush to storage actor, proceeding to abort")
+            }
         }
 
         let abort = self.actor_handle.abort_handle();

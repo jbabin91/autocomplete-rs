@@ -66,7 +66,8 @@ impl DaemonState {
     /// Emit a storage event (non-blocking, best-effort).
     ///
     /// Uses `try_send()` to avoid awaiting on the channel. If the channel is
-    /// full or absent, the event is dropped with a warning — storage events are
+    /// full, the event is dropped with a warning. If storage is `None`
+    /// (degraded mode), the call is a silent no-op — storage events are
     /// observability data, not business-critical.
     pub fn emit_storage_event(&self, event: StorageEvent) {
         if let Some(ref sender) = self.storage

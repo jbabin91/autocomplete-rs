@@ -16,8 +16,13 @@ paths:
 - **Degraded mode** — daemon continues if storage init fails
   (`Option<StorageEventSender>`). Storage is observability, not
   business-critical
-- **`try_send()` for event emission** — synchronous, non-blocking. If
-  the channel is full (1024 cap), the event is dropped with a warning
+- **`try_send()` for hot-path event emission** — synchronous,
+  non-blocking. If the channel is full (1024 cap), the event is dropped
+  with a warning
+- **`send().await` with timeout for shutdown events** — session stop and
+  flush use awaitable send for reliable delivery, but always wrapped in
+  `tokio::time::timeout` to prevent blocking shutdown if the actor is
+  stalled
 
 ## Database Queries
 
@@ -45,8 +50,10 @@ paths:
 - **Flush sentinel**: `StorageEvent::Flush` triggers final drain + exit
 - **Error resilience**: individual event write failures warn but don't
   abort the batch — storage must never crash the daemon
-- **Shutdown**: `StorageHandle::shutdown()` sends `Flush`, then awaits
-  the actor with a 5s timeout before aborting
+- **Shutdown**: `StorageHandle::shutdown()` sends `Flush` (with timeout
+  on the send itself), then awaits the actor with a 5s timeout before
+  aborting. Both the send and the await are independently guarded
+  against stalls
 
 ## Testing
 

@@ -53,8 +53,11 @@ paths:
 
 - Storage is optional — daemon starts in degraded mode if init fails
 - `DaemonState` carries `Option<StorageEventSender>` and `session_id`
-- Events emitted via `emit_storage_event()` using `try_send()` (never
-  awaits — non-blocking fire-and-forget with warning on failure)
+- Hot-path events emitted via `emit_storage_event()` using `try_send()`
+  (never awaits — non-blocking fire-and-forget with warning on failure).
+  When storage is `None` (degraded mode), the call is a silent no-op
+- Shutdown-path events (`SessionStop`) use `send().await` with timeout
+  for reliable delivery — sessions should not remain "running" in the DB
 - Session lifecycle: `SessionStart` before accept loop, `SessionStop`
   after, both correlated by `session_id` (UUID v4)
 - Metrics snapshots emitted every 60 seconds from the server accept loop
