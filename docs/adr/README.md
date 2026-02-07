@@ -34,6 +34,7 @@ Each ADR follows this structure:
 | [0004](0004-direct-terminal-control.md) | Direct Terminal Control | Accepted   | 2025-10-25 |
 | [0005](0005-ratatui-for-tui.md)         | Ratatui for TUI         | Superseded | 2025-10-25 |
 | [0006](0006-inline-ansi-dropdown.md)    | Inline ANSI Dropdown    | Accepted   | 2025-12-01 |
+| [0007](0007-logging-infrastructure.md)  | Logging Infrastructure  | Accepted   | 2026-02-06 |
 
 ## When to Write an ADR
 
