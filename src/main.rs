@@ -248,10 +248,19 @@ fn install_command(shell: &str) -> Result<()> {
 
 /// Show diagnostic report from the storage database.
 async fn diagnose_command(db_path: &std::path::Path, json: bool) -> Result<()> {
-    if !db_path.exists() {
-        println!("No storage database found at {}", db_path.display());
-        println!("The daemon creates this database on first run.");
-        return Ok(());
+    match std::fs::metadata(db_path) {
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            println!("No storage database found at {}", db_path.display());
+            println!("The daemon creates this database on first run.");
+            return Ok(());
+        }
+        Err(e) => {
+            anyhow::bail!(
+                "cannot access storage database at {}: {e}",
+                db_path.display()
+            );
+        }
     }
 
     let conn = storage::open_readonly(db_path)
