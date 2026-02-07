@@ -32,7 +32,12 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
     info!("PID file acquired");
 
     // Remove existing socket if it exists (stale from a crash)
-    let _ = std::fs::remove_file(path);
+    if let Err(e) = std::fs::remove_file(path) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            return Err(e)
+                .with_context(|| format!("failed to remove stale socket: {}", socket_path));
+        }
+    }
 
     let listener = UnixListener::bind(path)
         .with_context(|| format!("failed to bind to socket: {}", socket_path))?;
@@ -44,7 +49,11 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
     let result = server::run(listener, state, path).await;
 
     // Cleanup socket file (PID file cleaned up by Drop)
-    let _ = std::fs::remove_file(path);
+    if let Err(e) = std::fs::remove_file(path) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            tracing::warn!("failed to remove socket on shutdown: {}", e);
+        }
+    }
 
     result
 }

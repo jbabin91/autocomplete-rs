@@ -28,8 +28,16 @@ async fn start_daemon(socket_path: &Path) -> tokio::task::JoinHandle<()> {
     let state = DaemonState::new(Arc::new(StubEngine));
     let cancel = state.cancel.clone();
 
-    // Remove stale socket
-    let _ = std::fs::remove_file(&path);
+    // Remove stale socket (NotFound is expected; anything else is a real problem)
+    if let Err(e) = std::fs::remove_file(&path) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            panic!(
+                "failed to remove stale test socket {}: {}",
+                path.display(),
+                e
+            );
+        }
+    }
 
     let listener = tokio::net::UnixListener::bind(&path).unwrap();
 
@@ -51,10 +59,14 @@ async fn start_daemon(socket_path: &Path) -> tokio::task::JoinHandle<()> {
                             let state = state.clone();
                             tasks.spawn(async move {
                                 let (r, w) = stream.into_split();
-                                let _ = autocomplete_rs::daemon::handler::handle_connection(
-                                    r, w, &state, 0,
-                                )
-                                .await;
+                                if let Err(e) =
+                                    autocomplete_rs::daemon::handler::handle_connection(
+                                        r, w, &state, 0,
+                                    )
+                                    .await
+                                {
+                                    eprintln!("test handler error: {e}");
+                                }
                             });
                         }
                         Err(_) => break,
@@ -66,7 +78,11 @@ async fn start_daemon(socket_path: &Path) -> tokio::task::JoinHandle<()> {
         // Drain tasks
         while tasks.join_next().await.is_some() {}
 
-        let _ = std::fs::remove_file(&path2);
+        if let Err(e) = std::fs::remove_file(&path2) {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                panic!("failed to clean up test socket {}: {}", path2.display(), e);
+            }
+        }
     });
 
     // Wait for socket to be ready

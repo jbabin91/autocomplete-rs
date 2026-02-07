@@ -44,7 +44,13 @@ impl PidFile {
                 }
 
                 // Stale or corrupt PID file — remove and recreate atomically.
-                let _ = fs::remove_file(&pid_path);
+                if let Err(e) = fs::remove_file(&pid_path) {
+                    if e.kind() != io::ErrorKind::NotFound {
+                        return Err(e).with_context(|| {
+                            format!("failed to remove stale PID file: {}", pid_path.display())
+                        });
+                    }
+                }
                 write_pid_atomic(&pid_path, current_pid)
                     .with_context(|| format!("failed to write PID file: {}", pid_path.display()))?;
 
@@ -67,7 +73,11 @@ impl PidFile {
 
 impl Drop for PidFile {
     fn drop(&mut self) {
-        let _ = fs::remove_file(&self.path);
+        if let Err(e) = fs::remove_file(&self.path) {
+            if e.kind() != io::ErrorKind::NotFound {
+                tracing::warn!("failed to remove PID file {}: {}", self.path.display(), e);
+            }
+        }
     }
 }
 
@@ -142,7 +152,15 @@ mod tests {
         let pid_path = derive_pid_path(&sock);
 
         // Ensure clean state
-        let _ = fs::remove_file(&pid_path);
+        if let Err(e) = fs::remove_file(&pid_path) {
+            if e.kind() != io::ErrorKind::NotFound {
+                panic!(
+                    "failed to clean up test PID file {}: {}",
+                    pid_path.display(),
+                    e
+                );
+            }
+        }
 
         {
             let pf = PidFile::acquire(&sock).unwrap();
@@ -160,7 +178,15 @@ mod tests {
         let dir = std::env::temp_dir();
         let sock = dir.join(format!("test-double-{}.sock", std::process::id()));
         let pid_path = derive_pid_path(&sock);
-        let _ = fs::remove_file(&pid_path);
+        if let Err(e) = fs::remove_file(&pid_path) {
+            if e.kind() != io::ErrorKind::NotFound {
+                panic!(
+                    "failed to clean up test PID file {}: {}",
+                    pid_path.display(),
+                    e
+                );
+            }
+        }
 
         let _pf = PidFile::acquire(&sock).unwrap();
 

@@ -147,7 +147,12 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
             match tokio::time::timeout(Duration::from_secs(5), reader.read_line(&mut ack_line))
                 .await
             {
-                Ok(Ok(_)) => println!("Daemon stopped"),
+                Ok(Ok(_)) if ack_line.contains("shutting_down") => {
+                    println!("Daemon stopped");
+                }
+                Ok(Ok(_)) => {
+                    println!("Daemon responded unexpectedly: {}", ack_line.trim());
+                }
                 Ok(Err(_)) => println!("Daemon stopped (connection closed)"),
                 Err(_) => println!("Daemon stop requested (timed out waiting for ack)"),
             }

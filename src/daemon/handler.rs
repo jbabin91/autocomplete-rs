@@ -64,6 +64,18 @@ where
         return Ok(());
     }
 
+    // If the line doesn't end with a newline, the request was truncated by the size limit
+    if !line.ends_with('\n') {
+        let err = ErrorResponse {
+            error: format!(
+                "request too large (exceeded {} byte limit)",
+                MAX_REQUEST_SIZE
+            ),
+        };
+        write_json(&mut writer, &err).await?;
+        return Ok(());
+    }
+
     state.record_request();
 
     // Try to parse as DaemonMessage (envelope with "type" field) first,
