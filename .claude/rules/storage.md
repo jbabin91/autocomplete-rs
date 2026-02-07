@@ -8,8 +8,9 @@ paths:
 ## Architecture
 
 - **turso** (pure-Rust SQLite rewrite) for local-only embedded storage —
-  no native build dependencies (no cmake, cc, or bindgen). Zero C
-  compilation required for `cargo install`
+  no cmake or C compilation required for `cargo install`. Note:
+  `turso_sdk_kit` declares `bindgen` as a build-dep but has `build = false`
+  and no `build.rs`, so it never actually runs
 - **Channel+Actor pattern** keeps DB writes off the completion hot path:
   `mpsc::Sender<StorageEvent>` in `DaemonState`, background actor owns
   the `Connection` and batches writes into transactions
