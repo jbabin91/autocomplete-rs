@@ -7,6 +7,16 @@ applyTo: '**/*.rs'
 For full architecture context, see `AGENTS.md`. For tooling and testing
 conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 
+## Review Approach
+
+- Start with protocol types (`src/protocol.rs`) and engine traits (`src/engine.rs`) to
+  understand the data flow before reviewing handler or server code
+- For daemon changes, trace the request lifecycle: accept → handler → engine → response
+- Focus review effort on safety boundaries: socket I/O, PID file races, shutdown
+  coordination, and untrusted input parsing
+- CI already enforces formatting, clippy, and test passing — don't flag style issues
+  that automated tools catch
+
 ## Error Handling
 
 - Application-level code uses `anyhow::Result` — flag `Box<dyn Error>` or manual error

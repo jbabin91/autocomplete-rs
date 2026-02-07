@@ -58,7 +58,7 @@ cargo nextest run -E 'test(name)'  # run a single test by name
 - **Branch naming:** `feat/`, `fix/`, `refactor/`, `chore/` prefixes (match conventional commit types)
 - **Merging:** Squash merge or rebase merge only — no merge commits
 - **CI:** All PRs must pass the `CI Status` gate check before merging
-- **PR body:** Use `.github/pull_request_template.md` as the structure — fill in Summary, Resolves (bead or issue), and Test plan
+- **PR body:** Use `.github/pull_request_template.md` — fill in Summary (what and why) and Resolves (bead or issue)
 
 **Commit conventions:** [Conventional Commits](https://www.conventionalcommits.org/)
 
