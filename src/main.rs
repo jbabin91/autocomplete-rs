@@ -100,13 +100,13 @@ async fn complete_command(buffer: &str, cursor: usize, socket_path: &str) -> Res
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
 
-    // Send request
-    let request = CompletionRequest {
+    // Send request using the DaemonMessage envelope
+    let msg = DaemonMessage::Complete(CompletionRequest {
         buffer: buffer.to_string(),
         cursor,
         version: PROTOCOL_VERSION,
-    };
-    let request_json = serde_json::to_string(&request)?;
+    });
+    let request_json = serde_json::to_string(&msg)?;
     writer.write_all(request_json.as_bytes()).await?;
     writer.write_all(b"\n").await?;
     writer.flush().await?;
