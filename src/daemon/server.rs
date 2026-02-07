@@ -27,6 +27,9 @@ pub async fn run(listener: UnixListener, state: DaemonState, socket_path: &Path)
 
     info!("daemon accepting connections on {}", socket_path.display());
 
+    // Create signal future once, outside the loop, to avoid re-registering per iteration.
+    let mut sigint = std::pin::pin!(signal::ctrl_c());
+
     loop {
         tokio::select! {
             biased;
@@ -38,7 +41,7 @@ pub async fn run(listener: UnixListener, state: DaemonState, socket_path: &Path)
             }
 
             // Handle Ctrl+C
-            result = signal::ctrl_c() => {
+            result = &mut sigint => {
                 match result {
                     Ok(()) => info!("received SIGINT, shutting down..."),
                     Err(e) => error!("signal handler error: {}", e),
@@ -107,6 +110,8 @@ async fn drain_connections(tasks: &mut JoinSet<()>, state: &DaemonState) {
             "drain timeout exceeded, aborting remaining connections"
         );
         tasks.abort_all();
+        // Observe cancelled tasks so they don't outlive the JoinSet.
+        while tasks.join_next().await.is_some() {}
     }
 
     debug!("all connections drained");

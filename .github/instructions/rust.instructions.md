@@ -35,6 +35,10 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
   appropriate
 - Timeouts must use `tokio::time::timeout` on both reads AND writes — flag any
   open-ended socket I/O (a stalled client can block handler tasks indefinitely)
+- Signal futures (`signal::ctrl_c()`) must be created once outside loops and pinned
+  — flag re-creation inside `select!` loops (wasteful re-registration per iteration)
+- After `JoinSet::abort_all()`, call `while tasks.join_next().await.is_some() {}`
+  to observe cancelled tasks — flag bare `abort_all()` without draining
 
 ## Resource Management
 
@@ -76,3 +80,5 @@ See `docs/development/testing.md` for full testing patterns and conventions.
   not timestamps or random values
 - `#[tokio::test]` for async tests
 - Flag tests without assertions or with only `assert!(true)`
+- Test comments must match what the assertion actually checks — flag misleading
+  comments that describe a weaker check than the code enforces

@@ -140,8 +140,7 @@ async fn socket_permissions() {
 
     let metadata = std::fs::metadata(&path).unwrap();
     let mode = metadata.permissions().mode() & 0o777;
-    // On macOS, Unix sockets may report permissions differently.
-    // Check that at least group/other write is not set.
+    // We set 0o600, so all group/other bits should be zero.
     assert_eq!(
         mode & 0o077,
         0,
