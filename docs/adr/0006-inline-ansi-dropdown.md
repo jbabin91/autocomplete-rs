@@ -47,3 +47,40 @@ Use **raw ANSI escape codes via crossterm** to render the completion dropdown in
 ## Alternatives Considered
 
 Keeping Ratatui but avoiding alternate screen was considered, but Ratatui's rendering model (immediate-mode full-frame redraw with buffer diffing) adds unnecessary complexity for a small inline widget.
+
+## Addendum (2026-02-08): Native GUI Overlay Research
+
+Subsequent research revealed that Fig.io's dropdown was **not** in-band terminal
+text — it was a native macOS overlay window (`NSPanel` with `WKWebView`) floating
+above the terminal, positioned using the macOS Accessibility API and a custom
+InputMethodKit plugin for cursor tracking. See
+[dropdown-rendering-architecture.md](../research/dropdown-rendering-architecture.md)
+for the full analysis.
+
+The native overlay approach was evaluated and **intentionally rejected** for
+autocomplete-rs based on:
+
+1. **Portability** — Accessibility API + IME are macOS-only. Linux/Wayland has no
+   equivalent for arbitrary window positioning. SSH/tmux/containers are unsupported.
+2. **Operational complexity** — Fig's overlay suffered persistent cursor
+   misalignment, memory leaks (160GB), permission friction, and per-terminal
+   quirks that ultimately contributed to the project's end.
+3. **Maintenance burden** — Cursor tracking requires platform-specific code for
+   each OS and fallback strategies for each terminal emulator.
+4. **Every active tool in this space** (inshellisense, Atuin, Reedline) uses
+   in-band ANSI rendering, validating this approach.
+
+**Decision reaffirmed:** In-band ANSI rendering via crossterm is the correct
+choice. A native overlay renderer may be added as an optional progressive
+enhancement in the future, but the ANSI renderer is the universal baseline.
+
+The rendering interface should be trait-based to support this future extension:
+
+```rust
+trait CompletionRenderer {
+    fn show(&mut self, suggestions: &[Suggestion], cursor_col: u16) -> Result<()>;
+    fn hide(&mut self) -> Result<()>;
+    fn navigate(&mut self, direction: Direction) -> Result<()>;
+    fn selected(&self) -> Option<&Suggestion>;
+}
+```
