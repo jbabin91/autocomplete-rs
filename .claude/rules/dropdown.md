@@ -1,26 +1,38 @@
 ---
 paths:
-  - 'src/dropdown/**'
+  - 'src/overlay/**'
+  - 'examples/overlay_poc.rs'
 ---
 
-# Inline Completion Dropdown Rules
+# Native Overlay Dropdown Rules
 
 ## Target Architecture
 
-The completion dropdown renders **inline** in the shell using raw ANSI escape codes via crossterm — NOT alternate screen, NOT Ratatui. It appears below the cursor without disrupting terminal context (like Fig's UX, not fzf's).
+The completion dropdown renders as a **native overlay window** positioned at
+the terminal cursor — like Fig.io's approach, NOT inline ANSI rendering.
+Platform-specific backends handle window creation and positioning.
 
-Implementation approach:
+See [ADR-0008](docs/adr/0008-native-overlay-dropdown.md) for the full decision.
 
-1. Save cursor position
-2. Move cursor below current line
-3. Write dropdown box using box-drawing characters and ANSI colors
-4. Handle keyboard input (arrows, enter, esc, typing to filter)
-5. On dismiss: restore cursor, erase dropdown lines
-6. Use synchronized output (DEC mode 2026) to prevent flicker
+Platform backends:
+
+- **macOS:** NSPanel (NonactivatingPanel) + Accessibility API for cursor positioning
+- **Linux X11:** override-redirect window (x11rb) + \_NET_ACTIVE_WINDOW
+- **Linux Wayland:** wlr-layer-shell (smithay-client-toolkit) + shell integration for position
+- **Windows:** WS_EX_NOACTIVATE + Win32 GetWindowRect
 
 ## Current State
 
-The inline dropdown is **not yet implemented**. The old Ratatui-based TUI has been removed. Currently `complete_command` outputs raw JSON to stdout.
+The overlay dropdown is **not yet implemented** as a proper module. A
+proof-of-concept exists at `examples/overlay_poc.rs` demonstrating NSPanel
+cursor positioning on macOS.
+
+## Key Properties
+
+- **Non-focus-stealing:** The overlay must NOT steal keyboard focus from the terminal
+- **Always-on-top:** Float above other windows (NSFloatingWindowLevel on macOS)
+- **Cursor-anchored:** Positioned at the terminal cursor's pixel coordinates
+- **Edge-aware:** Flip above cursor if panel would go off-screen below
 
 ## Key Bindings
 
@@ -32,6 +44,6 @@ The inline dropdown is **not yet implemented**. The old Ratatui-based TUI has be
 ## Constraints
 
 - Max ~5-8 visible suggestions (scrollable)
-- Smart positioning: render above cursor if near bottom of terminal
-- Must work in all major terminals (iTerm2, Alacritty, Kitty, Ghostty, WezTerm, VS Code terminal)
-- Render time: <2ms target
+- Smart positioning: render above cursor if near bottom of screen
+- Must work on macOS initially; Linux X11/Wayland and Windows are follow-up
+- Render time: <10ms target

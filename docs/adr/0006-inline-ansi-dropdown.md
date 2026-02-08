@@ -1,6 +1,6 @@
 # ADR-0006: Inline ANSI Dropdown
 
-**Status:** Accepted **Date:** 2025-12-01 **Decision Makers:** Project Team
+**Status:** Superseded by [ADR-0008](0008-native-overlay-dropdown.md) **Date:** 2025-12-01 **Decision Makers:** Project Team
 **Technical Story:** Replace Ratatui TUI with inline ANSI rendering for completion dropdown
 **Supersedes:** [ADR-0005](0005-ratatui-for-tui.md) (Ratatui for TUI)
 

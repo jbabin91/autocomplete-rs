@@ -31,10 +31,11 @@ Each ADR follows this structure:
 | [0001](0001-use-rust.md)                | Use Rust                | Accepted   | 2025-10-25 |
 | [0002](0002-daemon-architecture.md)     | Daemon Architecture     | Accepted   | 2025-10-25 |
 | [0003](0003-build-time-spec-parsing.md) | Build-time Spec Parsing | Accepted   | 2025-10-25 |
-| [0004](0004-direct-terminal-control.md) | Direct Terminal Control | Accepted   | 2025-10-25 |
+| [0004](0004-direct-terminal-control.md) | Direct Terminal Control | Superseded | 2025-10-25 |
 | [0005](0005-ratatui-for-tui.md)         | Ratatui for TUI         | Superseded | 2025-10-25 |
-| [0006](0006-inline-ansi-dropdown.md)    | Inline ANSI Dropdown    | Accepted   | 2025-12-01 |
+| [0006](0006-inline-ansi-dropdown.md)    | Inline ANSI Dropdown    | Superseded | 2025-12-01 |
 | [0007](0007-logging-infrastructure.md)  | Logging Infrastructure  | Accepted   | 2026-02-06 |
+| [0008](0008-native-overlay-dropdown.md) | Native Overlay Dropdown | Accepted   | 2026-02-08 |
 
 ## When to Write an ADR
 

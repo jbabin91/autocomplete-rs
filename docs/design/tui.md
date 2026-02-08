@@ -1,71 +1,94 @@
-# Inline Dropdown — Design Spec
+# Overlay Dropdown — Design Spec
 
-This document details the planned design for the inline completion dropdown.
+This document details the planned design for the native overlay completion
+dropdown.
 
-**Status:** Not yet implemented. The old Ratatui-based TUI has been removed
-(see [ADR-0006](../adr/0006-inline-ansi-dropdown.md)).
+**Status:** Proof-of-concept complete (`examples/overlay_poc.rs`). Production
+implementation not yet started. The previous inline ANSI approach has been
+superseded — see [ADR-0008](../adr/0008-native-overlay-dropdown.md).
 
 ## Overview
 
-The inline dropdown renders completions directly below the cursor using raw ANSI
-escape codes. Unlike the previous Ratatui implementation (which used alternate
-screen / full-screen takeover), this approach preserves the user's terminal
-context — matching Fig's original UX.
+The overlay dropdown renders completions in a native floating window positioned
+at the terminal cursor. Unlike inline ANSI rendering (which pushes terminal
+content down), the overlay floats above existing content — matching Fig.io's
+original UX.
 
 ## Design Principles
 
-1. **Inline:** Renders below cursor, no alternate screen
-2. **Fast:** <2ms render time target
-3. **Clean:** Box-drawing characters, ANSI colors
-4. **Adaptive:** Work across terminals (16/256/truecolor)
-5. **Non-disruptive:** Terminal state fully restored on dismiss
+1. **Native overlay:** Floating window, not terminal text
+2. **Fast:** <10ms render time target
+3. **Non-focus-stealing:** Terminal keeps keyboard focus at all times
+4. **Edge-aware:** Flip above cursor when near screen bottom
+5. **Platform-specific:** Per-platform backends behind a common trait
 
-## Rendering Approach
-
-```text
-1. Save cursor position (CSI s / CSI 7)
-2. Move cursor below current line
-3. Write dropdown box using box-drawing chars + ANSI colors
-4. Handle keyboard input in raw mode
-5. On dismiss: restore cursor, erase dropdown lines (CSI 2K)
-6. Use synchronized output (DEC mode 2026) to prevent flicker
-```
-
-### Visual Layout
+## Architecture
 
 ```text
-$ git checkout |
-┌─ Completions ──────────────────────────────┐
-│   checkout       Switch branches or restore │
-│   cherry         Apply changes from commits │
-│ → cherry-pick    Apply changes from commits │  ← Selected
-│   clean          Remove untracked files     │
-│   clone          Clone a repository         │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────┐
+│  OverlayBackend trait           │
+│  - show(suggestions, position)  │
+│  - hide()                       │
+│  - update_selection(index)      │
+│  - reposition(row, col)         │
+└─────────────────────────────────┘
+        │
+        ├── MacOSBackend (NSPanel + Accessibility API)
+        ├── X11Backend (override-redirect + x11rb)
+        ├── WaylandBackend (layer-shell + smithay)
+        └── WindowsBackend (WS_EX_NOACTIVATE + Win32)
 ```
+
+## Positioning Pipeline
+
+1. **Query terminal window bounds** — platform-specific (Accessibility API on
+   macOS, X11 window attributes on Linux, Win32 on Windows)
+2. **Get terminal grid dimensions** — `TIOCGWINSZ` ioctl (or Windows console API)
+3. **Compute cell pixel position** — `cell_width = window_width / cols`,
+   `cursor_x = window_x + col * cell_width`
+4. **Convert coordinate systems** — AX screen coords → Cocoa coords on macOS
+5. **Edge detection** — flip above if panel would go off-screen below;
+   shift left if off-screen right
+
+## Visual Design
+
+- Dark background with slight transparency (0.95 alpha)
+- Shadow for depth
+- White text on dark background
+- Highlighted selected item
+- Max 5-8 visible items, scrollable
 
 ## Key Bindings
 
-- `Esc` → cancel (return None)
-- `Enter` → select (return chosen suggestion)
-- `Down` / `Ctrl+J` → next item (wraps)
-- `Up` / `Ctrl+K` → previous item (wraps)
+- `Esc` → dismiss, no selection
+- `Enter` → accept selected suggestion
+- `↓` / `↑` → navigate suggestions (wrap around)
 - Typing → filter suggestions (future)
 
-## Constraints
+## Platform Notes
 
-- Max ~5-8 visible suggestions (scrollable)
-- Smart positioning: render above cursor if near bottom of terminal
-- Must work in all major terminals (iTerm2, Alacritty, Kitty, Ghostty, WezTerm)
-- Render time: <2ms target
+### macOS
 
-## Dependencies
+- `NSPanel` with `NonactivatingPanel` style — prevents focus stealing
+- `NSFloatingWindowLevel` (level 3) — always on top
+- `CanJoinAllSpaces | FullScreenAuxiliary` — works across Spaces
+- `setHidesOnDeactivate(false)` — stays visible when app deactivates
+- Accessibility API for window position (requires permission grant)
 
-- **crossterm** — raw mode, cursor control, keyboard input, ANSI output
-- No Ratatui dependency
+### Linux X11
 
-## Related Documents
+- Override-redirect window bypasses window manager
+- `_NET_ACTIVE_WINDOW` + `XGetWindowAttributes` for terminal position
+- `x11rb` crate for X11 protocol
 
-- [Architecture Overview](overview.md) - System architecture
-- [ADR-0006: Inline ANSI Dropdown](../adr/0006-inline-ansi-dropdown.md) - Design decision
-- [ADR-0005: Ratatui for TUI](../adr/0005-ratatui-for-tui.md) - Superseded decision
+### Linux Wayland
+
+- `wlr-layer-shell` protocol for overlay rendering
+- Cannot query other windows' positions (Wayland design limitation)
+- Shell integration must report cursor pixel coordinates
+
+### Windows
+
+- `WS_EX_NOACTIVATE` extended style — non-activating window
+- `Win32 GetWindowRect` for terminal position
+- `windows` crate for Win32 API

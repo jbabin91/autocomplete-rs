@@ -31,7 +31,7 @@ autocomplete system from scratch.
 
 **The autocomplete-rs Solution:**
 
-- **Zero positioning bugs** — Direct terminal control, no Accessibility API
+- **Zero positioning bugs** — Native overlay with accurate cursor positioning
 - **Blazing fast** — <20ms total latency target
 - **Lightweight** — <50MB memory, ~8-15MB binary
 - **Universal** — Works on all terminals (iTerm2, Alacritty, Kitty, Ghostty,
@@ -44,7 +44,7 @@ autocomplete system from scratch.
 
 - [x] Daemon with Unix socket IPC
 - [ ] Command buffer parser with tokenizer
-- [ ] Inline ANSI completion dropdown
+- [ ] Native overlay completion dropdown
 - [ ] Hardcoded git completion spec
 - [ ] Zsh ZLE integration
 
@@ -119,8 +119,8 @@ User types "git checkout " + Alt+Space
 +-------------------------+
          | JSON Response
 +-------------------------+
-|  Inline Dropdown        |  Renders below cursor
-|  +- ANSI escape codes   |  No alternate screen
+|  Overlay Dropdown       |  Native window at cursor
+|  +- Platform backends   |  NSPanel / X11 / Wayland
 |  +- Keyboard navigation |  Arrow keys, Enter, Esc
 +-------------------------+
 ```
@@ -129,8 +129,8 @@ User types "git checkout " + Alt+Space
 
 - [Daemon Architecture](docs/adr/0002-daemon-architecture.md) — Persistent
   process for zero startup cost
-- [Direct Terminal Control](docs/adr/0004-direct-terminal-control.md) — No
-  Accessibility API, no positioning bugs
+- [Native Overlay Dropdown](docs/adr/0008-native-overlay-dropdown.md) — Native
+  GUI overlay positioned at cursor (like Fig.io)
 - [Build-time Spec Parsing](docs/adr/0003-build-time-spec-parsing.md) — Embed
   specs for instant availability
 
@@ -202,7 +202,7 @@ do.
 - **Dev Tools:** [mise](https://mise.jdx.dev/) (tool & task manager)
 - **Git Hooks:** [hk](https://hk.jdx.dev/) (with Rust builtins)
 - **Async Runtime:** [Tokio](https://tokio.rs/)
-- **Terminal I/O:** [Crossterm](https://github.com/crossterm-rs/crossterm) (planned — inline ANSI dropdown)
+- **Overlay:** Platform-specific backends — NSPanel (macOS), x11rb (Linux X11), layer-shell (Wayland)
 - **CLI:** [Clap](https://github.com/clap-rs/clap) (derive)
 
 ## License

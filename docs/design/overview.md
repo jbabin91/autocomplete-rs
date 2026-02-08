@@ -1,6 +1,6 @@
 # Architecture Overview
 
-> **Status:** Daemon implemented (Phase 1). Parser, specs, and inline dropdown
+> **Status:** Daemon implemented (Phase 1). Parser, specs, and overlay dropdown
 > are still design specifications awaiting implementation.
 
 This document provides a high-level overview of autocomplete-rs system
@@ -28,7 +28,7 @@ architecture.
 │  │  │  Shell Integration (ZLE widget / readline)      │  │ │
 │  │  │  - Captures buffer & cursor                      │  │ │
 │  │  │  - Sends to daemon via Unix socket               │  │ │
-│  │  │  - Renders UI in terminal                        │  │ │
+│  │  │  - Triggers overlay dropdown                      │  │ │
 │  │  └──────────────────────────────────────────────────┘  │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
@@ -116,16 +116,16 @@ User Types: "git che" + Alt+Space
 │ 7. SHELL INTEGRATION (shell-integration/zsh.zsh)        │
 │    - Receives JSON response                             │
 │    - Parses suggestions array                           │
-│    - Invokes inline dropdown rendering                  │
+│    - Triggers overlay dropdown at cursor position       │
 └──────────────────────────────────────────────────────────┘
        │
        ▼
 ┌──────────────────────────────────────────────────────────┐
-│ 8. INLINE DROPDOWN (not yet implemented)                 │
-│    - Renders dropdown below cursor via ANSI escapes     │
+│ 8. OVERLAY DROPDOWN (not yet implemented)                │
+│    - Native overlay window at cursor position           │
 │    - Shows: checkout, cherry, cherry-pick               │
 │    - Handles keyboard: arrows, Enter, Esc               │
-│    - <10ms rendering                                     │
+│    - Platform backends: NSPanel / X11 / Wayland         │
 └──────────────────────────────────────────────────────────┘
        │
        ▼
@@ -167,24 +167,25 @@ Total Time: <20ms (design goal)
 
 See [ADR-0002](../adr/0002-daemon-architecture.md) for full details.
 
-### 2. Direct Terminal Control
+### 2. Native Overlay Dropdown
 
-**Decision:** Use ZLE widgets and terminal rendering, not Accessibility API
+**Decision:** Use platform-specific native overlay windows positioned at the
+terminal cursor (like Fig.io), not inline ANSI rendering.
 
 **Rationale:**
 
-- Zero positioning bugs (terminal handles positioning)
-- Universal across all terminals
-- No Accessibility permissions needed
-- Native feel, integrated with terminal
+- Native feel — floating panel with shadows, transparency
+- No content disruption — overlays don't push terminal content down
+- Rich rendering — not limited to terminal character grid
+- Proven approach — same as Fig.io, Kiro CLI, Warp
 
 **Trade-offs:**
 
-- Shell-specific integration code
-- Limited to terminal capabilities
-- Can't overlay (pushes content down)
+- Platform-specific backends required (NSPanel, X11, Wayland, Win32)
+- Accessibility permissions needed on macOS
+- More complex than inline rendering
 
-See [ADR-0004](../adr/0004-direct-terminal-control.md) for full details.
+See [ADR-0008](../adr/0008-native-overlay-dropdown.md) for full details.
 
 ### 3. Build-time Spec Parsing
 
@@ -221,23 +222,10 @@ See [ADR-0003](../adr/0003-build-time-spec-parsing.md) for full details.
 - Async complexity
 - Runtime overhead (~100KB)
 
-### 5. Inline ANSI Dropdown
+### 5. Overlay Rendering
 
-**Decision:** Use raw ANSI escape codes via crossterm for inline completion dropdown
-
-**Rationale:**
-
-- Renders inline below cursor (like Fig's UX)
-- No alternate screen takeover
-- Smaller binary (no Ratatui dependency)
-- Full control over rendering
-
-**Trade-offs:**
-
-- More manual cursor/layout work
-- No widget abstraction
-
-See [ADR-0006](../adr/0006-inline-ansi-dropdown.md) for full details.
+See "Native Overlay Dropdown" above ([ADR-0008](../adr/0008-native-overlay-dropdown.md)).
+Supersedes the previous inline ANSI approach (ADR-0004, ADR-0006).
 
 ## Data Flow
 
@@ -349,10 +337,10 @@ Breakdown:
   - LRU cache hit: <0.1ms
   - MessagePack deserialize: <1ms (cache miss)
 
-- **Inline dropdown rendering:** <10ms
-  - Layout calculation: <2ms
-  - ANSI output: <5ms
-  - Terminal flush: <3ms
+- **Overlay rendering:** <10ms
+  - Position computation: <2ms
+  - Window update: <5ms
+  - Panel display: <3ms
 
 - **Buffer:** 3ms (safety margin)
 
@@ -368,7 +356,7 @@ Breakdown:
 
 - **Rust core:** ~3MB
 - **Tokio + dependencies:** ~2MB
-- **Crossterm (inline ANSI):** ~0.5MB
+- **Overlay deps (platform):** ~1MB
 - **Embedded specs:** ~10MB (MessagePack)
 - **Stripped release:** ~8MB
 
@@ -582,7 +570,7 @@ Daemon
 
 - [Daemon Architecture](daemon.md) - Detailed daemon design
 - [Parser Architecture](parser.md) - Parser algorithms
-- [Inline Dropdown](tui.md) - UI rendering details (planned)
+- [Overlay Dropdown](tui.md) - UI rendering details (planned)
 - [ADRs](../adr/) - Architecture decision records
 - [Development Guide](../development/getting-started.md) - How to build
 - [Project Structure](../development/project-structure.md) - Code organization

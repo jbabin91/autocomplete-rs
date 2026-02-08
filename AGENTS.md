@@ -23,7 +23,7 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
   - `actor.rs` — background write actor with batched transactions (channel+actor pattern)
   - `queries.rs` — read queries for `diagnose` command (`DiagnoseReport`)
 - **Shared utilities** (`src/paths.rs`) — `pub(crate)` helpers used across modules (e.g. `home_dir()` for `$HOME` resolution).
-- **Inline Dropdown** — Not yet implemented. Will render completions inline below the cursor using raw ANSI escape codes via crossterm (no alternate screen, no Ratatui).
+- **Overlay Dropdown** — Not yet implemented. Will render completions in a native overlay window positioned at the terminal cursor (like Fig.io). Uses platform-specific backends: NSPanel on macOS, override-redirect on X11, layer-shell on Wayland. See [ADR-0008](docs/adr/0008-native-overlay-dropdown.md) and `examples/overlay_poc.rs` for the proof-of-concept.
 - **Parser** (`src/parser/`) — stub. Intended to tokenize the shell buffer and match against completion specs. Will implement `CompletionEngine` trait.
 - **Shell integration** (`shell-integration/zsh.zsh`) — ZLE widget that captures the buffer/cursor, calls the client, and inserts the selected completion.
 - **Socket path:** `/tmp/autocomplete-rs.sock` (override with `AUTOCOMPLETE_RS_SOCKET` env var)
