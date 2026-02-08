@@ -45,7 +45,7 @@ async fn current_version(conn: &Connection) -> Result<u32> {
 async fn record_version(conn: &Connection, version: u32) -> Result<()> {
     conn.execute(
         "INSERT INTO schema_version (version) VALUES (?1)",
-        [version],
+        turso::params![i64::from(version)],
     )
     .await
     .context("failed to record schema version")?;

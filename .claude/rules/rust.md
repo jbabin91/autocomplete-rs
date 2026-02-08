@@ -93,10 +93,24 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   path resolution), prefer re-exporting from the owning module rather
   than duplicating the logic
 
+## Filesystem
+
+- Never use `Path::exists()` for control flow — it returns `false`
+  for permission errors, masking the real issue. Use `fs::metadata()`
+  with explicit `ErrorKind::NotFound` matching instead
+- Create secure directories atomically with
+  `DirBuilder::new().mode(0o700).create()` — avoids TOCTOU windows
+  between `create_dir_all` + `set_permissions`
+- Doc comments on permission checks must describe the actual check,
+  not an idealized one (e.g. "rejects group/other access" not
+  "ensures 0700" if the check is `perms & 0o077 != 0`)
+
 ## Tooling
 
 - Hook `check` and `fix` commands must use identical flags (e.g. both
   need `--locked` if CI uses it)
+- Pre-push/pre-commit hook commands must match CI commands exactly —
+  don't wrap in shell capture or add flags that CI doesn't use
 - Structured logging via `tracing` — `println!`/`eprintln!` only for
   CLI user-facing output
 - Constants for magic numbers (timeouts, size limits, protocol values)

@@ -58,7 +58,7 @@ hooks {
   ["pre-push"] {
     steps {
       ["test"] {
-        check = "output=$(cargo nextest run --locked --all-features --no-tests=warn 2>&1) || { echo \"$output\" >&2; exit 1; }"
+        check = "cargo nextest run --locked --all-features --no-tests=warn"
       }
 
       // Beads: sync before push

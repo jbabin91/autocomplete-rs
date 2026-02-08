@@ -125,33 +125,47 @@ pub fn default_db_path() -> PathBuf {
         .join("autocomplete.db")
 }
 
-/// Ensure the parent directory of the DB file exists with 0700 permissions.
+/// Ensure the parent directory of the DB file exists and is not group/other accessible.
+///
+/// New directories are created atomically with mode 0700 via `DirBuilder` (no TOCTOU window).
+/// Existing directories are accepted as long as they have no group/other permission bits set.
 fn ensure_data_dir(db_path: &Path) -> Result<()> {
+    use std::os::unix::fs::DirBuilderExt;
+
     let dir = db_path
         .parent()
         .context("database path has no parent directory")?;
 
-    if dir.exists() {
-        let metadata = fs::metadata(dir).context("failed to read data directory metadata")?;
-        if !metadata.is_dir() {
-            bail!(
-                "data directory path {} exists but is not a directory",
-                dir.display()
-            );
+    match fs::metadata(dir) {
+        Ok(metadata) => {
+            if !metadata.is_dir() {
+                bail!(
+                    "data directory path {} exists but is not a directory",
+                    dir.display()
+                );
+            }
+            let perms = metadata.permissions().mode() & 0o777;
+            if perms & 0o077 != 0 {
+                bail!(
+                    "data directory {} has insecure permissions {:o} \
+                     (must not be group/other accessible)",
+                    dir.display(),
+                    perms
+                );
+            }
+            Ok(())
         }
-        let perms = metadata.permissions().mode() & 0o777;
-        if perms & 0o077 != 0 {
-            bail!(
-                "data directory {} has insecure permissions {:o} (must not be group/other accessible)",
-                dir.display(),
-                perms
-            );
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            fs::DirBuilder::new()
+                .recursive(true)
+                .mode(0o700)
+                .create(dir)
+                .context("failed to create data directory")?;
+            Ok(())
         }
-        Ok(())
-    } else {
-        fs::create_dir_all(dir).context("failed to create data directory")?;
-        fs::set_permissions(dir, fs::Permissions::from_mode(0o700))
-            .context("failed to set data directory permissions")?;
-        Ok(())
+        Err(e) => Err(e).context(format!(
+            "failed to check data directory at {}",
+            dir.display()
+        )),
     }
 }

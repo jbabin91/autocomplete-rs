@@ -16,7 +16,7 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
   - `handler.rs` — per-connection request handling with timeouts, size limits, validation
   - `state.rs` — `DaemonState` (engine, semaphore, cancel token, atomic metrics)
   - `pid.rs` — RAII `PidFile` for single-instance enforcement via `kill(pid, 0)`
-- **Storage** (`src/storage/`) — local turso (pure-Rust SQLite) database for structured persistence:
+- **Storage** (`src/storage/`) — local turso (SQLite-compatible) database for structured persistence:
   - `mod.rs` — public facade with `init()`, `open_readonly()`, `StorageHandle`
   - `events.rs` — `StorageEvent` enum, `Severity`, `DiagnosticCategory`
   - `schema.rs` — version-tracked migrations (v1: sessions, diagnostics, metrics)

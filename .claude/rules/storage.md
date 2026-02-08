@@ -7,10 +7,11 @@ paths:
 
 ## Architecture
 
-- **turso** (pure-Rust SQLite rewrite) for local-only embedded storage —
-  no cmake or C compilation required for `cargo install`. Note:
-  `turso_sdk_kit` declares `bindgen` as a build-dep but has `build = false`
-  and no `build.rs`, so it never actually runs
+- **turso** (SQLite-compatible embedded engine) for local-only storage.
+  No cmake required (unlike `libsql-ffi`), but transitive deps (`aegis`,
+  `simsimd`, `libgit2-sys` via `turso_core`) pull in the `cc` crate so a
+  C compiler is still needed for `cargo install`. `turso_sdk_kit` declares
+  `bindgen` as a build-dep but has `build = false` so it never runs
 - **Channel+Actor pattern** keeps DB writes off the completion hot path:
   `mpsc::Sender<StorageEvent>` in `DaemonState`, background actor owns
   the `Connection` and batches writes into transactions
@@ -79,7 +80,10 @@ not identical):
 - Use file-based tempdir DBs for actor tests (not `:memory:`) — in-memory
   turso doesn't share state across multiple `db.connect()` calls
 - `ensure_data_dir()` rejects group/other access (checks `perms & 0o077`)
-  and creates new directories with 0700 — use a subdirectory within
+  and creates new directories atomically with `DirBuilder::mode(0o700)` —
+  no TOCTOU window between creation and permission setting. Uses
+  `fs::metadata()` instead of `Path::exists()` for robust error handling
+  (exists() swallows permission errors). Use a subdirectory within
   `tempdir()` for integration tests since tempdir creates with 0755
 - Permission tests should assert exact `0o700` for directories created
   by `ensure_data_dir()`, not just `mode & 0o077 == 0`
