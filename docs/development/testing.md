@@ -156,63 +156,53 @@ async fn send_request(socket_path: &Path, json: &str) -> String {
 
 **What:** Measure execution time of critical paths
 
-**Location:** `benches/` directory
+**Location:** `benches/` directory (Criterion, `harness = false`)
+
+**Current benchmark suites:**
+
+| Suite    | File                  | What it measures                                                                                                       |
+| -------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| engine   | `benches/engine.rs`   | `StubEngine::complete()` via `Arc<dyn CompletionEngine>` (short/medium/long inputs)                                    |
+| protocol | `benches/protocol.rs` | JSON deserialization (`CompletionRequest`, `DaemonMessage`, shutdown, malformed) + `validate_request()`                |
+| privacy  | `benches/privacy.rs`  | `redact_buffer()` (short/medium/long/unicode) + `redact_sensitive_patterns()` (clean, password, URL, export, combined) |
+| handler  | `benches/handler.rs`  | Full `handle_connection()` async roundtrip with in-memory I/O                                                          |
 
 **Example:**
 
 ```rust
-// benches/parser_bench.rs
-use autocomplete_rs::parser::Parser;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use autocomplete_rs::protocol::{CompletionRequest, PROTOCOL_VERSION, validate_request};
 
-fn bench_parse_simple_command(c: &mut Criterion) {
-    let parser = Parser::new();
-    c.bench_function("parse git checkout", |b| {
-        b.iter(|| {
-            parser.parse(black_box("git checkout main"), black_box(17))
-        })
+fn bench_validation(c: &mut Criterion) {
+    let req = CompletionRequest {
+        buffer: "git commit -m 'message'".into(),
+        cursor: 23,
+        version: PROTOCOL_VERSION, // use constants, not literals
+    };
+
+    let mut group = c.benchmark_group("protocol/validate");
+    group.bench_with_input(BenchmarkId::new("request", "valid"), &req, |b, req| {
+        b.iter(|| validate_request(black_box(req))); // black_box inputs
     });
+    group.finish();
 }
 
-fn bench_parse_complex_command(c: &mut Criterion) {
-    let parser = Parser::new();
-    c.bench_function("parse kubectl with flags", |b| {
-        b.iter(|| {
-            parser.parse(
-                black_box("kubectl get pods --namespace=prod --selector=app=web"),
-                black_box(55)
-            )
-        })
-    });
-}
-
-criterion_group!(benches, bench_parse_simple_command, bench_parse_complex_command);
+criterion_group!(benches, bench_validation);
 criterion_main!(benches);
-```
-
-**Setup:**
-
-```toml
-# Cargo.toml
-[dev-dependencies]
-criterion = "0.5"
-
-[[bench]]
-name = "parser_bench"
-harness = false
 ```
 
 **Run:**
 
 ```sh
-# All benchmarks
-cargo bench
+# All benchmarks (flags defined in mise.toml)
+mise run bench
 
-# Specific benchmark
-cargo bench parser
+# Specific suite
+cargo bench --bench engine
 
-# With detailed output
-cargo bench -- --verbose
+# HTML reports (auto-generated)
+open target/criterion/**/report/index.html
 ```
 
 **Performance Targets:**
@@ -225,11 +215,18 @@ cargo bench -- --verbose
 
 **Best Practices:**
 
-- Benchmark realistic inputs
-- Use `black_box` to prevent optimization
-- Run benchmarks on quiet system
+- **`black_box` inputs** — `b.iter()` auto-black-boxes the return value,
+  but inputs captured by reference can be optimized away. Wrap them in
+  `std::hint::black_box()`
+- **Never discard results** — don't `let _ =` a `Result` inside `b.iter()`.
+  Return it so Criterion can black-box it
+- **Use constants** — `PROTOCOL_VERSION` not `1`, `MAX_BUFFER_LEN` not `10_000`
+- **Async benchmarks** — create the tokio `Runtime` once per group, use
+  `rt.block_on()` inside `b.iter()`. Use `tokio::io::sink()` for the write
+  side to measure logic without I/O overhead
+- Run benchmarks on a quiet system
 - Compare before/after when optimizing
-- Track performance over time
+- Not in CI (noisy on shared runners) — run locally
 
 ## Test Organization
 
@@ -251,9 +248,10 @@ autocomplete-rs/
 │       ├── test-specs/
 │       └── sample-buffers.txt
 └── benches/
-    ├── daemon_bench.rs
-    ├── parser_bench.rs
-    └── dropdown_bench.rs
+    ├── engine.rs          # CompletionEngine::complete() benchmarks
+    ├── protocol.rs        # JSON deserialization + validation benchmarks
+    ├── privacy.rs         # Redaction function benchmarks
+    └── handler.rs         # Full handler roundtrip benchmarks
 ```
 
 ### Naming Conventions
