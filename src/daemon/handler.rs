@@ -75,11 +75,16 @@ where
         return Ok(());
     }
 
+    // Assign a request ID for correlation (after we have a non-empty read,
+    // before parsing — so parse errors and truncation diagnostics get an ID)
+    let request_id = logging::new_request_id();
+    tracing::Span::current().record("request_id", &request_id);
+
     // If the line doesn't end with a newline, the request was truncated by the size limit
     if !line.ends_with('\n') {
         state.emit_storage_event(StorageEvent::Diagnostic {
             session_id: state.session_id.clone(),
-            request_id: None,
+            request_id: Some(request_id),
             severity: Severity::Warning,
             category: DiagnosticCategory::Connection,
             message: format!("request too large (exceeded {MAX_REQUEST_SIZE} byte limit)"),
@@ -114,7 +119,7 @@ where
             warn!("malformed request: {}", msg);
             state.emit_storage_event(StorageEvent::Diagnostic {
                 session_id: state.session_id.clone(),
-                request_id: None,
+                request_id: Some(request_id),
                 severity: Severity::Warning,
                 category: DiagnosticCategory::Protocol,
                 message: redact_sensitive_patterns(&msg),
@@ -125,10 +130,6 @@ where
             return Ok(());
         }
     };
-
-    // Assign a request ID for correlation
-    let request_id = logging::new_request_id();
-    tracing::Span::current().record("request_id", &request_id);
 
     // Validate the request
     if let Err(e) = validate_request(&request) {
@@ -147,12 +148,12 @@ where
         return Ok(());
     }
 
-    let buffer_display = if logging::should_redact(&state.mode) {
-        logging::redact_buffer(&request.buffer)
+    if logging::should_redact(&state.mode) {
+        let redacted = logging::redact_buffer(&request.buffer);
+        debug!(buffer = %redacted, cursor = request.cursor, "request received");
     } else {
-        request.buffer.clone()
-    };
-    debug!(buffer = %buffer_display, cursor = request.cursor, "request received");
+        debug!(buffer = %request.buffer, cursor = request.cursor, "request received");
+    }
 
     // Generate completions
     let response = state.engine.complete(&request);
@@ -222,7 +223,7 @@ where
     })
     .await
     .map_err(|_| {
-        debug!("write timed out");
+        warn!("write timed out");
         anyhow::anyhow!("write timed out")
     })??;
     Ok(())
