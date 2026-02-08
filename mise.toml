@@ -84,6 +84,10 @@ depends = ["fmt-check", "check", "lint", "test"]
 description = "Run benchmarks"
 run = "cargo bench --all-features"
 
+[tasks.overlay-poc]
+description = "Run the overlay dropdown proof-of-concept"
+run = "cargo run --example overlay_poc"
+
 [tasks.watch]
 description = "Watch for changes and run checks"
 run = "cargo watch -x check -x test"

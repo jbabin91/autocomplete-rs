@@ -12,6 +12,9 @@
 //! - It renders a simple completion list with NSTextField labels
 //! - Press Enter in the terminal to dismiss and exit
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+
 use objc2::rc::Retained;
 use objc2::runtime::AnyObject;
 use objc2::{MainThreadOnly, msg_send};
@@ -53,10 +56,11 @@ fn create_overlay_panel(
         let _: () = msg_send![&panel, setLevel: 3i64];
     }
 
-    // Dark semi-transparent background (rounded corners deferred to real renderer)
+    // Dark background with slight transparency and shadow for depth
     panel.setOpaque(false);
-    let bg = NSColor::colorWithSRGBRed_green_blue_alpha(0.1, 0.1, 0.15, 0.95);
+    let bg = NSColor::colorWithSRGBRed_green_blue_alpha(0.12, 0.12, 0.18, 0.95);
     panel.setBackgroundColor(Some(&bg));
+    panel.setHasShadow(true);
 
     // Collection behavior: work across spaces and with fullscreen apps
     panel.setCollectionBehavior(
@@ -146,7 +150,7 @@ fn main() {
 
     // Position the panel — in a real implementation, this would be computed
     // from the terminal window position + cursor row/col + cell dimensions
-    let panel = create_overlay_panel(mtm, 200.0, 400.0, 350.0, 150.0);
+    let panel = create_overlay_panel(mtm, 400.0, 400.0, 380.0, 150.0);
 
     // Draw the completion items
     draw_completions(&panel, &items);
@@ -158,9 +162,35 @@ fn main() {
     println!("The panel shows 5 git subcommand completions.");
     println!("Press Enter to dismiss and exit.");
 
-    // Wait for user input (the terminal retains focus)
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input).ok();
+    // Spawn a thread to wait for Enter on stdin (can't block the main thread)
+    static SHOULD_QUIT: AtomicBool = AtomicBool::new(false);
+    std::thread::spawn(|| {
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).ok();
+        SHOULD_QUIT.store(true, Ordering::Relaxed);
+    });
+
+    // Pump the AppKit event loop on the main thread — this is required for
+    // the panel to actually appear. Without this, orderFrontRegardless() queues
+    // the window but it never gets drawn.
+    while !SHOULD_QUIT.load(Ordering::Relaxed) {
+        unsafe {
+            // NSEventMaskAny = u64::MAX, nil date = return immediately if no event,
+            // NSDefaultRunLoopMode = "kCFRunLoopDefaultMode"
+            let mode = NSString::from_str("kCFRunLoopDefaultMode");
+            let event: Option<Retained<AnyObject>> = msg_send![
+                &app,
+                nextEventMatchingMask: u64::MAX,
+                untilDate: std::ptr::null::<AnyObject>(),
+                inMode: &*mode,
+                dequeue: true
+            ];
+            if let Some(event) = event {
+                let _: () = msg_send![&app, sendEvent: &*event];
+            }
+        }
+        std::thread::sleep(Duration::from_millis(16)); // ~60fps
+    }
 
     // Hide the panel
     panel.orderOut(None);
