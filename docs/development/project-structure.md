@@ -371,18 +371,25 @@ timestamps) to avoid collisions under parallel execution.
 
 ### Performance Benchmarks
 
+Criterion-based benchmarks with `harness = false`. Each file is a standalone
+binary with `criterion_main!`. Run via `mise run bench`.
+
 ```sh
 benches/
-├── daemon_bench.rs   # Daemon startup and IPC (future)
-├── parser_bench.rs   # Parser performance (future)
-└── dropdown_bench.rs # Inline dropdown render time (future)
+├── engine.rs     # StubEngine::complete() via Arc<dyn CompletionEngine>
+├── protocol.rs   # JSON deserialization + validate_request()
+├── privacy.rs    # redact_buffer() + redact_sensitive_patterns()
+└── handler.rs    # Full handle_connection() async roundtrip (in-memory I/O)
 ```
+
+HTML reports are generated in `target/criterion/*/report/index.html`.
 
 **When to modify:**
 
 - Optimizing performance
 - Adding new features (benchmark them!)
 - Tracking performance regressions
+- Wiring in real parser (update engine bench to compare StubEngine vs real)
 
 ## Issue Tracking (`.beads/`)
 

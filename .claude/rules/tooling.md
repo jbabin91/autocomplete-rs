@@ -47,6 +47,15 @@ Commands live in three executable configs — do NOT duplicate exact flags in do
 
 **Key principle:** hk hooks must use the **same flags** as CI. Do NOT use hk builtins — they use minimal flags that differ from CI. All Rust/TOML steps in hk.pkl are custom overrides.
 
+## Benchmarking
+
+- `mise run bench` runs `cargo bench --all-features`
+- Criterion benchmarks live in `benches/` with `harness = false`
+- Current suites: `engine`, `protocol`, `privacy`, `handler`
+- HTML reports generated in `target/criterion/*/report/index.html`
+- Not in CI (noisy on shared runners) — run locally for regression detection
+- No pre-push hook — benchmarks are slow, run manually
+
 ## Adding New Tools
 
 - Install via mise (add to `[tools]` section in mise.toml)

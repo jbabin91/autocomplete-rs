@@ -84,6 +84,25 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - `sleep`-based waits are acceptable only for polling loops with retry
   (e.g. waiting for a socket to become ready) or async file cleanup
 
+## Benchmarking
+
+- Criterion with `harness = false` — each bench file in `benches/` is a
+  standalone binary with `criterion_main!`
+- **Always `black_box` inputs** — `b.iter()` auto-black-boxes the closure
+  return value, but inputs captured by reference can still be optimized
+  away. Wrap inputs in `std::hint::black_box()` for reliable measurements
+- **Never discard results** — don't `let _ =` a `Result` inside `b.iter()`.
+  Return it so Criterion can black-box it. Same rule as production code
+- **Use constants, not literals** — prefer `PROTOCOL_VERSION` over
+  hardcoded `1`, `MAX_BUFFER_LEN` over `10_000`, etc. Benchmarks should
+  stay correct when constants change
+- **Async benchmarks** — create the tokio `Runtime` once per group (not
+  per iteration), use `rt.block_on()` inside `b.iter()`. Use
+  `tokio::io::sink()` for the write side to measure handler logic without
+  I/O overhead
+- **Run locally, not in CI** — benchmarks are noisy on shared runners.
+  Use `mise run bench` for local regression detection
+
 ## Shared Helpers
 
 - Cross-module utilities live in `src/paths.rs` (`pub(crate)`) — e.g.

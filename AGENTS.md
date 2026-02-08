@@ -43,8 +43,10 @@ mise run release     # optimized build
 mise run test        # cargo nextest run --all-features
 mise run lint        # clippy
 mise run fmt         # format all files
+mise run bench       # cargo bench --all-features (Criterion)
 mise run ci          # fmt-check + check + lint + test
 cargo nextest run -E 'test(name)'  # run a single test by name
+cargo bench --bench engine         # run a single benchmark suite
 ```
 
 ## Code Style
