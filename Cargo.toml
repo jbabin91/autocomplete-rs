@@ -95,6 +95,10 @@ objc2-foundation = { version = "0.3", features = [
   "NSThread",
 ] }
 
+# Overlay windowing (spike — cross-platform)
+winit = "0.31.0-beta.2"
+softbuffer = "0.4"
+
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
 tempfile = "3"
