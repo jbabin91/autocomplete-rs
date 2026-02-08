@@ -195,14 +195,14 @@ criterion_main!(benches);
 **Run:**
 
 ```sh
-# All benchmarks
+# All benchmarks (flags defined in mise.toml)
 mise run bench
 
 # Specific suite
 cargo bench --bench engine
 
 # HTML reports (auto-generated)
-open target/criterion/engine_complete/report/index.html
+open target/criterion/**/report/index.html
 ```
 
 **Performance Targets:**

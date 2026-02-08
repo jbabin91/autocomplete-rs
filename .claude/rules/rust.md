@@ -96,6 +96,9 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - **Use constants, not literals** — prefer `PROTOCOL_VERSION` over
   hardcoded `1`, `MAX_BUFFER_LEN` over `10_000`, etc. Benchmarks should
   stay correct when constants change
+- **Extract computed inputs** — don't inline computed values in array
+  literals (e.g. `&"x".repeat(1000)` borrows a temporary). Build them
+  in a `let` binding first, then reference from the array
 - **Async benchmarks** — create the tokio `Runtime` once per group (not
   per iteration), use `rt.block_on()` inside `b.iter()`. Use
   `tokio::io::sink()` for the write side to measure handler logic without

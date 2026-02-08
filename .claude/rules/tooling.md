@@ -47,12 +47,14 @@ Commands live in three executable configs — do NOT duplicate exact flags in do
 
 **Key principle:** hk hooks must use the **same flags** as CI. Do NOT use hk builtins — they use minimal flags that differ from CI. All Rust/TOML steps in hk.pkl are custom overrides.
 
+**`--locked` scope:** CI and hk use `--locked` on all cargo commands for reproducibility. mise tasks do NOT — they're local dev tools where `--locked` would be annoying if `Cargo.lock` is out of date. Don't add `--locked` to mise tasks.
+
 ## Benchmarking
 
-- `mise run bench` runs `cargo bench --all-features`
+- Run via `mise run bench` (see `tasks.bench` in `mise.toml` for exact flags)
 - Criterion benchmarks live in `benches/` with `harness = false`
 - Current suites: `engine`, `protocol`, `privacy`, `handler`
-- HTML reports generated in `target/criterion/*/report/index.html`
+- HTML reports generated in `target/criterion/**/report/index.html`
 - Not in CI (noisy on shared runners) — run locally for regression detection
 - No pre-push hook — benchmarks are slow, run manually
 

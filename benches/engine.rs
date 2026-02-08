@@ -9,10 +9,11 @@ use autocomplete_rs::protocol::{CompletionRequest, PROTOCOL_VERSION};
 fn bench_complete(c: &mut Criterion) {
     let engine: Arc<dyn CompletionEngine> = Arc::new(StubEngine);
 
+    let long = "x".repeat(1000);
     let inputs: &[(&str, &str, usize)] = &[
         ("short", "ls", 2),
         ("medium", "git checkout feature-branch", 28),
-        ("long", &"x".repeat(1000), 1000),
+        ("long", &long, 1000),
     ];
 
     let mut group = c.benchmark_group("engine/complete");
