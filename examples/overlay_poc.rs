@@ -235,7 +235,10 @@ unsafe fn get_ax_cgsize(value: CFTypeRef) -> Result<CGSize, String> {
 
 struct CursorPosition {
     x: f64,
-    y: f64,
+    /// Bottom edge of the cursor row (Cocoa coords) — panel goes below here
+    below_y: f64,
+    /// Top edge of the cursor row (Cocoa coords) — panel goes above here when flipped
+    above_y: f64,
 }
 
 fn compute_cursor_position(
@@ -257,15 +260,17 @@ fn compute_cursor_position(
     // Cursor x: window left edge + col offset
     let cursor_x = window.origin.x + (f64::from(col) * cell_width);
 
-    // Cursor y in Cocoa coords: window bottom + remaining rows below cursor
+    // Cursor in Cocoa coords (bottom-up origin):
     // Row 0 is at the top of the window, so row N is N cells down from the top.
-    // In Cocoa coords (bottom-up): y = window_cocoa_y + window_height - (row+1)*cell_height
-    // We place the panel just below the cursor row, so subtract one more cell_height.
-    let cursor_y = window_cocoa_y + window.size.height - (f64::from(row) + 1.0) * cell_height;
+    // Top edge of cursor row:  window_cocoa_y + window_height - row * cell_height
+    // Bottom edge of cursor row: window_cocoa_y + window_height - (row+1) * cell_height
+    let cursor_top = window_cocoa_y + window.size.height - f64::from(row) * cell_height;
+    let cursor_bottom = window_cocoa_y + window.size.height - (f64::from(row) + 1.0) * cell_height;
 
     CursorPosition {
         x: cursor_x,
-        y: cursor_y,
+        below_y: cursor_bottom,
+        above_y: cursor_top,
     }
 }
 
@@ -394,7 +399,7 @@ fn main() {
     eprintln!("Target cursor: row={}, col={}", args.row, args.col);
 
     // Query the target window's bounds via the Accessibility API
-    let (panel_x, panel_y) = if let Some(pid) = target_pid {
+    let cursor_pos = if let Some(pid) = target_pid {
         match get_window_bounds(pid) {
             Ok(bounds) => {
                 eprintln!(
@@ -407,25 +412,24 @@ fn main() {
                     .map(|s| s.frame().size.height)
                     .unwrap_or(1080.0);
 
-                let pos = compute_cursor_position(
+                Some(compute_cursor_position(
                     &bounds,
                     args.row,
                     args.col,
                     term_rows,
                     term_cols,
                     screen_height,
-                );
-                (pos.x, pos.y)
+                ))
             }
             Err(e) => {
                 eprintln!("Warning: Could not query window bounds: {e}");
-                eprintln!("Falling back to default position (400, 400).");
-                (400.0, 400.0)
+                eprintln!("Falling back to default position.");
+                None
             }
         }
     } else {
-        eprintln!("Warning: No target PID available. Using default position (400, 400).");
-        (400.0, 400.0)
+        eprintln!("Warning: No target PID available. Using default position.");
+        None
     };
 
     // Initialize NSApplication (must happen before creating windows)
@@ -440,25 +444,30 @@ fn main() {
         ("stash", "Stash changes in a dirty working dir"),
     ];
 
-    // Place the panel at the computed cursor position, sized to fit the dropdown
     let panel_width = 380.0;
     let panel_height = 150.0;
-    // Offset panel below the cursor line
-    let panel = create_overlay_panel(
-        mtm,
-        panel_x,
-        panel_y - panel_height,
-        panel_width,
-        panel_height,
-    );
+
+    // Position panel below cursor, but flip above if it would go off-screen
+    let (panel_x, panel_y) = if let Some(pos) = &cursor_pos {
+        let below = pos.below_y - panel_height;
+        if below >= 0.0 {
+            // Enough room below — place panel under the cursor row
+            (pos.x, below)
+        } else {
+            // Would clip the bottom of the screen — flip above the cursor row
+            eprintln!("Flipping panel above cursor (would go off-screen below)");
+            (pos.x, pos.above_y)
+        }
+    } else {
+        (400.0, 400.0)
+    };
+
+    let panel = create_overlay_panel(mtm, panel_x, panel_y, panel_width, panel_height);
 
     draw_completions(&panel, &items);
     panel.orderFrontRegardless();
 
-    eprintln!(
-        "Panel positioned at ({panel_x:.0}, {:.0})",
-        panel_y - panel_height
-    );
+    eprintln!("Panel positioned at ({panel_x:.0}, {panel_y:.0})");
     println!(
         "Overlay panel is visible at row={}, col={}.",
         args.row, args.col
