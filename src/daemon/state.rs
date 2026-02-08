@@ -5,6 +5,7 @@ use tokio::sync::Semaphore;
 use tokio_util::sync::CancellationToken;
 
 use crate::engine::CompletionEngine;
+use crate::logging;
 use crate::storage::{StorageEvent, StorageEventSender};
 
 /// Maximum number of concurrent connections the daemon will accept.
@@ -15,6 +16,9 @@ pub const MAX_CONCURRENT_CONNECTIONS: usize = 100;
 pub struct DaemonState {
     /// The completion backend.
     pub engine: Arc<dyn CompletionEngine>,
+
+    /// Logging mode (controls buffer redaction and verbosity).
+    pub mode: logging::Mode,
 
     /// Limits concurrent connections.
     pub semaphore: Arc<Semaphore>,
@@ -36,10 +40,11 @@ pub struct DaemonState {
 }
 
 impl DaemonState {
-    /// Create a new `DaemonState` with the given engine.
-    pub fn new(engine: Arc<dyn CompletionEngine>) -> Self {
+    /// Create a new `DaemonState` with the given engine and logging mode.
+    pub fn new(engine: Arc<dyn CompletionEngine>, mode: logging::Mode) -> Self {
         Self {
             engine,
+            mode,
             semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT_CONNECTIONS)),
             cancel: CancellationToken::new(),
             total_requests: Arc::new(AtomicU64::new(0)),
@@ -109,7 +114,7 @@ mod tests {
     use crate::engine::StubEngine;
 
     fn make_state() -> DaemonState {
-        DaemonState::new(Arc::new(StubEngine))
+        DaemonState::new(Arc::new(StubEngine), logging::Mode::Production)
     }
 
     #[test]

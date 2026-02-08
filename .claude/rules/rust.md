@@ -105,12 +105,24 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   not an idealized one (e.g. "rejects group/other access" not
   "ensures 0700" if the check is `perms & 0o077 != 0`)
 
+## Logging
+
+- Structured logging via `tracing` — `println!`/`eprintln!` only for
+  CLI user-facing output
+- **Log level must match operational importance**: operational failures
+  that matter in production (write timeouts, connection failures) use
+  `warn!` or `error!`, not `debug!`. Production filters at `info` level,
+  so `debug!` events are invisible unless troubleshooting mode is active
+- On hot paths, avoid allocating just to log — prefer branched `debug!`
+  calls over building an intermediate `String`. E.g. branch on redaction
+  mode and log `%reference` directly instead of cloning into a variable
+- Correlation IDs belong on the tracing span (`Span::current().record()`)
+  so all downstream logs inherit them without explicit threading
+
 ## Tooling
 
 - Hook `check` and `fix` commands must use identical flags (e.g. both
   need `--locked` if CI uses it)
 - Pre-push/pre-commit hook commands must match CI commands exactly —
   don't wrap in shell capture or add flags that CI doesn't use
-- Structured logging via `tracing` — `println!`/`eprintln!` only for
-  CLI user-facing output
 - Constants for magic numbers (timeouts, size limits, protocol values)

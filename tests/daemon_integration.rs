@@ -10,6 +10,7 @@ use tokio::net::UnixStream;
 use autocomplete_rs::daemon::pid::derive_pid_path;
 use autocomplete_rs::daemon::state::DaemonState;
 use autocomplete_rs::engine::StubEngine;
+use autocomplete_rs::logging;
 use autocomplete_rs::protocol::{CompletionResponse, ErrorResponse, ShutdownAck};
 
 /// Atomic counter to ensure unique socket paths across parallel tests.
@@ -25,7 +26,7 @@ fn temp_socket_path() -> PathBuf {
 /// Start a daemon in the background, returning a handle to shut it down.
 async fn start_daemon(socket_path: &Path) -> tokio::task::JoinHandle<()> {
     let path = socket_path.to_path_buf();
-    let state = DaemonState::new(Arc::new(StubEngine));
+    let state = DaemonState::new(Arc::new(StubEngine), logging::Mode::Production);
     let cancel = state.cancel.clone();
 
     // Remove stale socket (NotFound is expected; anything else is a real problem)

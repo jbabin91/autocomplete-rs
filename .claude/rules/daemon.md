@@ -49,6 +49,18 @@ paths:
 - Clean up socket + PID file on graceful shutdown (PID file via RAII `Drop`)
 - Daemon must survive client disconnects and malformed requests
 
+## Request Tracing
+
+- Every non-empty read gets a `request_id` (UUID v4) recorded on the
+  tracing span — generate it **before** parsing, not after, so parse
+  errors and truncated-request diagnostics include the ID for correlation
+- `DaemonState` carries `logging::Mode` to control buffer redaction.
+  The handler checks `should_redact(&state.mode)` before logging buffers
+- Lifecycle debug logs: `"request received"` (with buffer + cursor) and
+  `"response sent"` (with suggestion count) bracket the engine call
+- Pre-read events (read timeout, empty disconnect) keep `request_id: None`
+  since there's no data to correlate yet
+
 ## Storage Integration
 
 - Storage is optional — daemon starts in degraded mode if init fails
