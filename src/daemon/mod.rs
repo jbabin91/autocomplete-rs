@@ -60,7 +60,7 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
     let session_id = uuid::Uuid::new_v4().to_string();
     let mode = logging::detect_mode();
 
-    let mut state = DaemonState::new(engine).with_session_id(session_id.clone());
+    let mut state = DaemonState::new(engine, mode.clone()).with_session_id(session_id.clone());
     if let Some(ref handle) = storage_handle {
         state = state.with_storage(handle.sender.clone());
     }

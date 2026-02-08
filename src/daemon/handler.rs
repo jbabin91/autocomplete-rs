@@ -5,7 +5,7 @@ use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWrite
 use tokio::time::timeout;
 use tracing::{debug, instrument, warn};
 
-use crate::logging::redact_sensitive_patterns;
+use crate::logging::{self, redact_sensitive_patterns};
 use crate::protocol::{
     CompletionRequest, DaemonMessage, ErrorResponse, MAX_REQUEST_SIZE, ShutdownAck,
     validate_request,
@@ -24,7 +24,7 @@ const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
 /// Handle a single connection.
 ///
 /// Reads one request, processes it, writes one response, then closes.
-#[instrument(skip_all, fields(conn_id = %conn_id))]
+#[instrument(skip_all, fields(conn_id = %conn_id, request_id = tracing::field::Empty))]
 pub async fn handle_connection<R, W>(
     reader: R,
     mut writer: W,
@@ -126,11 +126,15 @@ where
         }
     };
 
+    // Assign a request ID for correlation
+    let request_id = logging::new_request_id();
+    tracing::Span::current().record("request_id", &request_id);
+
     // Validate the request
     if let Err(e) = validate_request(&request) {
         state.emit_storage_event(StorageEvent::Diagnostic {
             session_id: state.session_id.clone(),
-            request_id: None,
+            request_id: Some(request_id),
             severity: Severity::Warning,
             category: DiagnosticCategory::Protocol,
             message: redact_sensitive_patterns(&e.to_string()),
@@ -143,8 +147,18 @@ where
         return Ok(());
     }
 
+    let buffer_display = if logging::should_redact(&state.mode) {
+        logging::redact_buffer(&request.buffer)
+    } else {
+        request.buffer.clone()
+    };
+    debug!(buffer = %buffer_display, cursor = request.cursor, "request received");
+
     // Generate completions
     let response = state.engine.complete(&request);
+
+    debug!(suggestions = response.suggestions.len(), "response sent");
+
     write_json(&mut writer, &response).await?;
 
     Ok(())
@@ -207,7 +221,10 @@ where
         Ok::<(), anyhow::Error>(())
     })
     .await
-    .map_err(|_| anyhow::anyhow!("write timed out"))??;
+    .map_err(|_| {
+        debug!("write timed out");
+        anyhow::anyhow!("write timed out")
+    })??;
     Ok(())
 }
 
@@ -219,10 +236,11 @@ mod tests {
 
     use super::*;
     use crate::engine::StubEngine;
+    use crate::logging;
     use crate::protocol::CompletionResponse;
 
     fn make_state() -> DaemonState {
-        DaemonState::new(Arc::new(StubEngine))
+        DaemonState::new(Arc::new(StubEngine), logging::Mode::Production)
     }
 
     /// Helper: send a request line and return the response line.
