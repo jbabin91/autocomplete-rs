@@ -1,9 +1,10 @@
+use std::hint::black_box;
 use std::sync::Arc;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
 use autocomplete_rs::engine::{CompletionEngine, StubEngine};
-use autocomplete_rs::protocol::CompletionRequest;
+use autocomplete_rs::protocol::{CompletionRequest, PROTOCOL_VERSION};
 
 fn bench_complete(c: &mut Criterion) {
     let engine: Arc<dyn CompletionEngine> = Arc::new(StubEngine);
@@ -19,10 +20,10 @@ fn bench_complete(c: &mut Criterion) {
         let req = CompletionRequest {
             buffer: buffer.to_string(),
             cursor,
-            version: 1,
+            version: PROTOCOL_VERSION,
         };
         group.bench_with_input(BenchmarkId::new("stub", label), &req, |b, req| {
-            b.iter(|| engine.complete(req));
+            b.iter(|| engine.complete(black_box(req)));
         });
     }
     group.finish();

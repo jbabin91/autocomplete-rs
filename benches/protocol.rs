@@ -1,7 +1,9 @@
+use std::hint::black_box;
+
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
 use autocomplete_rs::protocol::{
-    CompletionRequest, DaemonMessage, MAX_BUFFER_LEN, validate_request,
+    CompletionRequest, DaemonMessage, MAX_BUFFER_LEN, PROTOCOL_VERSION, validate_request,
 };
 
 fn bench_deserialization(c: &mut Criterion) {
@@ -13,21 +15,19 @@ fn bench_deserialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("protocol/deserialize");
 
     group.bench_function("bare_request", |b| {
-        b.iter(|| serde_json::from_str::<CompletionRequest>(bare_json).unwrap());
+        b.iter(|| serde_json::from_str::<CompletionRequest>(black_box(bare_json)).unwrap());
     });
 
     group.bench_function("envelope_complete", |b| {
-        b.iter(|| serde_json::from_str::<DaemonMessage>(envelope_json).unwrap());
+        b.iter(|| serde_json::from_str::<DaemonMessage>(black_box(envelope_json)).unwrap());
     });
 
     group.bench_function("envelope_shutdown", |b| {
-        b.iter(|| serde_json::from_str::<DaemonMessage>(shutdown_json).unwrap());
+        b.iter(|| serde_json::from_str::<DaemonMessage>(black_box(shutdown_json)).unwrap());
     });
 
     group.bench_function("malformed", |b| {
-        b.iter(|| {
-            let _: Result<DaemonMessage, _> = serde_json::from_str(malformed_json);
-        });
+        b.iter(|| serde_json::from_str::<DaemonMessage>(black_box(malformed_json)));
     });
 
     group.finish();
@@ -37,17 +37,17 @@ fn bench_validation(c: &mut Criterion) {
     let valid = CompletionRequest {
         buffer: "git commit -m 'message'".into(),
         cursor: 23,
-        version: 1,
+        version: PROTOCOL_VERSION,
     };
     let cursor_oob = CompletionRequest {
         buffer: "ls".into(),
         cursor: 99,
-        version: 1,
+        version: PROTOCOL_VERSION,
     };
     let max_buffer = CompletionRequest {
         buffer: "x".repeat(MAX_BUFFER_LEN),
         cursor: 0,
-        version: 1,
+        version: PROTOCOL_VERSION,
     };
 
     let mut group = c.benchmark_group("protocol/validate");
@@ -59,7 +59,7 @@ fn bench_validation(c: &mut Criterion) {
     ];
     for &(label, req) in cases {
         group.bench_with_input(BenchmarkId::new("request", label), req, |b, req| {
-            b.iter(|| validate_request(req));
+            b.iter(|| validate_request(black_box(req)));
         });
     }
 

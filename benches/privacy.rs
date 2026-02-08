@@ -1,3 +1,5 @@
+use std::hint::black_box;
+
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
 use autocomplete_rs::logging::{redact_buffer, redact_sensitive_patterns};
@@ -18,7 +20,7 @@ fn bench_redact_buffer(c: &mut Criterion) {
     ];
     for &(label, input) in cases {
         group.bench_with_input(BenchmarkId::new("buffer", label), input, |b, input| {
-            b.iter(|| redact_buffer(input));
+            b.iter(|| redact_buffer(black_box(input)));
         });
     }
 
@@ -44,7 +46,7 @@ fn bench_redact_sensitive_patterns(c: &mut Criterion) {
     ];
     for &(label, input) in cases {
         group.bench_with_input(BenchmarkId::new("patterns", label), input, |b, input| {
-            b.iter(|| redact_sensitive_patterns(input));
+            b.iter(|| redact_sensitive_patterns(black_box(input)));
         });
     }
 
