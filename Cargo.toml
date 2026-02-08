@@ -72,6 +72,24 @@ thiserror = "2.0"
 # CLI parsing
 clap = { version = "4.5", features = ["derive", "env"] }
 
+# macOS overlay (spike — optional, macOS-only)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = [
+  "NSApplication",
+  "NSColor",
+  "NSPanel",
+  "NSResponder",
+  "NSRunningApplication",
+  "NSView",
+  "NSWindow",
+] }
+objc2-foundation = { version = "0.3", features = [
+  "NSGeometry",
+  "NSString",
+  "NSThread",
+] }
+
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
 tempfile = "3"
