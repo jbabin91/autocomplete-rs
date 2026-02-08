@@ -61,7 +61,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Verify installation:
 
 ```sh
-rustc --version  # Should be 1.85.0 or later
+rustc --version  # Should meet the rust-version in Cargo.toml
 ```
 
 #### Step 2: Clone Repository
@@ -79,7 +79,7 @@ cargo build --release
 
 This creates `target/release/autocomplete-rs` (~5-10MB)
 
-#### Step 4: Install Binary
+#### Step 4: Install Binary (Optional)
 
 ```sh
 # Option A: Copy to ~/.cargo/bin (recommended)

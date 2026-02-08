@@ -17,7 +17,7 @@ Thank you for your interest in contributing to autocomplete-rs! 🎉
 
 ### Prerequisites
 
-- **Rust:** 1.85+ (for Rust 2024 Edition)
+- **Rust:** MSRV specified in [`Cargo.toml`](../Cargo.toml) (Rust 2024 Edition)
 - **OS:** macOS or Linux
 
 ### 1. Fork and Clone

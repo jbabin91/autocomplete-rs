@@ -25,7 +25,9 @@ pub fn detect_mode() -> Mode {
 
 /// Return the default log directory: `~/.autocomplete-rs/logs/`.
 pub fn default_log_dir() -> PathBuf {
-    dirs_or_home().join(".autocomplete-rs").join("logs")
+    crate::paths::home_dir()
+        .join(".autocomplete-rs")
+        .join("logs")
 }
 
 /// Return a custom log directory from env, or the default.
@@ -57,6 +59,12 @@ pub fn console_enabled(mode: &Mode) -> bool {
 pub fn ensure_log_dir(path: &Path) -> Result<()> {
     if path.exists() {
         let metadata = fs::metadata(path).context("failed to read log directory metadata")?;
+        if !metadata.is_dir() {
+            bail!(
+                "log directory path {} exists but is not a directory",
+                path.display()
+            );
+        }
         let perms = metadata.permissions().mode() & 0o777;
         if perms & 0o077 != 0 {
             bail!(
@@ -107,23 +115,15 @@ pub fn cleanup_old_logs(dir: &Path, days: u32) -> Result<()> {
             .modified()
             .context("failed to read modification time")?;
 
-        if modified < cutoff {
-            if let Err(e) = fs::remove_file(&path) {
-                if e.kind() != std::io::ErrorKind::NotFound {
-                    warn!("failed to remove old log {}: {}", path.display(), e);
-                }
-            }
+        if modified < cutoff
+            && let Err(e) = fs::remove_file(&path)
+            && e.kind() != std::io::ErrorKind::NotFound
+        {
+            warn!("failed to remove old log {}: {}", path.display(), e);
         }
     }
 
     Ok(())
-}
-
-/// Fallback home directory resolution.
-fn dirs_or_home() -> PathBuf {
-    std::env::var("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/tmp"))
 }
 
 #[cfg(test)]

@@ -15,6 +15,14 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   - Functions: `return Err(e).context("what failed")`
   - Drop impls: `tracing::warn!` (can't propagate errors)
   - Tests: `panic!` (surfaces failures in test output)
+  - Channel sends (`send()`, `try_send()`): at minimum `debug!`/`warn!`
+    the failure — a closed or full channel is diagnosable info, not noise
+- Choose `try_send()` vs `send().await` based on path criticality:
+  - **Hot path** (per-request): `try_send()` — non-blocking, drop on
+    backpressure, warn and move on
+  - **Shutdown path** (session stop, flush): `send().await` with
+    `tokio::time::timeout` — reliable delivery matters, but must not
+    block shutdown indefinitely
 - Never `Err(_)` when the error type has multiple failure modes (`io::Error`,
   `anyhow::Error`). Only discard single-meaning errors (`tokio::time::Elapsed`,
   `TryAcquireError`)
@@ -25,14 +33,22 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   socket file on `ConnectionRefused` (definitely stale). Other connect
   errors (`PermissionDenied`, transient FS errors) could mean a live
   daemon — deleting its socket would break it
+- Keep doc comments in sync with behavior — if a function logs on error,
+  don't document it as "silently dropped" (and vice versa)
 
 ## Type Safety
 
 - Use `TryFrom`/`try_into()` for numeric conversions that could overflow
-  (e.g. `u32` to `i32`). Only use `as` when lossless is guaranteed
-  (`u16 as u32`) or truncation is intentional and documented
+  (e.g. `u64` to `i64`). Prefer clamping (`unwrap_or(i64::MAX)`) over
+  panicking when overflow is non-critical (e.g. metrics storage)
+- For lossless widening, prefer `From` trait (`i64::from(u32_val)`) over
+  `as` — the compiler enforces that the conversion is actually lossless.
+  Reserve `as` for cases where `From` isn't available
 - Public types derive `Debug`. Serde types derive both `Serialize` and
   `Deserialize` unless single-direction
+- Add `#[must_use]` to RAII guards whose Drop has side effects (e.g.
+  `ConnectionGuard` decrementing a counter) and builder methods that
+  return `Self` — prevents silent no-ops when the return value is ignored
 
 ## Protocol
 
@@ -52,9 +68,9 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   `tasks.join_next()` branch to reap completed tasks — otherwise the
   JoinSet grows without bound (finished tasks are retained until joined)
 - After `abort_all()`, drain with `while tasks.join_next().await.is_some() {}`
-- Dropping a `JoinHandle` detaches the task (it keeps running). When using
-  `timeout(handle).await`, grab an `AbortHandle` first so the task can be
-  explicitly aborted on timeout instead of silently leaked
+- Avoid `timeout(join_handle).await` — it consumes the handle, so on timeout
+  the task is detached and can't be observed. Use `select!` with `sleep` +
+  `&mut handle` instead, then `abort()` + `handle.await` to observe cancellation
 
 ## Testing
 
@@ -62,11 +78,39 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - Test helpers must assert every intermediate result — no `let _ =`
 - Wrap I/O test helpers in `tokio::time::timeout` to prevent hangs
 - Atomic counters for unique socket paths, not timestamps or random values
+- When testing spawned tasks/actors, await the `JoinHandle` after sending
+  a shutdown signal — never use `sleep()` to "wait for processing". Fixed
+  sleeps are flaky under load and slow down the suite
+- `sleep`-based waits are acceptable only for polling loops with retry
+  (e.g. waiting for a socket to become ready) or async file cleanup
+
+## Shared Helpers
+
+- Cross-module utilities live in `src/paths.rs` (`pub(crate)`) — e.g.
+  `home_dir()` for resolving `$HOME` with `/tmp` fallback. Don't
+  duplicate small helpers across modules; extract to a shared location
+- When adding behavior that multiple modules need (mode detection,
+  path resolution), prefer re-exporting from the owning module rather
+  than duplicating the logic
+
+## Filesystem
+
+- Never use `Path::exists()` for control flow — it returns `false`
+  for permission errors, masking the real issue. Use `fs::metadata()`
+  with explicit `ErrorKind::NotFound` matching instead
+- Create secure directories atomically with
+  `DirBuilder::new().mode(0o700).create()` — avoids TOCTOU windows
+  between `create_dir_all` + `set_permissions`
+- Doc comments on permission checks must describe the actual check,
+  not an idealized one (e.g. "rejects group/other access" not
+  "ensures 0700" if the check is `perms & 0o077 != 0`)
 
 ## Tooling
 
 - Hook `check` and `fix` commands must use identical flags (e.g. both
   need `--locked` if CI uses it)
+- Pre-push/pre-commit hook commands must match CI commands exactly —
+  don't wrap in shell capture or add flags that CI doesn't use
 - Structured logging via `tracing` — `println!`/`eprintln!` only for
   CLI user-facing output
 - Constants for magic numbers (timeouts, size limits, protocol values)

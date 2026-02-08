@@ -16,6 +16,13 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
   - `handler.rs` — per-connection request handling with timeouts, size limits, validation
   - `state.rs` — `DaemonState` (engine, semaphore, cancel token, atomic metrics)
   - `pid.rs` — RAII `PidFile` for single-instance enforcement via `kill(pid, 0)`
+- **Storage** (`src/storage/`) — local turso (SQLite-compatible) database for structured persistence:
+  - `mod.rs` — public facade with `init()`, `open_readonly()`, `StorageHandle`
+  - `events.rs` — `StorageEvent` enum, `Severity`, `DiagnosticCategory`
+  - `schema.rs` — version-tracked migrations (v1: sessions, diagnostics, metrics)
+  - `actor.rs` — background write actor with batched transactions (channel+actor pattern)
+  - `queries.rs` — read queries for `diagnose` command (`DiagnoseReport`)
+- **Shared utilities** (`src/paths.rs`) — `pub(crate)` helpers used across modules (e.g. `home_dir()` for `$HOME` resolution).
 - **Inline Dropdown** — Not yet implemented. Will render completions inline below the cursor using raw ANSI escape codes via crossterm (no alternate screen, no Ratatui).
 - **Parser** (`src/parser/`) — stub. Intended to tokenize the shell buffer and match against completion specs. Will implement `CompletionEngine` trait.
 - **Shell integration** (`shell-integration/zsh.zsh`) — ZLE widget that captures the buffer/cursor, calls the client, and inserts the selected completion.
@@ -23,7 +30,7 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
 
 ## Development
 
-- **Rust 2024 Edition** (1.85+)
+- **Rust 2024 Edition** (MSRV in `Cargo.toml` `rust-version`)
 - **Task runner:** mise (see mise.toml)
 - **Git hooks:** hk (see hk.pkl) — runs fmt, clippy, check on pre-commit; commit-msg validation; tests on pre-push
 - **Formatting:** rustfmt (100 char width), prettier for non-Rust files, taplo for TOML, markdownlint-cli2 for markdown

@@ -4,7 +4,7 @@ version = "0.1.3"
 authors = ["Jace Babin"]
 categories = ["command-line-utilities"]
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 homepage = "https://github.com/jbabin91/autocomplete-rs"
 keywords = ["autocomplete", "shell", "terminal", "completion", "cli"]
 license = "MIT"
@@ -61,6 +61,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 # Identifiers
 uuid = { version = "1", features = ["v4"] }
+
+# Storage
+turso = { version = "0.4", default-features = false }
 
 # Error handling
 anyhow = "1.0"

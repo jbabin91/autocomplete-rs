@@ -49,6 +49,27 @@ paths:
 - Clean up socket + PID file on graceful shutdown (PID file via RAII `Drop`)
 - Daemon must survive client disconnects and malformed requests
 
+## Storage Integration
+
+- Storage is optional — daemon starts in degraded mode if init fails
+- `DaemonState` carries `Option<StorageEventSender>` and `session_id`
+- Hot-path events emitted via `emit_storage_event()` using `try_send()`
+  (never awaits — non-blocking fire-and-forget with warning on failure).
+  When storage is `None` (degraded mode), the call is a silent no-op
+- Shutdown-path events (`SessionStop`) use `send().await` with timeout
+  for reliable delivery — sessions should not remain "running" in the DB
+- Session lifecycle: `SessionStart` before accept loop, `SessionStop`
+  after, both correlated by `session_id` (UUID v4)
+- Session `mode` is determined by `logging::detect_mode()` — reuses the
+  same logic as the logging subsystem (production/development/troubleshooting).
+  `logging::Mode` implements `Display` for serialization
+- Metrics snapshots emitted every 60 seconds from the server accept loop,
+  using `state.session_id` (no separate session_id parameter)
+- Diagnostic events emitted on handler error paths (timeout, protocol,
+  validation) with privacy redaction applied before storage
+- Session stop event sent directly on `handle.sender` (not through
+  `DaemonState`) because state is moved into `server::run()`
+
 ## Performance Budget
 
 - Daemon startup: <5ms
