@@ -80,6 +80,10 @@ run = "cargo publish"
 description = "Run all CI checks"
 depends = ["fmt-check", "check", "lint", "test"]
 
+[tasks.bench]
+description = "Run benchmarks"
+run = "cargo bench --all-features"
+
 [tasks.watch]
 description = "Watch for changes and run checks"
 run = "cargo watch -x check -x test"
