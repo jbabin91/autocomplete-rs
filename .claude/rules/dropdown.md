@@ -2,6 +2,8 @@
 paths:
   - 'src/overlay/**'
   - 'examples/overlay_poc.rs'
+  - 'examples/overlay_winit.rs'
+  - 'docs/design/overlay.md'
 ---
 
 # Native Overlay Dropdown Rules

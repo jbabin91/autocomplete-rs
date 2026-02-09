@@ -63,7 +63,7 @@ mod macos {
         let args: Vec<String> = std::env::args().collect();
         let mut result = Args {
             row: 1,
-            col: 0,
+            col: 1,
             pid: None,
             term_rows: None,
             term_cols: None,

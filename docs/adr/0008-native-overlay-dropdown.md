@@ -1,10 +1,10 @@
 # ADR-0008: Native Overlay Dropdown
 
-**Status:** Accepted **Date:** 2026-02-08 **Decision Makers:** Project Team
-**Technical Story:** Replace inline ANSI rendering with native GUI overlay
-for completion dropdown
-**Supersedes:** [ADR-0004](0004-direct-terminal-control.md) (Direct Terminal
-Control), [ADR-0006](0006-inline-ansi-dropdown.md) (Inline ANSI Dropdown)
+**Status:** Accepted
+**Date:** 2026-02-08
+**Decision Makers:** Project Team
+**Technical Story:** Replace inline ANSI rendering with native GUI overlay for completion dropdown
+**Supersedes:** [ADR-0004](0004-direct-terminal-control.md) (Direct Terminal Control), [ADR-0006](0006-inline-ansi-dropdown.md) (Inline ANSI Dropdown)
 
 ## Context
 

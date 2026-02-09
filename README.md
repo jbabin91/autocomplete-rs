@@ -34,8 +34,8 @@ autocomplete system from scratch.
 - **Cursor-anchored positioning** — Native overlay with edge-aware flipping via platform APIs
 - **Blazing fast** — <20ms total latency target
 - **Lightweight** — <50MB memory, ~8-15MB binary
-- **Universal** — Works on all terminals (iTerm2, Alacritty, Kitty, Ghostty,
-  etc.)
+- **Cross-terminal** — Platform-specific backends for major terminals (macOS
+  via NSPanel, X11/Wayland/Windows planned)
 - **Built with Rust** — Reliable, safe, and performant
 
 ## Roadmap
