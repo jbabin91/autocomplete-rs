@@ -31,7 +31,7 @@ autocomplete system from scratch.
 
 **The autocomplete-rs Solution:**
 
-- **Zero positioning bugs** — Native overlay with accurate cursor positioning
+- **Cursor-anchored positioning** — Native overlay with edge-aware flipping via platform APIs
 - **Blazing fast** — <20ms total latency target
 - **Lightweight** — <50MB memory, ~8-15MB binary
 - **Universal** — Works on all terminals (iTerm2, Alacritty, Kitty, Ghostty,

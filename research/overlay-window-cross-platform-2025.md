@@ -11,7 +11,7 @@ Building a cross-platform non-focus-stealing overlay window in Rust remains **ch
 
 **Key Findings:**
 
-1. **winit** and **tao** have ongoing issues with focus-stealing across platforms
+1. **winit 0.31** added `with_panel(true)` for macOS NSPanel support (confirmed working in spike); focus-stealing issues remain on other platforms
 2. **Wayland fundamentally prohibits querying window positions** by design (critical blocker)
 3. Platform-specific approaches work: **x11rb** (X11), **wayland-protocols-wlr** (Wayland), **tao + NSPanel extensions** (macOS)
 4. Terminal position querying is only reliable on X11; WSL/Wayland have severe limitations
@@ -24,32 +24,32 @@ Building a cross-platform non-focus-stealing overlay window in Rust remains **ch
 ### 1.1 winit (rust-windowing/winit)
 
 **Status:** Active development, widely used
-**Latest Version:** 0.30.x (as of 2025)
+**Latest Version:** 0.31.0-beta.2 (as of 2026)
 **Repository:** <https://github.com/rust-windowing/winit>
 
 **Platform Support:**
 
 - Windows, macOS, Linux (X11/Wayland), iOS, Android, Redox OS
 
-**Non-Focus-Stealing Issues:**
+**Non-Focus-Stealing Support:**
 
-- **X11:** [No way to avoid focus stealing on X11 (#1160)](https://github.com/rust-windowing/winit/issues/1160) — Open issue since 2019
-- **macOS:** [Cannot create unfocused window (#3072)](https://github.com/rust-windowing/winit/issues/3072) — `with_active(false)` doesn't prevent focus stealing
-- **Windows:** Partial support via extended window styles, but not exposed directly in winit API
+- **macOS:** winit 0.31 added `WindowAttributesMacOS::with_panel(true)` which creates an NSPanel with `NonactivatingPanel` style mask — **confirmed working** in `examples/overlay_winit.rs` spike. Combined with `with_active(false)`, the panel does not steal focus from the terminal.
+- **X11:** [No way to avoid focus stealing on X11 (#1160)](https://github.com/rust-windowing/winit/issues/1160) — Open issue since 2019, no `with_panel` equivalent
+- **Windows:** Partial support via extended window styles, but `WS_EX_NOACTIVATE` not exposed directly in winit API
 
-**Key Limitations:**
+**Key Changes in 0.31:**
 
-- No `WindowBuilder` option to disable focus on mapping
-- New windows appear on top and steal focus even with `with_active(false)`
-- Platform-specific extensions exist but are limited
+- `Window` is now a trait (not a concrete struct), returned as `Box<dyn Window>`
+- `WindowAttributesMacOS::with_panel(true)` creates NSPanel + NonactivatingPanel
+- `with_has_shadow(true)` for panel shadow
+- Platform attributes passed via `with_platform_attributes(Box::new(macos_attrs))`
 
 **Platform Extensions:**
 
-- [`WindowBuilderExtMacOS`](https://docs.rs/winit/latest/x86_64-apple-darwin/winit/platform/macos/trait.WindowBuilderExtMacOS.html) — macOS-specific methods (titlebar customization, etc.)
-- No direct NSPanel support
-- No direct override-redirect or WS_EX_NOACTIVATE support
+- [`WindowAttributesMacOS`](https://docs.rs/winit/latest/x86_64-apple-darwin/winit/platform/macos/struct.WindowAttributesMacOS.html) — macOS-specific attributes including `with_panel(true)`
+- No direct override-redirect or WS_EX_NOACTIVATE support on other platforms
 
-**Verdict:** ❌ **Not suitable** for overlay dropdowns without significant platform-specific workarounds
+**Verdict:** ✅ **Suitable on macOS** via `with_panel(true)` (confirmed in spike); ❌ other platforms still need platform-specific workarounds
 
 ---
 
@@ -680,12 +680,12 @@ execute!(stdout(), cursor::RestorePosition)?;
 
 ### Option A: Separate Overlay Window (Platform-Specific)
 
-| Platform          | Crate                   | Approach                        |
-| ----------------- | ----------------------- | ------------------------------- |
-| **macOS**         | `tao` + `tauri-nspanel` | NSPanel overlay                 |
-| **Linux X11**     | `x11rb`                 | Override-redirect window        |
-| **Linux Wayland** | `wayland-protocols-wlr` | Layer-shell (top/overlay layer) |
-| **Windows**       | `windows` crate         | `WS_EX_NOACTIVATE` window       |
+| Platform          | Crate                             | Approach                        |
+| ----------------- | --------------------------------- | ------------------------------- |
+| **macOS**         | `winit` 0.31 (`with_panel(true)`) | NSPanel overlay (confirmed)     |
+| **Linux X11**     | `x11rb`                           | Override-redirect window        |
+| **Linux Wayland** | `wayland-protocols-wlr`           | Layer-shell (top/overlay layer) |
+| **Windows**       | `windows` crate                   | `WS_EX_NOACTIVATE` window       |
 
 **Position Querying:**
 
@@ -755,19 +755,19 @@ execute!(stdout(), cursor::RestorePosition)?;
 
 **Stack:**
 
-- **macOS:** `tao` + `tauri-nspanel` (NSPanel)
+- **macOS:** `winit` 0.31 with `with_panel(true)` + `softbuffer` (confirmed in spike)
 - **Linux X11:** `x11rb` (override-redirect)
 - **Linux Wayland:** `wayland-protocols-wlr` (layer-shell)
 - **Windows:** `windows` crate (`WS_EX_NOACTIVATE`)
 - **Position Querying:** `active-win-pos-rs` (X11/macOS/Windows), compositor anchoring (Wayland)
-- **Rendering:** `wgpu` (GPU) or `softbuffer` (CPU)
+- **Rendering:** `softbuffer` (CPU) or `wgpu` (GPU)
 
 **Why Defer:**
 
 - ❌ High complexity (4 platform-specific implementations)
 - ❌ Wayland cannot query terminal position (architectural blocker)
 - ❌ WSL position querying is buggy
-- ❌ winit/tao focus-stealing issues unresolved
+- ❌ winit focus-stealing issues unresolved on X11/Windows (macOS solved via `with_panel(true)`)
 
 ---
 
@@ -851,7 +851,7 @@ execute!(stdout(), cursor::RestorePosition)?;
    - Aligns with AGENTS.md directive
 
 2. **Phase 2 (Future):** Evaluate separate overlay window if inline approach proves limiting
-   - macOS: `tao` + `tauri-nspanel`
+   - macOS: `winit` 0.31 with `with_panel(true)` (confirmed in spike)
    - Linux X11: `x11rb` override-redirect
    - Linux Wayland: `wayland-protocols-wlr` layer-shell
    - Windows: `windows` crate with `WS_EX_NOACTIVATE`
