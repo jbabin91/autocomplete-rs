@@ -72,6 +72,10 @@ thiserror = "2.0"
 # CLI parsing
 clap = { version = "4.5", features = ["derive", "env"] }
 
+# Overlay windowing (spike — cross-platform)
+winit = "0.31.0-beta.2"
+softbuffer = "0.4"
+
 # macOS overlay (spike — optional, macOS-only)
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
@@ -94,10 +98,6 @@ objc2-foundation = { version = "0.3", features = [
   "NSString",
   "NSThread",
 ] }
-
-# Overlay windowing (spike — cross-platform)
-winit = "0.31.0-beta.2"
-softbuffer = "0.4"
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
