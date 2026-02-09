@@ -38,6 +38,10 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 - Use future tense or markers for planned features ("Phase 2 will add...")
 - Link to beads issues (`bd list`, `bd ready`) instead of removed ROADMAP.md
 - Keep ADRs immutable once accepted (add new ADRs to supersede)
+- Qualify spike measurements as observations, not guarantees — say
+  "observed sub-ms on development hardware" not "sub-ms latency". Spike
+  data varies by machine and load; stating it as fact misleads readers
+  into treating it as a guaranteed property
 
 ## Single Source of Truth
 
