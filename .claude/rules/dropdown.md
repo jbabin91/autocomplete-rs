@@ -3,6 +3,7 @@ paths:
   - 'src/overlay/**'
   - 'examples/overlay_poc.rs'
   - 'examples/overlay_winit.rs'
+  - 'examples/overlay_tokio.rs'
   - 'docs/design/overlay.md'
 ---
 
@@ -25,9 +26,19 @@ Platform backends:
 
 ## Current State
 
-The overlay dropdown is **not yet implemented** as a proper module. A
-proof-of-concept exists at `examples/overlay_poc.rs` demonstrating NSPanel
-cursor positioning on macOS.
+The overlay dropdown is **not yet implemented** as a proper module. Spike
+examples exist to validate the approach:
+
+- `examples/overlay_poc.rs` — raw objc2 NSPanel + Accessibility API cursor
+  positioning (macOS-only)
+- `examples/overlay_winit.rs` — winit 0.31 NSPanel via `with_panel(true)` +
+  softbuffer rendering (cross-platform window creation, macOS NSPanel behavior)
+- `examples/overlay_tokio.rs` — winit + Tokio coexistence spike proving the
+  daemon and overlay can share one process (winit on main thread, Tokio on
+  background thread, cross-thread mpsc + `EventLoopProxy::wake_up()`)
+
+Key spike finding: **winit + Tokio coexist cleanly in one process** with
+sub-millisecond cross-thread wake latency.
 
 ## Key Properties
 
