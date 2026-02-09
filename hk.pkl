@@ -2,8 +2,13 @@
 // Install via mise: mise install
 // Setup git hooks: hk install
 
-amends "package://github.com/jdx/hk/releases/download/v1.19.0/hk@1.19.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.19.0/hk@1.19.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.35.0/hk@1.35.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.35.0/hk@1.35.0#/Builtins.pkl"
+
+// Ensure mise-managed tools are on PATH (needed for IDEs/non-interactive shells)
+env {
+  ["PATH"] = read("env:HOME") + "/.local/share/mise/shims:" + read("env:PATH")
+}
 
 // Configure git hooks
 hooks {

@@ -27,7 +27,7 @@ after implementation.
 - [Architecture Overview](design/overview.md) - High-level system design
 - [Daemon](design/daemon.md) - Unix socket server and request handling
 - [Parser](design/parser.md) - Command buffer parsing and spec matching
-- [Inline Dropdown](design/tui.md) - Inline ANSI completion rendering
+- [Overlay Dropdown](design/overlay.md) - Native overlay completion dropdown
 - [Configuration](design/configuration.md) - Configuration system (Phase 3)
 
 ### Architecture Decision Records (ADRs)

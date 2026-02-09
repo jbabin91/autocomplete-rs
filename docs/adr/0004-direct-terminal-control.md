@@ -1,6 +1,6 @@
 # ADR-0004: Direct Terminal Control via Shell Integration
 
-**Status:** Accepted **Date:** 2025-10-25 **Decision Makers:** Project Team
+**Status:** Superseded by [ADR-0008](0008-native-overlay-dropdown.md) **Date:** 2025-10-25 **Decision Makers:** Project Team
 **Technical Story:** Choose how to display completion UI in the terminal without
 positioning bugs
 

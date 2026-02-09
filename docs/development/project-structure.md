@@ -431,7 +431,7 @@ docs/
     ├── overview.md
     ├── daemon.md
     ├── parser.md
-    ├── tui.md            # Inline dropdown
+    ├── overlay.md        # Overlay dropdown
     └── configuration.md  # Configuration system (Phase 3)
 ```
 
