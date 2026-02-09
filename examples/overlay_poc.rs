@@ -74,22 +74,42 @@ mod macos {
             match args[i].as_str() {
                 "--row" => {
                     i += 1;
+                    if i >= args.len() {
+                        eprintln!("Missing value for --row");
+                        std::process::exit(1);
+                    }
                     result.row = args[i].parse().expect("--row must be a number");
                 }
                 "--col" => {
                     i += 1;
+                    if i >= args.len() {
+                        eprintln!("Missing value for --col");
+                        std::process::exit(1);
+                    }
                     result.col = args[i].parse().expect("--col must be a number");
                 }
                 "--pid" => {
                     i += 1;
+                    if i >= args.len() {
+                        eprintln!("Missing value for --pid");
+                        std::process::exit(1);
+                    }
                     result.pid = Some(args[i].parse().expect("--pid must be a number"));
                 }
                 "--rows" => {
                     i += 1;
+                    if i >= args.len() {
+                        eprintln!("Missing value for --rows");
+                        std::process::exit(1);
+                    }
                     result.term_rows = Some(args[i].parse().expect("--rows must be a number"));
                 }
                 "--cols" => {
                     i += 1;
+                    if i >= args.len() {
+                        eprintln!("Missing value for --cols");
+                        std::process::exit(1);
+                    }
                     result.term_cols = Some(args[i].parse().expect("--cols must be a number"));
                 }
                 "--help" | "-h" => {

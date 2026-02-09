@@ -60,12 +60,12 @@ dropdown, positioned at the terminal cursor via platform APIs.
 
 ### Platform Backends
 
-| Platform      | Overlay Window                           | Window Position Query                      | Terminal Size       |
-| ------------- | ---------------------------------------- | ------------------------------------------ | ------------------- |
-| macOS         | NSPanel (NonactivatingPanel)             | Accessibility API (AXPosition/AXSize)      | TIOCGWINSZ          |
-| Linux X11     | override-redirect window (x11rb)         | \_NET_ACTIVE_WINDOW + XGetWindowAttributes | TIOCGWINSZ          |
-| Linux Wayland | wlr-layer-shell (smithay-client-toolkit) | Shell integration reports position         | TIOCGWINSZ          |
-| Windows       | WS_EX_NOACTIVATE (windows crate)         | Win32 GetWindowRect                        | Windows console API |
+| Platform      | Overlay Window                            | Window Position Query                      | Terminal Size       |
+| ------------- | ----------------------------------------- | ------------------------------------------ | ------------------- |
+| macOS         | NSPanel via winit 0.31 `with_panel(true)` | Accessibility API (AXPosition/AXSize)      | TIOCGWINSZ          |
+| Linux X11     | override-redirect window (x11rb)          | \_NET_ACTIVE_WINDOW + XGetWindowAttributes | TIOCGWINSZ          |
+| Linux Wayland | wlr-layer-shell (smithay-client-toolkit)  | Shell integration reports position         | TIOCGWINSZ          |
+| Windows       | WS_EX_NOACTIVATE (windows crate)          | Win32 GetWindowRect                        | Windows console API |
 
 ### Key Properties
 
@@ -131,13 +131,23 @@ the same reasons as raw ANSI — it's still inline terminal rendering.
 
 ### Cross-Platform Windowing (winit/tao)
 
-General-purpose windowing crates don't support non-activating overlay windows.
-`winit` has open issues for focus-stealing on X11 and macOS. Platform-specific
-backends are more reliable for this specialized use case.
+**Update (2026-02-09):** winit 0.31 added `WindowAttributesMacOS::with_panel(true)`
+which creates an NSPanel with `NonactivatingPanel` style mask. A spike
+(`examples/overlay_winit.rs`) confirmed this works on macOS — the panel does not
+steal focus from the terminal. winit 0.31 also changed `Window` from a struct to
+a trait, returned as `Box<dyn Window>`.
+
+winit remains unsuitable for non-focus-stealing overlays on X11 and Windows
+(open issues, no platform-specific escape hatches). On macOS, `with_panel(true)`
+makes winit a viable option, reducing the need for raw objc2 NSPanel code.
+Platform-specific backends are still required for X11 (override-redirect) and
+Wayland (layer-shell).
 
 ## Proof of Concept
 
-The overlay spike (`examples/overlay_poc.rs`) demonstrates:
+Two spike examples validate the overlay approach:
+
+### `examples/overlay_poc.rs` (raw objc2, macOS-only)
 
 1. **NSPanel without focus stealing** — `NonactivatingPanel` style mask
 2. **Accessibility API window query** — AXPosition + AXSize for the
@@ -149,10 +159,20 @@ The overlay spike (`examples/overlay_poc.rs`) demonstrates:
 5. **Edge detection** — flip panel above cursor when it would go
    off-screen below
 
+### `examples/overlay_winit.rs` (winit 0.31, cross-platform window creation)
+
+1. **winit `with_panel(true)`** — creates NSPanel + NonactivatingPanel on macOS,
+   falls back to regular window on other platforms
+2. **softbuffer CPU rendering** — bitmap font rendering at 3x scale for HiDPI
+3. **Arrow key navigation** — selection highlighting with redraw
+4. **Non-focus-stealing confirmed** — clicking terminal keeps keyboard focus
+
 ## References
 
 - [Fig.io architecture](docs/research/dropdown-rendering-architecture.md)
-- Overlay POC: `examples/overlay_poc.rs`
+- Overlay POC (raw objc2): `examples/overlay_poc.rs`
+- Overlay POC (winit 0.31): `examples/overlay_winit.rs`
+- Cross-platform research: `research/overlay-window-cross-platform-2025.md`
 - NSPanel documentation: Apple Developer
 - wlr-layer-shell protocol: wayland.app
 - x11rb: github.com/psychon/x11rb

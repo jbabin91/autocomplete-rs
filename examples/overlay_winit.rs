@@ -18,6 +18,7 @@
 //! 4. Can we set always-on-top, borderless, transparent?
 
 use std::num::NonZeroU32;
+use std::rc::Rc;
 
 use softbuffer::Surface;
 use winit::application::ApplicationHandler;
@@ -235,7 +236,8 @@ fn draw_text(buf: &mut [u32], stride: u32, x: u32, y: u32, text: &str, color: u3
 // ---------------------------------------------------------------------------
 
 struct App {
-    window: Option<Box<dyn Window>>,
+    window: Option<Rc<dyn Window>>,
+    surface: Option<Surface<Rc<dyn Window>, Rc<dyn Window>>>,
     selected: usize,
 }
 
@@ -256,9 +258,9 @@ impl App {
             return;
         };
 
-        // Create surface each frame (simple for a POC — production would cache)
-        let context = softbuffer::Context::new(window.as_ref()).expect("softbuffer context");
-        let mut surface = Surface::new(&context, window.as_ref()).expect("softbuffer surface");
+        let Some(surface) = self.surface.as_mut() else {
+            return;
+        };
 
         surface.resize(w, h).expect("resize");
         let mut buf = surface.buffer_mut().expect("buffer");
@@ -337,9 +339,14 @@ impl ApplicationHandler for App {
             .with_resizable(false)
             .with_active(false);
 
-        let window = event_loop
-            .create_window(attrs)
-            .expect("failed to create window");
+        let window: Rc<dyn Window> = Rc::from(
+            event_loop
+                .create_window(attrs)
+                .expect("failed to create window"),
+        );
+
+        let context = softbuffer::Context::new(Rc::clone(&window)).expect("softbuffer context");
+        let surface = Surface::new(&context, Rc::clone(&window)).expect("softbuffer surface");
 
         eprintln!(
             "Window created at (200, 200), size {}x{panel_height}",
@@ -350,6 +357,7 @@ impl ApplicationHandler for App {
         eprintln!("Press Escape to exit.");
 
         self.window = Some(window);
+        self.surface = Some(surface);
         self.render();
     }
 
@@ -406,6 +414,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let event_loop = EventLoop::new()?;
     event_loop.run_app(App {
         window: None,
+        surface: None,
         selected: 0,
     })?;
 
