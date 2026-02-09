@@ -658,7 +658,7 @@ fn spawn_tokio_runtime(
             rt.block_on(async {
                 let socket_path = temp_socket_path();
 
-                // Remove stale socket from a previous crash before binding
+                // Remove stale socket from a previous run of this same process before binding
                 if let Err(e) = std::fs::remove_file(&socket_path)
                     && e.kind() != std::io::ErrorKind::NotFound
                 {
@@ -688,6 +688,8 @@ fn spawn_tokio_runtime(
                 };
 
                 let sets = completion_sets();
+                // First tick fires immediately (sends an initial completion set right
+                // away), then subsequent ticks fire every 2 seconds.
                 let mut interval = tokio::time::interval(Duration::from_secs(2));
                 let mut cycle = 0usize;
                 let mut connection_count = 0u64;

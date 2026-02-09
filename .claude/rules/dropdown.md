@@ -37,8 +37,9 @@ examples exist to validate the approach:
   daemon and overlay can share one process (winit on main thread, Tokio on
   background thread, cross-thread mpsc + `EventLoopProxy::wake_up()`)
 
-Key spike finding: **winit + Tokio coexist cleanly in one process** with
-sub-millisecond cross-thread wake latency.
+Key spike finding: **winit + Tokio coexist cleanly in one process**; in
+spike measurements on development hardware, cross-thread wake latency was
+typically sub-millisecond.
 
 ## Key Properties
 
