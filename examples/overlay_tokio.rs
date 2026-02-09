@@ -17,7 +17,7 @@
 //!   them to the winit overlay via mpsc channel
 //! - The overlay renders the updated completions in real-time
 //! - A simulated Unix socket listener accepts connections on a temp socket
-//! - Press Escape to exit; Ctrl+C in terminal also triggers clean shutdown
+//! - Press Escape to exit (Ctrl+C terminates ungracefully — no cleanup)
 //!
 //! Key questions this spike answers:
 //! 1. Can Tokio run on a background thread while winit owns main?
@@ -50,8 +50,9 @@ use winit::platform::macos::WindowAttributesMacOS;
 /// Messages sent from the Tokio runtime to the winit overlay.
 #[allow(dead_code)] // Shutdown used in production, not this demo
 enum OverlayMessage {
-    /// New set of completions to display.
-    UpdateCompletions(Vec<CompletionItem>),
+    /// New set of completions to display, with the sender's timestamp for
+    /// measuring cross-thread wake latency.
+    UpdateCompletions(Vec<CompletionItem>, Instant),
     /// The Tokio runtime is shutting down.
     Shutdown,
 }
@@ -360,8 +361,8 @@ impl App {
             self.update_count,
             self.items.len()
         );
-        let font_height = 7 * FONT_SCALE;
         draw_text(&mut buf, width, 12, PADDING + 4, &header, HEADER_COLOR);
+        let font_height = 7 * FONT_SCALE;
 
         // Draw completion items
         let items_start_y = PADDING + ITEM_HEIGHT;
@@ -476,23 +477,21 @@ impl ApplicationHandler for App {
     }
 
     fn proxy_wake_up(&mut self, event_loop: &dyn ActiveEventLoop) {
-        let receive_start = Instant::now();
-
-        // Drain all pending messages (wake-ups may be coalesced)
+        // Drain all pending messages (wake-ups may be coalesced; last update wins)
         for msg in self.rx.try_iter() {
             match msg {
-                OverlayMessage::UpdateCompletions(items) => {
-                    let latency = receive_start.elapsed();
+                OverlayMessage::UpdateCompletions(items, sent_at) => {
+                    let latency = sent_at.elapsed();
                     self.update_count += 1;
                     self.items = items;
                     self.selected = 0;
                     self.status = format!(
-                        "Update #{} - wake latency: {}us",
+                        "Update #{} - send-to-receive latency: {}us",
                         self.update_count,
                         latency.as_micros()
                     );
                     eprintln!(
-                        "[overlay] received update #{}, {} items, latency: {:?}",
+                        "[overlay] received update #{}, {} items, send-to-receive latency: {:?}",
                         self.update_count,
                         self.items.len(),
                         latency
@@ -684,7 +683,7 @@ fn spawn_tokio_runtime(
                             let items = sets[cycle % sets.len()].clone();
                             let send_start = Instant::now();
 
-                            if let Err(e) = tx.send(OverlayMessage::UpdateCompletions(items)) {
+                            if let Err(e) = tx.send(OverlayMessage::UpdateCompletions(items, send_start)) {
                                 eprintln!("[tokio] overlay closed ({e}), shutting down");
                                 break;
                             }
