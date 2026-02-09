@@ -285,8 +285,16 @@ async fn start_full_daemon(
     });
 
     // Wait for socket to be ready (polling with retry — storage init may take
-    // a moment due to DB creation and migrations)
+    // a moment due to DB creation and migrations). Check for early task failure
+    // to surface startup errors instead of timing out with a generic message.
     for _ in 0..100 {
+        if handle.is_finished() {
+            match handle.await {
+                Ok(Ok(())) => panic!("daemon exited immediately without error"),
+                Ok(Err(e)) => panic!("daemon failed to start: {e}"),
+                Err(e) => panic!("daemon task panicked: {e}"),
+            }
+        }
         if UnixStream::connect(socket_path).await.is_ok() {
             return handle;
         }
@@ -296,18 +304,32 @@ async fn start_full_daemon(
 }
 
 /// Shut down a full daemon and await its completion.
+///
+/// Asserts the shutdown ack, then uses `select!` with `&mut handle` instead
+/// of `timeout(handle)` to avoid consuming the JoinHandle on timeout — this
+/// ensures we can abort and observe the task for clean cleanup.
 async fn shutdown_full_daemon(
     socket_path: &Path,
-    handle: tokio::task::JoinHandle<anyhow::Result<()>>,
+    mut handle: tokio::task::JoinHandle<anyhow::Result<()>>,
 ) {
-    let _ = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
-    let abort = handle.abort_handle();
-    match tokio::time::timeout(Duration::from_secs(5), handle).await {
-        Ok(result) => result
-            .expect("daemon task panicked")
-            .expect("daemon returned error"),
-        Err(_) => {
-            abort.abort();
+    let resp = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
+    let ack: serde_json::Value =
+        serde_json::from_str(&resp).expect("shutdown response is valid JSON");
+    assert_eq!(
+        ack["status"], "shutting_down",
+        "expected ShutdownAck, got: {resp}"
+    );
+
+    tokio::select! {
+        result = &mut handle => {
+            result
+                .expect("daemon task panicked")
+                .expect("daemon returned error");
+        }
+        () = tokio::time::sleep(Duration::from_secs(5)) => {
+            handle.abort();
+            // Observe the aborted task to ensure cleanup (PID file, socket).
+            let _ = handle.await;
             panic!("full daemon did not exit within timeout");
         }
     }
@@ -359,7 +381,8 @@ async fn full_entrypoint_storage_records_session() {
     let handle = start_full_daemon(&socket_path, &db_path).await;
 
     // Send a request so there's activity
-    let _ = send_request(&socket_path, r#"{"buffer":"ls","cursor":2}"#).await;
+    let resp = send_request(&socket_path, r#"{"buffer":"ls","cursor":2}"#).await;
+    let _: CompletionResponse = serde_json::from_str(&resp).unwrap();
 
     // Shut down — this flushes storage before returning
     shutdown_full_daemon(&socket_path, handle).await;

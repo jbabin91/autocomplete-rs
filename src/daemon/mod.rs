@@ -19,17 +19,14 @@ use self::state::DaemonState;
 
 /// Start the daemon with the default `StubEngine`.
 pub async fn start(socket_path: &str) -> Result<()> {
-    start_with_engine(
-        socket_path,
-        Arc::new(StubEngine),
-        &storage::default_db_path(),
-    )
-    .await
+    let db_path = storage::default_db_path();
+    start_with_engine(socket_path, Arc::new(StubEngine), &db_path).await
 }
 
 /// Start the daemon with a custom completion engine.
 ///
-/// Acquires a PID file, binds the Unix socket, and runs the accept loop
+/// Acquires a PID file, binds the Unix socket, initializes storage at
+/// `db_path` (degrading gracefully on failure), and runs the accept loop
 /// until shutdown. Cleans up socket and PID file on exit.
 pub async fn start_with_engine(
     socket_path: &str,
