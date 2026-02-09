@@ -316,8 +316,6 @@ struct App {
     status: String,
     /// Count of updates received from Tokio.
     update_count: u64,
-    /// Timestamp of last update for latency measurement.
-    last_update: Option<Instant>,
 }
 
 impl App {
@@ -419,7 +417,10 @@ impl App {
     fn resize_window(&self) {
         if let Some(window) = self.window.as_ref() {
             let new_height = self.panel_height();
-            let _ = window.request_surface_size(LogicalSize::new(PANEL_WIDTH, new_height).into());
+            // request_surface_size returns the actual size (may differ from requested);
+            // we don't need it — the next render will observe the real surface size.
+            let _actual =
+                window.request_surface_size(LogicalSize::new(PANEL_WIDTH, new_height).into());
         }
     }
 }
@@ -490,7 +491,6 @@ impl ApplicationHandler for App {
                         self.update_count,
                         latency.as_micros()
                     );
-                    self.last_update = Some(Instant::now());
                     eprintln!(
                         "[overlay] received update #{}, {} items, latency: {:?}",
                         self.update_count,
@@ -684,8 +684,8 @@ fn spawn_tokio_runtime(
                             let items = sets[cycle % sets.len()].clone();
                             let send_start = Instant::now();
 
-                            if tx.send(OverlayMessage::UpdateCompletions(items)).is_err() {
-                                eprintln!("[tokio] overlay closed, shutting down");
+                            if let Err(e) = tx.send(OverlayMessage::UpdateCompletions(items)) {
+                                eprintln!("[tokio] overlay closed ({e}), shutting down");
                                 break;
                             }
                             proxy.wake_up();
@@ -765,7 +765,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         items: vec![],
         status: "Waiting for Tokio...".into(),
         update_count: 0,
-        last_update: None,
     })?;
 
     // winit exited — wait for Tokio thread to notice and shut down
