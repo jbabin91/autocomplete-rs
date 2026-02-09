@@ -83,6 +83,14 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   sleeps are flaky under load and slow down the suite
 - `sleep`-based waits are acceptable only for polling loops with retry
   (e.g. waiting for a socket to become ready) or async file cleanup
+- The `timeout(join_handle).await` rule from Async (above) applies to
+  tests too — use `select!` with `&mut handle` in test shutdown helpers,
+  not `timeout(handle)` which detaches the task and leaks resources
+- Polling loops that wait for a spawned task to become ready should
+  check `handle.is_finished()` each iteration to surface startup
+  errors immediately instead of timing out with a generic panic
+- Never discard protocol responses in tests (`let _ = send_request(...)`)
+  — always parse and assert the response to catch silent failures
 
 ## Benchmarking
 

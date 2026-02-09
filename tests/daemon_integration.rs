@@ -9,7 +9,7 @@ use tokio::net::UnixStream;
 
 use autocomplete_rs::daemon::pid::derive_pid_path;
 use autocomplete_rs::daemon::state::DaemonState;
-use autocomplete_rs::engine::StubEngine;
+use autocomplete_rs::engine::{CompletionEngine, StubEngine};
 use autocomplete_rs::logging;
 use autocomplete_rs::protocol::{CompletionResponse, ErrorResponse, ShutdownAck};
 
@@ -259,4 +259,198 @@ async fn envelope_and_bare_request_both_work() {
     let _: CompletionResponse = serde_json::from_str(&resp2).unwrap();
 
     shutdown_daemon(&path, handle).await;
+}
+
+// ─── Full entrypoint tests ──────────────────────────────────────────────────
+//
+// These tests exercise `daemon::start_with_engine` — the real daemon lifecycle
+// including PID file acquisition, storage initialization, session events, and
+// cleanup. The tests above use `start_daemon` which manually builds the accept
+// loop and skips PID/storage/session orchestration.
+
+/// Start the daemon via the real `start_with_engine` entrypoint.
+///
+/// Spawns the daemon in a background task with a temp DB and waits for the
+/// socket to become connectable before returning.
+async fn start_full_daemon(
+    socket_path: &Path,
+    db_path: &Path,
+) -> tokio::task::JoinHandle<anyhow::Result<()>> {
+    let socket_str = socket_path.to_str().unwrap().to_string();
+    let db = db_path.to_path_buf();
+    let engine: Arc<dyn CompletionEngine> = Arc::new(StubEngine);
+
+    let handle = tokio::spawn(async move {
+        autocomplete_rs::daemon::start_with_engine(&socket_str, engine, &db).await
+    });
+
+    // Wait for socket to be ready (polling with retry — storage init may take
+    // a moment due to DB creation and migrations). Check for early task failure
+    // to surface startup errors instead of timing out with a generic message.
+    for _ in 0..100 {
+        if handle.is_finished() {
+            match handle.await {
+                Ok(Ok(())) => panic!("daemon exited immediately without error"),
+                Ok(Err(e)) => panic!("daemon failed to start: {e}"),
+                Err(e) => panic!("daemon task panicked: {e}"),
+            }
+        }
+        if UnixStream::connect(socket_path).await.is_ok() {
+            return handle;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    panic!("full daemon did not start in time");
+}
+
+/// Shut down a full daemon and await its completion.
+///
+/// Asserts the shutdown ack, then uses `select!` with `&mut handle` instead
+/// of `timeout(handle)` to avoid consuming the JoinHandle on timeout — this
+/// ensures we can abort and observe the task for clean cleanup.
+async fn shutdown_full_daemon(
+    socket_path: &Path,
+    mut handle: tokio::task::JoinHandle<anyhow::Result<()>>,
+) {
+    let resp = send_request(socket_path, r#"{"type":"shutdown"}"#).await;
+    let ack: serde_json::Value =
+        serde_json::from_str(&resp).expect("shutdown response is valid JSON");
+    assert_eq!(
+        ack["status"], "shutting_down",
+        "expected ShutdownAck, got: {resp}"
+    );
+
+    tokio::select! {
+        result = &mut handle => {
+            result
+                .expect("daemon task panicked")
+                .expect("daemon returned error");
+        }
+        () = tokio::time::sleep(Duration::from_secs(5)) => {
+            handle.abort();
+            // Observe the aborted task to ensure cleanup (PID file, socket).
+            let _ = handle.await;
+            panic!("full daemon did not exit within timeout");
+        }
+    }
+}
+
+#[tokio::test]
+async fn full_entrypoint_lifecycle() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket_path = temp_socket_path();
+    let db_path = dir.path().join("data").join("autocomplete.db");
+    let pid_path = derive_pid_path(&socket_path);
+
+    let handle = start_full_daemon(&socket_path, &db_path).await;
+
+    // PID file should exist and contain our process ID
+    let pid_contents = std::fs::read_to_string(&pid_path).unwrap();
+    assert_eq!(
+        pid_contents.trim(),
+        std::process::id().to_string(),
+        "PID file should contain the current process ID"
+    );
+
+    // Send a completion request through the full stack
+    let resp = send_request(&socket_path, r#"{"buffer":"git ","cursor":4}"#).await;
+    let parsed: CompletionResponse = serde_json::from_str(&resp).unwrap();
+    assert!(parsed.suggestions.is_empty());
+
+    // Shut down via protocol message
+    shutdown_full_daemon(&socket_path, handle).await;
+
+    // Socket should be cleaned up
+    assert!(
+        !socket_path.exists(),
+        "socket file should be removed after shutdown"
+    );
+    // PID file should be cleaned up (RAII Drop)
+    assert!(
+        !pid_path.exists(),
+        "PID file should be removed after shutdown"
+    );
+}
+
+#[tokio::test]
+async fn full_entrypoint_storage_records_session() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket_path = temp_socket_path();
+    let db_path = dir.path().join("data").join("autocomplete.db");
+
+    let handle = start_full_daemon(&socket_path, &db_path).await;
+
+    // Send a request so there's activity
+    let resp = send_request(&socket_path, r#"{"buffer":"ls","cursor":2}"#).await;
+    let _: CompletionResponse = serde_json::from_str(&resp).unwrap();
+
+    // Shut down — this flushes storage before returning
+    shutdown_full_daemon(&socket_path, handle).await;
+
+    // Query the database for session events
+    let conn = autocomplete_rs::storage::open_readonly(&db_path)
+        .await
+        .unwrap();
+    let report = autocomplete_rs::storage::query_diagnose_report(&conn)
+        .await
+        .unwrap();
+
+    // Should have exactly one session
+    assert_eq!(
+        report.recent_sessions.len(),
+        1,
+        "should record exactly one session"
+    );
+    let session = &report.recent_sessions[0];
+    assert_eq!(session.pid, i64::from(std::process::id()));
+    assert_eq!(session.stop_reason.as_deref(), Some("shutdown"));
+}
+
+#[tokio::test]
+async fn full_entrypoint_stale_socket_cleanup() {
+    let socket_path = temp_socket_path();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("data").join("autocomplete.db");
+
+    // Create a stale socket file (simulates leftover from a crash)
+    std::fs::write(&socket_path, "stale").unwrap();
+    assert!(socket_path.exists());
+
+    // Daemon should remove the stale socket and bind successfully
+    let handle = start_full_daemon(&socket_path, &db_path).await;
+
+    // Verify it's actually working
+    let resp = send_request(&socket_path, r#"{"buffer":"ls","cursor":2}"#).await;
+    let _: CompletionResponse = serde_json::from_str(&resp).unwrap();
+
+    shutdown_full_daemon(&socket_path, handle).await;
+}
+
+#[tokio::test]
+async fn full_entrypoint_double_start_rejected() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket_path = temp_socket_path();
+    let db_path = dir.path().join("data").join("autocomplete.db");
+
+    // Start the first daemon
+    let handle = start_full_daemon(&socket_path, &db_path).await;
+
+    // Try to start a second daemon on the same socket — should fail because
+    // the PID file exists and references our (still-alive) process.
+    let socket_str = socket_path.to_str().unwrap().to_string();
+    let db2 = dir.path().join("data2").join("autocomplete.db");
+    let engine: Arc<dyn CompletionEngine> = Arc::new(StubEngine);
+    let result = autocomplete_rs::daemon::start_with_engine(&socket_str, engine, &db2).await;
+
+    assert!(result.is_err(), "second daemon should fail to start");
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("another daemon is already running"),
+        "error should mention another daemon is running"
+    );
+
+    // Clean up first daemon
+    shutdown_full_daemon(&socket_path, handle).await;
 }
