@@ -658,9 +658,26 @@ fn spawn_tokio_runtime(
             rt.block_on(async {
                 let socket_path = temp_socket_path();
 
+                // Remove stale socket from a previous crash before binding
+                if let Err(e) = std::fs::remove_file(&socket_path)
+                    && e.kind() != std::io::ErrorKind::NotFound
+                {
+                    eprintln!("[tokio] failed to clean stale socket: {e}");
+                }
+
                 // Bind a real Unix socket to prove async I/O works
                 let listener = match tokio::net::UnixListener::bind(&socket_path) {
                     Ok(l) => {
+                        // Restrict socket access to the owning user
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::PermissionsExt;
+                            if let Err(e) =
+                                std::fs::set_permissions(&socket_path, std::fs::Permissions::from_mode(0o600))
+                            {
+                                eprintln!("[tokio] failed to set socket permissions: {e}");
+                            }
+                        }
                         eprintln!("[tokio] listening on {}", socket_path.display());
                         Some(l)
                     }
