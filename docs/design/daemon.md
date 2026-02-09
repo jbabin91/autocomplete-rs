@@ -745,6 +745,6 @@ loop {
 
 - [Architecture Overview](overview.md) - System architecture
 - [Parser Architecture](parser.md) - Parser design
-- [Inline Dropdown](tui.md) - UI rendering (planned)
+- [Overlay Dropdown](overlay.md) - UI rendering (planned)
 - [ADR-0002: Daemon Architecture](../adr/0002-daemon-architecture.md) - Design
   decision

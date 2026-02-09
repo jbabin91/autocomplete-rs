@@ -169,7 +169,7 @@ Two spike examples validate the overlay approach:
 
 ## References
 
-- [Fig.io architecture](docs/research/dropdown-rendering-architecture.md)
+- [Fig.io architecture](../research/dropdown-rendering-architecture.md)
 - Overlay POC (raw objc2): `examples/overlay_poc.rs`
 - Overlay POC (winit 0.31): `examples/overlay_winit.rs`
 - Cross-platform research: `research/overlay-window-cross-platform-2025.md`

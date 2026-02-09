@@ -570,7 +570,7 @@ Daemon
 
 - [Daemon Architecture](daemon.md) - Detailed daemon design
 - [Parser Architecture](parser.md) - Parser algorithms
-- [Overlay Dropdown](tui.md) - UI rendering details (planned)
+- [Overlay Dropdown](overlay.md) - UI rendering details (planned)
 - [ADRs](../adr/) - Architecture decision records
 - [Development Guide](../development/getting-started.md) - How to build
 - [Project Structure](../development/project-structure.md) - Code organization

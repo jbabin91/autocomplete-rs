@@ -72,8 +72,8 @@ thiserror = "2.0"
 # CLI parsing
 clap = { version = "4.5", features = ["derive", "env"] }
 
-# macOS overlay (spike — optional, macOS-only)
-[target.'cfg(target_os = "macos")'.dependencies]
+# macOS overlay (spike — examples only, macOS-only)
+[target.'cfg(target_os = "macos")'.dev-dependencies]
 objc2 = "0.6"
 accessibility-sys = "0.2"
 core-foundation = "0.10"

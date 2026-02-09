@@ -286,16 +286,20 @@ mod macos {
         // Convert: cocoa_y = screen_height - ax_y - window_height
         let window_cocoa_y = screen_height - window.origin.y - window.size.height;
 
+        // CLI row/col are 1-based (terminal convention); convert to 0-based indices.
+        let row_index = row.saturating_sub(1);
+        let col_index = col.saturating_sub(1);
+
         // Cursor x: window left edge + col offset
-        let cursor_x = window.origin.x + (f64::from(col) * cell_width);
+        let cursor_x = window.origin.x + (f64::from(col_index) * cell_width);
 
         // Cursor in Cocoa coords (bottom-up origin):
-        // Row 0 is at the top of the window, so row N is N cells down from the top.
-        // Top edge of cursor row:  window_cocoa_y + window_height - row * cell_height
-        // Bottom edge of cursor row: window_cocoa_y + window_height - (row+1) * cell_height
-        let cursor_top = window_cocoa_y + window.size.height - f64::from(row) * cell_height;
+        // Row 1 is at the top of the window, so row_index N is N cells down from the top.
+        // Top edge of cursor row:  window_cocoa_y + window_height - row_index * cell_height
+        // Bottom edge: window_cocoa_y + window_height - (row_index+1) * cell_height
+        let cursor_top = window_cocoa_y + window.size.height - f64::from(row_index) * cell_height;
         let cursor_bottom =
-            window_cocoa_y + window.size.height - (f64::from(row) + 1.0) * cell_height;
+            window_cocoa_y + window.size.height - (f64::from(row_index) + 1.0) * cell_height;
 
         CursorPosition {
             x: cursor_x,
@@ -328,8 +332,10 @@ mod macos {
             false,
         );
 
+        // NSFloatingWindowLevel (CGWindowLevelForKey(kCGFloatingWindowLevelKey) = 3)
+        const NS_FLOATING_WINDOW_LEVEL: i64 = 3;
         unsafe {
-            let _: () = msg_send![&panel, setLevel: 3i64];
+            let _: () = msg_send![&panel, setLevel: NS_FLOATING_WINDOW_LEVEL];
         }
 
         panel.setOpaque(false);

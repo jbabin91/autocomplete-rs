@@ -238,6 +238,7 @@ fn draw_text(buf: &mut [u32], stride: u32, x: u32, y: u32, text: &str, color: u3
 struct App {
     window: Option<Rc<dyn Window>>,
     surface: Option<Surface<Rc<dyn Window>, Rc<dyn Window>>>,
+    last_size: (u32, u32),
     selected: usize,
 }
 
@@ -262,7 +263,11 @@ impl App {
             return;
         };
 
-        surface.resize(w, h).expect("resize");
+        // Only resize when dimensions actually change
+        if (width, height) != self.last_size {
+            surface.resize(w, h).expect("resize");
+            self.last_size = (width, height);
+        }
         let mut buf = surface.buffer_mut().expect("buffer");
 
         // Fill background
@@ -272,14 +277,16 @@ impl App {
         for (i, (name, desc)) in ITEMS.iter().enumerate() {
             let item_y = PADDING + (i as u32 * ITEM_HEIGHT);
 
-            // Highlight selected item
+            // Highlight selected item using slice fill (avoids per-pixel branching)
             if i == self.selected {
-                for row in item_y..item_y + ITEM_HEIGHT {
-                    for col in 0..width {
-                        let idx = (row * width + col) as usize;
-                        if idx < buf.len() {
-                            buf[idx] = SELECTED_BG;
-                        }
+                let start_row = item_y.min(height);
+                let end_row = (item_y + ITEM_HEIGHT).min(height);
+                let buf_len = buf.len();
+                for row in start_row..end_row {
+                    let start = (row * width) as usize;
+                    let end = ((row + 1) * width) as usize;
+                    if start < buf_len {
+                        buf[start..end.min(buf_len)].fill(SELECTED_BG);
                     }
                 }
             }
@@ -415,6 +422,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     event_loop.run_app(App {
         window: None,
         surface: None,
+        last_size: (0, 0),
         selected: 0,
     })?;
 
