@@ -19,14 +19,23 @@ use self::state::DaemonState;
 
 /// Start the daemon with the default `StubEngine`.
 pub async fn start(socket_path: &str) -> Result<()> {
-    start_with_engine(socket_path, Arc::new(StubEngine)).await
+    start_with_engine(
+        socket_path,
+        Arc::new(StubEngine),
+        &storage::default_db_path(),
+    )
+    .await
 }
 
 /// Start the daemon with a custom completion engine.
 ///
 /// Acquires a PID file, binds the Unix socket, and runs the accept loop
 /// until shutdown. Cleans up socket and PID file on exit.
-pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngine>) -> Result<()> {
+pub async fn start_with_engine(
+    socket_path: &str,
+    engine: Arc<dyn CompletionEngine>,
+    db_path: &Path,
+) -> Result<()> {
     let path = Path::new(socket_path);
 
     // Single-instance enforcement
@@ -34,17 +43,16 @@ pub async fn start_with_engine(socket_path: &str, engine: Arc<dyn CompletionEngi
     info!("PID file acquired");
 
     // Initialize storage — degrade gracefully if it fails
-    let storage_handle: Option<StorageHandle> =
-        match storage::init(&storage::default_db_path()).await {
-            Ok(handle) => {
-                info!("storage layer initialized");
-                Some(handle)
-            }
-            Err(e) => {
-                tracing::warn!("storage init failed, running in degraded mode: {e}");
-                None
-            }
-        };
+    let storage_handle: Option<StorageHandle> = match storage::init(db_path).await {
+        Ok(handle) => {
+            info!("storage layer initialized");
+            Some(handle)
+        }
+        Err(e) => {
+            tracing::warn!("storage init failed, running in degraded mode: {e}");
+            None
+        }
+    };
 
     // Remove existing socket if it exists (stale from a crash)
     if let Err(e) = std::fs::remove_file(path)
