@@ -48,16 +48,24 @@ communicate via `std::sync::mpsc` + `EventLoopProxy::wake_up()`.
   the daemon thread is still running causes a hang on `join()`. Only
   `OverlayMessage::Shutdown` (sent by the daemon) should call
   `event_loop.exit()`
-- **Shutdown behavior:** daemon → overlay via `OverlayMessage::Shutdown`.
-  Overlay exit drops its mpsc sender; subsequent sends from the daemon
-  will fail and be logged, but do not automatically cancel the daemon
-  thread. Daemon shutdown must be triggered via its own cancellation token
+- **Shutdown: daemon → overlay** via `OverlayMessage::Shutdown` (explicit)
+- **Shutdown: daemon thread exit → overlay** via `proxy.wake_up()` after
+  `run_daemon` returns. The overlay detects the dropped sender in
+  `proxy_wake_up()` via `try_recv() == Disconnected` and calls
+  `event_loop.exit()`. Without this wake, the event loop hangs forever
+  because `try_iter()` on a disconnected channel returns empty (not an error)
+- **Shutdown: overlay → daemon** is NOT automatic. Overlay exit drops the
+  mpsc sender, but the daemon only logs send failures. Daemon shutdown
+  must be triggered via its own cancellation token (see `y7s` bead)
 - **No `expect()` in `ApplicationHandler` methods** — panics kill the entire
   daemon process. Use `tracing::error!` + `event_loop.exit()` for window/
   surface creation failures, `tracing::warn!` + early return for render errors
 
 ## Rendering
 
+- **Guard public render functions** — `render_completions()` must handle
+  `width == 0` and empty buffers (early return). Division by zero is
+  reachable if callers pass degenerate dimensions
 - **String width** — use `.chars().count()` for character-width calculations,
   not `.len()` (byte count). `.len()` breaks alignment for non-ASCII text
 - **Buffer errors** — `surface.resize()`, `surface.buffer_mut()`, and
