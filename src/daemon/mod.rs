@@ -57,8 +57,13 @@ pub fn start_with_overlay(socket_path: &str) -> Result<()> {
 
             rt.block_on(async {
                 let db_path = storage::default_db_path();
-                if let Err(e) =
-                    run_daemon(&socket, Arc::new(ParserEngine::new()), &db_path, Some(channel)).await
+                if let Err(e) = run_daemon(
+                    &socket,
+                    Arc::new(ParserEngine::new()),
+                    &db_path,
+                    Some(channel),
+                )
+                .await
                 {
                     tracing::error!("daemon error: {e:#}");
                 }
