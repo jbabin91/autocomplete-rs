@@ -66,38 +66,52 @@ enum Commands {
     },
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
-
-    // Initialize logging only for the daemon subcommand
-    if matches!(cli.command, Commands::Daemon { .. }) {
-        autocomplete_rs::logging::init().context("failed to initialize logging")?;
-    }
 
     match cli.command {
         Commands::Daemon { socket } => {
+            // Initialize logging before starting the daemon
+            autocomplete_rs::logging::init().context("failed to initialize logging")?;
             tracing::info!("Starting autocomplete daemon on {}", socket);
-            daemon::start(&socket).await?;
+
+            // winit must own the main thread; Tokio runs on a background thread.
+            daemon::start_with_overlay(&socket)?;
         }
         Commands::Stop { socket } => {
-            stop_daemon(&socket).await?;
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .context("failed to build runtime")?;
+            rt.block_on(stop_daemon(&socket))?;
         }
         Commands::Status { socket } => {
-            status_command(&socket).await?;
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .context("failed to build runtime")?;
+            rt.block_on(status_command(&socket))?;
         }
         Commands::Complete {
             buffer,
             cursor,
             socket,
         } => {
-            complete_command(&buffer, cursor, &socket).await?;
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .context("failed to build runtime")?;
+            rt.block_on(complete_command(&buffer, cursor, &socket))?;
         }
         Commands::Install { shell } => {
             install_command(&shell)?;
         }
         Commands::Diagnose { db, json } => {
-            diagnose_command(&db, json).await?;
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .context("failed to build runtime")?;
+            rt.block_on(diagnose_command(&db, json))?;
         }
     }
 

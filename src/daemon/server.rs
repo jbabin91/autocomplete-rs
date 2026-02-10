@@ -10,6 +10,7 @@ use tracing::{debug, error, info, warn};
 
 use super::handler;
 use super::state::DaemonState;
+use crate::overlay::OverlayMessage;
 use crate::storage::StorageEvent;
 
 /// Timeout for draining in-flight connections during shutdown.
@@ -55,6 +56,9 @@ pub async fn run(listener: UnixListener, state: DaemonState, socket_path: &Path)
                 match result {
                     Ok(()) => info!("received SIGINT, shutting down..."),
                     Err(e) => error!("signal handler error: {}", e),
+                }
+                if let Some(ref channel) = state.overlay_channel {
+                    channel.send(OverlayMessage::Shutdown);
                 }
                 state.cancel.cancel();
                 break;
