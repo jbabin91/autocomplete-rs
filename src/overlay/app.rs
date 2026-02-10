@@ -85,14 +85,25 @@ impl OverlayApp {
         };
 
         if (width, height) != self.last_size {
-            surface.resize(w, h).expect("resize");
+            if let Err(e) = surface.resize(w, h) {
+                tracing::warn!("surface resize failed: {e}");
+                return;
+            }
             self.last_size = (width, height);
         }
-        let mut buf = surface.buffer_mut().expect("buffer");
+        let mut buf = match surface.buffer_mut() {
+            Ok(buf) => buf,
+            Err(e) => {
+                tracing::warn!("failed to get surface buffer: {e}");
+                return;
+            }
+        };
 
         renderer::render_completions(&mut buf, width, &self.suggestions, self.selected);
 
-        buf.present().expect("present");
+        if let Err(e) = buf.present() {
+            tracing::warn!("failed to present frame: {e}");
+        }
     }
 
     fn show_window(&mut self) {

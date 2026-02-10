@@ -58,8 +58,7 @@ pub fn start_with_overlay(socket_path: &str) -> Result<()> {
             rt.block_on(async {
                 let db_path = storage::default_db_path();
                 if let Err(e) =
-                    start_with_engine_and_overlay(&socket, Arc::new(ParserEngine::new()), &db_path, channel)
-                        .await
+                    run_daemon(&socket, Arc::new(ParserEngine::new()), &db_path, Some(channel)).await
                 {
                     tracing::error!("daemon error: {e:#}");
                 }
@@ -82,98 +81,6 @@ pub fn start_with_overlay(socket_path: &str) -> Result<()> {
     Ok(())
 }
 
-/// Start the daemon with an overlay channel attached.
-///
-/// Like `start_with_engine()` but wires the `OverlayChannel` into `DaemonState`
-/// so completions are forwarded to the overlay window.
-async fn start_with_engine_and_overlay(
-    socket_path: &str,
-    engine: Arc<dyn CompletionEngine>,
-    db_path: &Path,
-    overlay_channel: OverlayChannel,
-) -> Result<()> {
-    let path = Path::new(socket_path);
-
-    let _pid_file = PidFile::acquire(path)?;
-    info!("PID file acquired");
-
-    let storage_handle: Option<StorageHandle> = match storage::init(db_path).await {
-        Ok(handle) => {
-            info!("storage layer initialized");
-            Some(handle)
-        }
-        Err(e) => {
-            tracing::warn!("storage init failed, running in degraded mode: {e}");
-            None
-        }
-    };
-
-    if let Err(e) = std::fs::remove_file(path)
-        && e.kind() != std::io::ErrorKind::NotFound
-    {
-        return Err(e).with_context(|| format!("failed to remove stale socket: {}", socket_path));
-    }
-
-    let listener = UnixListener::bind(path)
-        .with_context(|| format!("failed to bind to socket: {}", socket_path))?;
-    info!("daemon listening on {}", socket_path);
-
-    let session_id = uuid::Uuid::new_v4().to_string();
-    let mode = logging::detect_mode();
-
-    let mut state = DaemonState::new(engine, mode.clone())
-        .with_session_id(session_id.clone())
-        .with_overlay(overlay_channel);
-    if let Some(ref handle) = storage_handle {
-        state = state.with_storage(handle.sender.clone());
-    }
-
-    state.emit_storage_event(StorageEvent::SessionStart {
-        session_id: session_id.clone(),
-        pid: std::process::id(),
-        version: env!("CARGO_PKG_VERSION").to_string(),
-        mode: mode.to_string(),
-        socket_path: socket_path.to_string(),
-    });
-
-    let shutdown_reason = server::run(listener, state, path).await;
-
-    let reason = if shutdown_reason.is_ok() {
-        "shutdown"
-    } else {
-        "error"
-    };
-
-    if let Some(ref handle) = storage_handle {
-        let stop_event = StorageEvent::SessionStop {
-            session_id,
-            reason: reason.to_string(),
-        };
-        match tokio::time::timeout(
-            std::time::Duration::from_secs(2),
-            handle.sender.send(stop_event),
-        )
-        .await
-        {
-            Ok(Ok(())) => {}
-            Ok(Err(e)) => tracing::warn!("failed to emit session stop event: {e}"),
-            Err(_) => tracing::warn!("timed out sending session stop event"),
-        }
-    }
-
-    if let Some(handle) = storage_handle {
-        handle.shutdown().await;
-    }
-
-    if let Err(e) = std::fs::remove_file(path)
-        && e.kind() != std::io::ErrorKind::NotFound
-    {
-        tracing::warn!("failed to remove socket on shutdown: {}", e);
-    }
-
-    shutdown_reason
-}
-
 /// Start the daemon with a custom completion engine.
 ///
 /// Acquires a PID file, binds the Unix socket, initializes storage at
@@ -183,6 +90,19 @@ pub async fn start_with_engine(
     socket_path: &str,
     engine: Arc<dyn CompletionEngine>,
     db_path: &Path,
+) -> Result<()> {
+    run_daemon(socket_path, engine, db_path, None).await
+}
+
+/// Shared daemon startup logic.
+///
+/// When `overlay_channel` is `Some`, completions are forwarded to the overlay
+/// window. When `None`, the daemon runs headless (used by tests).
+async fn run_daemon(
+    socket_path: &str,
+    engine: Arc<dyn CompletionEngine>,
+    db_path: &Path,
+    overlay_channel: Option<OverlayChannel>,
 ) -> Result<()> {
     let path = Path::new(socket_path);
 
@@ -217,6 +137,9 @@ pub async fn start_with_engine(
     let mode = logging::detect_mode();
 
     let mut state = DaemonState::new(engine, mode.clone()).with_session_id(session_id.clone());
+    if let Some(channel) = overlay_channel {
+        state = state.with_overlay(channel);
+    }
     if let Some(ref handle) = storage_handle {
         state = state.with_storage(handle.sender.clone());
     }

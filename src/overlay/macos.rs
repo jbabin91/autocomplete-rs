@@ -102,21 +102,31 @@ fn get_window_bounds(pid: i32) -> Result<WindowBounds, PositioningError> {
             )));
         }
 
-        let window_ref = get_ax_attribute(app_ref as CFTypeRef, kAXFocusedWindowAttribute)
-            .map_err(PositioningError::WindowQuery)?;
-
-        let pos_ref = get_ax_attribute(window_ref, kAXPositionAttribute)
-            .map_err(PositioningError::WindowQuery)?;
-        let origin = get_ax_cgpoint(pos_ref).map_err(PositioningError::WindowQuery)?;
-        CFRelease(pos_ref);
-
-        let size_ref = get_ax_attribute(window_ref, kAXSizeAttribute)
-            .map_err(PositioningError::WindowQuery)?;
-        let size = get_ax_cgsize(size_ref).map_err(PositioningError::WindowQuery)?;
-        CFRelease(size_ref);
-
-        CFRelease(window_ref);
+        // Use a helper closure so early `?` returns still release app_ref.
+        let result = query_window_bounds(app_ref as CFTypeRef);
         CFRelease(app_ref as CFTypeRef);
+        result
+    }
+}
+
+/// Inner helper for `get_window_bounds` — separated so the caller can
+/// unconditionally release `app_ref` regardless of success or failure.
+unsafe fn query_window_bounds(app_ref: CFTypeRef) -> Result<WindowBounds, PositioningError> {
+    let window_ref = unsafe { get_ax_attribute(app_ref, kAXFocusedWindowAttribute) }
+        .map_err(PositioningError::WindowQuery)?;
+
+    let result = (|| -> Result<WindowBounds, PositioningError> {
+        let pos_ref = unsafe { get_ax_attribute(window_ref, kAXPositionAttribute) }
+            .map_err(PositioningError::WindowQuery)?;
+        let origin = unsafe { get_ax_cgpoint(pos_ref) }.map_err(PositioningError::WindowQuery);
+        unsafe { CFRelease(pos_ref) };
+        let origin = origin?;
+
+        let size_ref = unsafe { get_ax_attribute(window_ref, kAXSizeAttribute) }
+            .map_err(PositioningError::WindowQuery)?;
+        let size = unsafe { get_ax_cgsize(size_ref) }.map_err(PositioningError::WindowQuery);
+        unsafe { CFRelease(size_ref) };
+        let size = size?;
 
         Ok(WindowBounds {
             origin_x: origin.x,
@@ -124,7 +134,10 @@ fn get_window_bounds(pid: i32) -> Result<WindowBounds, PositioningError> {
             width: size.width,
             height: size.height,
         })
-    }
+    })();
+
+    unsafe { CFRelease(window_ref) };
+    result
 }
 
 unsafe fn get_ax_attribute(element: CFTypeRef, attr: &str) -> Result<CFTypeRef, String> {
