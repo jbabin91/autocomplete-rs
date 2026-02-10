@@ -20,7 +20,7 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 - Daemon: Unix socket server with hardcoded empty suggestions
 - Storage: local turso (SQLite-compatible) database for session lifecycle, diagnostics, and metrics
 - CLI: `daemon`, `stop`, `status`, `complete`, `install`, `diagnose` subcommands
-- Parser: stub (returns empty vec)
+- Parser: FSM tokenizer + context analysis (classifies completion context, returns empty suggestions pending spec system)
 - Inline dropdown: not yet implemented (old Ratatui TUI removed)
 - Shell integration: zsh ZLE widget (functional but no real completions)
 

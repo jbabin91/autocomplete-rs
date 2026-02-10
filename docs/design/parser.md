@@ -3,6 +3,12 @@
 > **This is a design specification, not documentation.** It describes the
 > intended parser design. Actual documentation will be written after
 > implementation.
+>
+> **Implementation status:** Tokenization and context analysis are implemented
+> in `src/parser/` (see `tokenizer.rs`, `context.rs`, `engine.rs`). The actual
+> implementation uses a simpler type design than this spec — notably `TokenKind`
+> is `Word | Operator` (not five variants), and `CompletionContext` replaces
+> `ParseContext + Expectation`. Spec matching and generators remain unbuilt.
 
 This document details the design of the command buffer parser.
 

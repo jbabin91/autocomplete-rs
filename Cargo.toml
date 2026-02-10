@@ -124,6 +124,10 @@ harness = false
 name = "handler"
 harness = false
 
+[[bench]]
+name = "parser"
+harness = false
+
 # The profile that 'dist' will build with
 [profile.dist]
 inherits = "release"

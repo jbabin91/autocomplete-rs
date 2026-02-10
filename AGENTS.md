@@ -27,7 +27,11 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
   - `examples/overlay_poc.rs` — raw objc2 NSPanel + Accessibility API positioning (macOS-only)
   - `examples/overlay_winit.rs` — winit 0.31 NSPanel via `with_panel(true)` + softbuffer rendering (cross-platform window creation, macOS NSPanel behavior)
   - `examples/overlay_tokio.rs` — winit + Tokio async runtime coexistence (winit on main thread, Tokio on background thread, cross-thread mpsc + `EventLoopProxy::wake_up()`). Validates single-process daemon+overlay architecture with observed sub-ms wake latency in spike measurements.
-- **Parser** (`src/parser/`) — stub. Intended to tokenize the shell buffer and match against completion specs. Will implement `CompletionEngine` trait.
+- **Parser** (`src/parser/`) — FSM tokenizer and context analyzer implementing `CompletionEngine`:
+  - `mod.rs` — public facade re-exporting `ParserEngine`, `CompletionContext`, `Token`, `TokenKind`, `TokenizeResult`
+  - `tokenizer.rs` — single-pass FSM tokenizer: handles whitespace splitting, single/double quotes, backslash escaping, multi-char operators (`|`, `||`, `&&`, `;`, `&`, `|&`, `<`, `>`, `>>`), unclosed quotes, cursor tracking with char-boundary clamping
+  - `context.rs` — `CompletionContext` enum (`Command`, `Subcommand`, `Option`, `Argument`, `Filename`) and `analyze_context()` which walks the tokenized buffer to classify what the user is completing
+  - `engine.rs` — `ParserEngine` (stateless, `Send + Sync`) wired into the daemon. MVP returns empty suggestions; spec-based generation is the next phase
 - **Shell integration** (`shell-integration/zsh.zsh`) — ZLE widget that captures the buffer/cursor, calls the client, and inserts the selected completion.
 - **Socket path:** `/tmp/autocomplete-rs.sock` (override with `AUTOCOMPLETE_RS_SOCKET` env var)
 
