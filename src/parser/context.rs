@@ -106,7 +106,7 @@ fn find_segment_start(tokens: &[super::tokenizer::Token], search_end: usize) -> 
 
 /// Check if an operator is a chain/pipe operator that starts a new command.
 fn is_chain_operator(op: &str) -> bool {
-    matches!(op, "|" | "||" | "&&" | ";" | "|&")
+    matches!(op, "|" | "||" | "&&" | ";" | "&" | "|&")
 }
 
 /// Check if an operator is a redirection operator.
@@ -249,6 +249,12 @@ mod tests {
                 position: 2,
             }
         );
+    }
+
+    #[test]
+    fn background_operator_resets_context() {
+        let result = tokenize("sleep 10 & ", 11);
+        assert_eq!(analyze_context(&result), CompletionContext::Command);
     }
 
     #[test]
