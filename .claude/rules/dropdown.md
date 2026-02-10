@@ -1,9 +1,6 @@
 ---
 paths:
   - 'src/overlay/**'
-  - 'examples/overlay_poc.rs'
-  - 'examples/overlay_winit.rs'
-  - 'examples/overlay_tokio.rs'
   - 'docs/design/overlay.md'
 ---
 
@@ -24,22 +21,45 @@ Platform backends:
 - **Linux Wayland:** wlr-layer-shell (smithay-client-toolkit) + shell integration for position
 - **Windows:** WS_EX_NOACTIVATE + Win32 GetWindowRect
 
-## Current State
+## Module Structure
 
-The overlay dropdown is **not yet implemented** as a proper module. Spike
-examples exist to validate the approach:
+The overlay is implemented in `src/overlay/`:
 
-- `examples/overlay_poc.rs` — raw objc2 NSPanel + Accessibility API cursor
-  positioning (macOS-only)
-- `examples/overlay_winit.rs` — winit 0.31 NSPanel via `with_panel(true)` +
-  softbuffer rendering (cross-platform window creation, macOS NSPanel behavior)
-- `examples/overlay_tokio.rs` — winit + Tokio coexistence spike proving the
-  daemon and overlay can share one process (winit on main thread, Tokio on
-  background thread, cross-thread mpsc + `EventLoopProxy::wake_up()`)
+- `mod.rs` — module facade, `OverlayMessage` enum (tagged for IPC)
+- `app.rs` — winit `ApplicationHandler` (`OverlayApp`): window creation,
+  message dispatch, keyboard navigation, rendering
+- `renderer.rs` — pixel-buffer rendering of the completion dropdown
+  (ARGB format for softbuffer). Platform-independent
+- `font.rs` — bitmap 5×7 glyph data scaled 3× for HiDPI, `draw_char`/`draw_text`
+- `positioning.rs` — pure coordinate math: cursor position from terminal
+  geometry, overlay placement with edge detection + flip-above
+- `backend.rs` — `OverlayBackend` trait, `OverlayPosition`, `PositioningError`
+- `macos.rs` — macOS backend: Accessibility API window bounds + TIOCGWINSZ
 
-Key spike finding: **winit + Tokio coexist cleanly in one process**; in
-spike measurements on development hardware, cross-thread wake latency was
-typically sub-millisecond.
+Spike examples have been removed (superseded by the production module).
+See git history for `examples/overlay_*.rs` if needed for reference.
+
+## Event Loop Lifecycle
+
+winit owns the main thread; Tokio runs on a background thread. They
+communicate via `std::sync::mpsc` + `EventLoopProxy::wake_up()`.
+
+- **`CloseRequested` must hide, never exit** — exiting the event loop while
+  the daemon thread is still running causes a hang on `join()`. Only
+  `OverlayMessage::Shutdown` (sent by the daemon) should call
+  `event_loop.exit()`
+- **Bidirectional shutdown:** daemon → overlay via `OverlayMessage::Shutdown`,
+  overlay exit → daemon via dropped mpsc sender (sends fail → daemon breaks)
+- **No `expect()` in `ApplicationHandler` methods** — panics kill the entire
+  daemon process. Use `tracing::error!` + `event_loop.exit()` for window/
+  surface creation failures, `tracing::warn!` + early return for render errors
+
+## Rendering
+
+- **String width** — use `.chars().count()` for character-width calculations,
+  not `.len()` (byte count). `.len()` breaks alignment for non-ASCII text
+- **Buffer errors** — `surface.resize()`, `surface.buffer_mut()`, and
+  `buf.present()` can all fail. Log and skip the frame, don't panic
 
 ## Key Properties
 

@@ -81,7 +81,8 @@ pub fn render_completions(
         );
 
         // Draw description after a dash separator
-        let desc_x = LEFT_MARGIN + (suggestion.text.len() as u32 + 3) * CHAR_WIDTH;
+        let name_char_count = suggestion.text.chars().count() as u32;
+        let desc_x = LEFT_MARGIN + (name_char_count + 3) * CHAR_WIDTH;
         font::draw_text(buf, width, desc_x - 2 * CHAR_WIDTH, text_y, "-", DESC_COLOR);
         font::draw_text(
             buf,

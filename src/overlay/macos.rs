@@ -34,9 +34,7 @@ impl OverlayBackend for MacosBackend {
 
         let (term_rows, term_cols) = get_terminal_size().ok_or(PositioningError::NoTerminalSize)?;
 
-        // SAFETY: MainThreadMarker::new() just checks we're on the main thread.
-        // The overlay backend is only called from the winit event loop (main thread).
-        let mtm = MainThreadMarker::new().expect("must run on main thread");
+        let mtm = MainThreadMarker::new().ok_or(PositioningError::NotMainThread)?;
         let screen_height = NSScreen::mainScreen(mtm)
             .map(|s| s.frame().size.height)
             .ok_or(PositioningError::NoScreen)?;
@@ -44,8 +42,9 @@ impl OverlayBackend for MacosBackend {
             .map(|s| s.frame().size.width)
             .ok_or(PositioningError::NoScreen)?;
 
-        // Use cursor row 1, col 1 as default (will be updated from shell buffer later).
-        // For now, position at the bottom-left of the terminal window.
+        // Use the bottom-left cell (last row, column 1) as a temporary default cursor
+        // position. This will be updated from the shell buffer once cursor plumbing is
+        // implemented.
         let cursor_row = term_rows;
         let cursor_col = 1;
 

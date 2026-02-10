@@ -66,6 +66,15 @@ enum Commands {
     },
 }
 
+/// Build a single-threaded Tokio runtime and run the given future to completion.
+fn block_on<F: std::future::Future<Output = Result<()>>>(f: F) -> Result<()> {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .context("failed to build runtime")?;
+    rt.block_on(f)
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -78,41 +87,17 @@ fn main() -> Result<()> {
             // winit must own the main thread; Tokio runs on a background thread.
             daemon::start_with_overlay(&socket)?;
         }
-        Commands::Stop { socket } => {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .context("failed to build runtime")?;
-            rt.block_on(stop_daemon(&socket))?;
-        }
-        Commands::Status { socket } => {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .context("failed to build runtime")?;
-            rt.block_on(status_command(&socket))?;
-        }
+        Commands::Stop { socket } => block_on(stop_daemon(&socket))?,
+        Commands::Status { socket } => block_on(status_command(&socket))?,
         Commands::Complete {
             buffer,
             cursor,
             socket,
-        } => {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .context("failed to build runtime")?;
-            rt.block_on(complete_command(&buffer, cursor, &socket))?;
-        }
+        } => block_on(complete_command(&buffer, cursor, &socket))?,
         Commands::Install { shell } => {
             install_command(&shell)?;
         }
-        Commands::Diagnose { db, json } => {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .context("failed to build runtime")?;
-            rt.block_on(diagnose_command(&db, json))?;
-        }
+        Commands::Diagnose { db, json } => block_on(diagnose_command(&db, json))?,
     }
 
     Ok(())

@@ -11,10 +11,10 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
 - **Protocol** (`src/protocol.rs`) — shared types at crate root: `CompletionRequest`, `CompletionResponse`, `DaemonMessage` (tagged enum with `Complete` | `Shutdown`), validation, constants. Used by both daemon and CLI client.
 - **Engine** (`src/engine.rs`) — `CompletionEngine` trait at crate root. The daemon consumes it via `Arc<dyn CompletionEngine>`. `StubEngine` returns empty suggestions until the parser is wired in. Designed so the daemon-vs-single-process decision can be deferred.
 - **Daemon** (`src/daemon/`) — long-running process listening on a Unix socket:
-  - `mod.rs` — thin facade with `start()` and `start_with_engine()`
+  - `mod.rs` — facade with `start()`, `start_with_engine()`, `start_with_overlay()`, and shared `run_daemon()`. `start_with_overlay()` runs winit on the main thread with Tokio on a background thread.
   - `server.rs` — accept loop with `CancellationToken` + `JoinSet` + semaphore backpressure
-  - `handler.rs` — per-connection request handling with timeouts, size limits, validation
-  - `state.rs` — `DaemonState` (engine, semaphore, cancel token, atomic metrics)
+  - `handler.rs` — per-connection request handling with timeouts, size limits, validation. Forwards completions and shutdown signals to the overlay channel when present.
+  - `state.rs` — `DaemonState` (engine, semaphore, cancel token, atomic metrics, `Option<OverlayChannel>`)
   - `pid.rs` — RAII `PidFile` for single-instance enforcement via `kill(pid, 0)`
 - **Storage** (`src/storage/`) — local turso (SQLite-compatible) database for structured persistence:
   - `mod.rs` — public facade with `init()`, `open_readonly()`, `StorageHandle`
@@ -23,10 +23,15 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
   - `actor.rs` — background write actor with batched transactions (channel+actor pattern)
   - `queries.rs` — read queries for `diagnose` command (`DiagnoseReport`)
 - **Shared utilities** (`src/paths.rs`) — `pub(crate)` helpers used across modules (e.g. `home_dir()` for `$HOME` resolution).
-- **Overlay Dropdown** — Not yet implemented. Will render completions in a native overlay window positioned at the terminal cursor (like Fig.io). Uses platform-specific backends: NSPanel on macOS (via winit 0.31 `with_panel(true)`), override-redirect on X11, layer-shell on Wayland. See [ADR-0008](docs/adr/0008-native-overlay-dropdown.md) and the spike examples:
-  - `examples/overlay_poc.rs` — raw objc2 NSPanel + Accessibility API positioning (macOS-only)
-  - `examples/overlay_winit.rs` — winit 0.31 NSPanel via `with_panel(true)` + softbuffer rendering (cross-platform window creation, macOS NSPanel behavior)
-  - `examples/overlay_tokio.rs` — winit + Tokio async runtime coexistence (winit on main thread, Tokio on background thread, cross-thread mpsc + `EventLoopProxy::wake_up()`). Validates single-process daemon+overlay architecture with observed sub-ms wake latency in spike measurements.
+- **Overlay Dropdown** (`src/overlay/`) — native overlay window positioned at the terminal cursor (like Fig.io). macOS MVP implemented; Linux/Windows are follow-up. See [ADR-0008](docs/adr/0008-native-overlay-dropdown.md).
+  - `mod.rs` — module facade, `OverlayMessage` enum (tagged for cross-thread IPC)
+  - `app.rs` — winit `ApplicationHandler` (`OverlayApp`): window creation, message dispatch, keyboard navigation, rendering. Window starts hidden, shown when non-empty suggestions arrive.
+  - `renderer.rs` — pixel-buffer rendering of the dropdown (ARGB for softbuffer). Constants: colors, sizing, max visible items.
+  - `font.rs` — bitmap 5×7 glyph data scaled 3× for HiDPI, `draw_char`/`draw_text`
+  - `positioning.rs` — pure coordinate math: cursor position from terminal geometry, overlay placement with edge detection + flip-above
+  - `backend.rs` — `OverlayBackend` trait, `OverlayPosition`, `PositioningError`
+  - `macos.rs` — macOS backend: Accessibility API window bounds + TIOCGWINSZ + coordinate conversion
+  - Spike examples removed (superseded); see git history for `examples/overlay_*.rs`
 - **Parser** (`src/parser/`) — FSM tokenizer and context analyzer implementing `CompletionEngine`:
   - `mod.rs` — public facade re-exporting `ParserEngine`, `CompletionContext`, `Token`, `TokenKind`, `TokenizeResult`
   - `tokenizer.rs` — single-pass FSM tokenizer: handles whitespace splitting, single/double quotes, backslash escaping, multi-char operators (`|`, `||`, `&&`, `;`, `&`, `|&`, `<`, `>`, `>>`), unclosed quotes, cursor tracking with char-boundary clamping

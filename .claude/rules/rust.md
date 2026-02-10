@@ -36,6 +36,19 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - Keep doc comments in sync with behavior — if a function logs on error,
   don't document it as "silently dropped" (and vice versa)
 
+## Unsafe Code
+
+- **Rust 2024 Edition**: `unsafe fn` no longer implies an `unsafe` block for
+  the entire function body. All unsafe operations inside `unsafe fn` must be
+  wrapped in explicit `unsafe { ... }` blocks. The compiler enforces this via
+  `unsafe_op_in_unsafe_fn`
+- **CoreFoundation ref management** (macOS): when acquiring a `CFTypeRef`
+  (e.g. `AXUIElementCreateApplication`, `AXUIElementCopyAttributeValue`),
+  separate acquisition from usage into an outer function (acquire + release)
+  and an inner helper (use). The outer function unconditionally calls
+  `CFRelease` after the inner returns, ensuring no leaks on error paths.
+  Never `?`-return between acquisition and release without a cleanup guard
+
 ## Type Safety
 
 - Use `TryFrom`/`try_into()` for numeric conversions that could overflow
@@ -49,6 +62,9 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - Add `#[must_use]` to RAII guards whose Drop has side effects (e.g.
   `ConnectionGuard` decrementing a counter) and builder methods that
   return `Self` — prevents silent no-ops when the return value is ignored
+- **String width**: use `.chars().count()` for display-width calculations,
+  not `.len()` (byte count). `.len()` overcounts for multi-byte UTF-8
+  sequences and breaks alignment in rendering code
 
 ## Protocol
 

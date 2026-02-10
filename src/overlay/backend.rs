@@ -44,6 +44,9 @@ pub enum PositioningError {
 
     #[error("terminal size unavailable")]
     NoTerminalSize,
+
+    #[error("must be called from the main thread")]
+    NotMainThread,
 }
 
 /// Trait for platform-specific overlay positioning.

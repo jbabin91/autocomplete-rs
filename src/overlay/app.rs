@@ -165,14 +165,31 @@ impl ApplicationHandler for OverlayApp {
             .with_active(false)
             .with_visible(false);
 
-        let window: Rc<dyn Window> = Rc::from(
-            event_loop
-                .create_window(attrs)
-                .expect("failed to create overlay window"),
-        );
+        let window: Rc<dyn Window> = match event_loop.create_window(attrs) {
+            Ok(w) => Rc::from(w),
+            Err(e) => {
+                tracing::error!("failed to create overlay window: {e}");
+                event_loop.exit();
+                return;
+            }
+        };
 
-        let context = softbuffer::Context::new(Rc::clone(&window)).expect("softbuffer context");
-        let surface = Surface::new(&context, Rc::clone(&window)).expect("softbuffer surface");
+        let context = match softbuffer::Context::new(Rc::clone(&window)) {
+            Ok(ctx) => ctx,
+            Err(e) => {
+                tracing::error!("failed to create softbuffer context: {e}");
+                event_loop.exit();
+                return;
+            }
+        };
+        let surface = match Surface::new(&context, Rc::clone(&window)) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("failed to create softbuffer surface: {e}");
+                event_loop.exit();
+                return;
+            }
+        };
 
         tracing::info!("overlay window created (hidden)");
 
@@ -213,12 +230,17 @@ impl ApplicationHandler for OverlayApp {
 
     fn window_event(
         &mut self,
-        event_loop: &dyn ActiveEventLoop,
+        _event_loop: &dyn ActiveEventLoop,
         _id: WindowId,
         event: WindowEvent,
     ) {
         match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::CloseRequested => {
+                // Treat close as hide — the daemon drives shutdown explicitly
+                // via OverlayMessage::Shutdown. Exiting the event loop here
+                // would leave the daemon thread running and cause a hang.
+                self.hide_window();
+            }
             WindowEvent::KeyboardInput { event, .. } => {
                 use winit::event::ElementState;
                 use winit::keyboard::{Key, NamedKey};
