@@ -184,7 +184,8 @@ pub struct ParserEngine;  // Stateless, Send + Sync
 
 **Parsing Pipeline:**
 
-1. **Tokenize:** FSM walks `buffer.char_indices()` — handles whitespace,
+1. **Tokenize:** FSM scans `buffer.as_bytes()` with a manual byte index
+   (decoding UTF-8 only for non-ASCII bytes) — handles whitespace,
    single/double quotes, backslash escaping, multi-char operators (`||`, `&&`,
    `>>`, `|&`), cursor tracking with char-boundary clamping
 2. **Context:** Walk backward from cursor to find active pipeline segment,

@@ -22,7 +22,7 @@ fn bench_tokenize(c: &mut Criterion) {
     let mut group = c.benchmark_group("parser/tokenize");
     for &(label, buffer, cursor) in inputs {
         group.bench_with_input(BenchmarkId::new("tokenize", label), &(), |b, _| {
-            b.iter(|| tokenize(black_box(buffer), black_box(cursor)));
+            b.iter(|| tokenize(black_box(buffer), black_box(cursor)))
         });
     }
     group.finish();
@@ -49,7 +49,7 @@ fn bench_complete(c: &mut Criterion) {
             version: PROTOCOL_VERSION,
         };
         group.bench_with_input(BenchmarkId::new("parser", label), &req, |b, req| {
-            b.iter(|| engine.complete(black_box(req)));
+            b.iter(|| engine.complete(black_box(req)))
         });
     }
     group.finish();

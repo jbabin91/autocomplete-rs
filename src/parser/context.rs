@@ -48,7 +48,7 @@ pub fn analyze_context(result: &TokenizeResult) -> CompletionContext {
     // Find the start of the active segment (after the last chain operator).
     // When inside a token, include it in the search (it might be an operator).
     let search_end = result.cursor_token_index.map_or(boundary, |i| i + 1);
-    let segment_start = find_segment_start(tokens, search_end);
+    let segment_start = find_segment_start(tokens, search_end).min(boundary);
 
     // Check if the previous token is a redirection operator
     if let Some(idx) = boundary.checked_sub(1) {
@@ -274,5 +274,15 @@ mod tests {
                 command: "sort".into()
             }
         );
+    }
+
+    #[test]
+    fn cursor_inside_operator_does_not_panic() {
+        // Cursor at byte 6, between the two '&' in "&&". The cursor is inside
+        // the operator token, so segment_start could exceed boundary without
+        // the .min(boundary) clamp.
+        let result = tokenize("echo && ls", 6);
+        // Should not panic; exact context is less important than not crashing
+        let _ctx = analyze_context(&result);
     }
 }

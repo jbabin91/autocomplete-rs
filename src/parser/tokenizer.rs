@@ -99,12 +99,12 @@ pub fn tokenize(buffer: &str, cursor: usize) -> TokenizeResult {
         match state {
             State::Normal => {
                 if ch.is_ascii_whitespace() {
-                    // Flush any accumulated word
-                    if !current.is_empty() {
+                    // Flush any accumulated word (or empty quoted token)
+                    if !current.is_empty() || token_start.is_some() {
                         tokens.push(Token {
                             kind: TokenKind::Word,
                             text: std::mem::take(&mut current),
-                            start: token_start.unwrap(),
+                            start: token_start.unwrap_or(i),
                             end: i,
                             quote_open: false,
                         });
@@ -132,12 +132,12 @@ pub fn tokenize(buffer: &str, cursor: usize) -> TokenizeResult {
                     state = State::Escaped;
                     i += 1;
                 } else if is_operator_start(ch) {
-                    // Flush any accumulated word first
-                    if !current.is_empty() {
+                    // Flush any accumulated word (or empty quoted token) first
+                    if !current.is_empty() || token_start.is_some() {
                         tokens.push(Token {
                             kind: TokenKind::Word,
                             text: std::mem::take(&mut current),
-                            start: token_start.unwrap(),
+                            start: token_start.unwrap_or(i),
                             end: i,
                             quote_open: false,
                         });
@@ -542,5 +542,38 @@ mod tests {
             .map(|t| t.text.as_str())
             .collect();
         assert_eq!(ops, ["&"]);
+    }
+
+    #[test]
+    fn empty_single_quoted_token() {
+        let result = tokenize("echo '' next", 12);
+        assert_eq!(result.tokens.len(), 3);
+        assert_eq!(result.tokens[0].text, "echo");
+        assert_eq!(result.tokens[1].text, "");
+        assert_eq!(result.tokens[1].start, 5); // where '' starts
+        assert_eq!(result.tokens[1].end, 7); // where '' ends
+        assert_eq!(result.tokens[2].text, "next");
+        assert_eq!(result.tokens[2].start, 8);
+    }
+
+    #[test]
+    fn empty_double_quoted_token() {
+        let result = tokenize(r#"echo "" next"#, 12);
+        assert_eq!(result.tokens.len(), 3);
+        assert_eq!(result.tokens[1].text, "");
+        assert_eq!(result.tokens[2].text, "next");
+        assert_eq!(result.tokens[2].start, 8);
+    }
+
+    #[test]
+    fn empty_quoted_before_operator() {
+        let result = tokenize("''|cat", 6);
+        assert_eq!(result.tokens.len(), 3);
+        assert_eq!(result.tokens[0].text, "");
+        assert_eq!(result.tokens[0].start, 0);
+        assert_eq!(result.tokens[0].end, 2);
+        assert_eq!(result.tokens[1].text, "|");
+        assert_eq!(result.tokens[2].text, "cat");
+        assert_eq!(result.tokens[2].start, 3);
     }
 }
