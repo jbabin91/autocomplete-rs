@@ -10,8 +10,9 @@ use anyhow::{Context, Result};
 use tokio::net::UnixListener;
 use tracing::info;
 
-use crate::engine::{CompletionEngine, StubEngine};
+use crate::engine::CompletionEngine;
 use crate::logging;
+use crate::parser::ParserEngine;
 use crate::storage::{self, StorageEvent, StorageHandle};
 
 use self::pid::PidFile;
@@ -20,7 +21,7 @@ use self::state::DaemonState;
 /// Start the daemon with the default `StubEngine`.
 pub async fn start(socket_path: &str) -> Result<()> {
     let db_path = storage::default_db_path();
-    start_with_engine(socket_path, Arc::new(StubEngine), &db_path).await
+    start_with_engine(socket_path, Arc::new(ParserEngine::new()), &db_path).await
 }
 
 /// Start the daemon with a custom completion engine.
