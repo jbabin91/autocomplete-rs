@@ -54,6 +54,8 @@ impl CompletionEngine for ParserEngine {
 mod tests {
     use std::sync::Arc;
 
+    use crate::protocol::PROTOCOL_VERSION;
+
     use super::*;
 
     #[test]
@@ -62,7 +64,7 @@ mod tests {
         let req = CompletionRequest {
             buffer: "git checkout ".into(),
             cursor: 13,
-            version: 1,
+            version: PROTOCOL_VERSION,
         };
         let resp = engine.complete(&req);
         assert!(resp.suggestions.is_empty());
@@ -74,7 +76,7 @@ mod tests {
         let req = CompletionRequest {
             buffer: "ls -la".into(),
             cursor: 6,
-            version: 1,
+            version: PROTOCOL_VERSION,
         };
         let resp = engine.complete(&req);
         assert!(resp.suggestions.is_empty());
@@ -86,7 +88,7 @@ mod tests {
         let req = CompletionRequest {
             buffer: String::new(),
             cursor: 0,
-            version: 1,
+            version: PROTOCOL_VERSION,
         };
         let resp = engine.complete(&req);
         assert!(resp.suggestions.is_empty());

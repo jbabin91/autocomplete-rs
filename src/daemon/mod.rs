@@ -18,7 +18,7 @@ use crate::storage::{self, StorageEvent, StorageHandle};
 use self::pid::PidFile;
 use self::state::DaemonState;
 
-/// Start the daemon with the default `StubEngine`.
+/// Start the daemon with the default `ParserEngine`.
 pub async fn start(socket_path: &str) -> Result<()> {
     let db_path = storage::default_db_path();
     start_with_engine(socket_path, Arc::new(ParserEngine::new()), &db_path).await

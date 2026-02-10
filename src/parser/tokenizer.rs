@@ -82,6 +82,13 @@ pub fn tokenize(buffer: &str, cursor: usize) -> TokenizeResult {
             let ch = buffer[i..].chars().next().unwrap();
             current.push(ch);
             i += ch.len_utf8();
+            // Restore state after consuming an escaped non-ASCII char.
+            // Escaped/EscapedInDouble expect exactly one char then transition.
+            match state {
+                State::Escaped => state = State::Normal,
+                State::EscapedInDouble => state = State::DoubleQuote,
+                _ => {}
+            }
             continue;
         }
 
@@ -472,6 +479,22 @@ mod tests {
         let result = tokenize("echo café", 10);
         assert_eq!(result.tokens.len(), 2);
         assert_eq!(result.tokens[1].text, "café");
+    }
+
+    #[test]
+    fn escaped_non_ascii() {
+        let result = tokenize("echo \\é next", 13);
+        assert_eq!(result.tokens.len(), 3);
+        assert_eq!(result.tokens[1].text, "é");
+        assert_eq!(result.tokens[2].text, "next");
+    }
+
+    #[test]
+    fn escaped_non_ascii_in_double_quotes() {
+        let result = tokenize("echo \"\\éworld\"", 14);
+        assert_eq!(result.tokens.len(), 2);
+        assert_eq!(result.tokens[1].text, "éworld");
+        assert!(!result.tokens[1].quote_open);
     }
 
     #[test]
