@@ -48,8 +48,10 @@ communicate via `std::sync::mpsc` + `EventLoopProxy::wake_up()`.
   the daemon thread is still running causes a hang on `join()`. Only
   `OverlayMessage::Shutdown` (sent by the daemon) should call
   `event_loop.exit()`
-- **Bidirectional shutdown:** daemon → overlay via `OverlayMessage::Shutdown`,
-  overlay exit → daemon via dropped mpsc sender (sends fail → daemon breaks)
+- **Shutdown behavior:** daemon → overlay via `OverlayMessage::Shutdown`.
+  Overlay exit drops its mpsc sender; subsequent sends from the daemon
+  will fail and be logged, but do not automatically cancel the daemon
+  thread. Daemon shutdown must be triggered via its own cancellation token
 - **No `expect()` in `ApplicationHandler` methods** — panics kill the entire
   daemon process. Use `tracing::error!` + `event_loop.exit()` for window/
   surface creation failures, `tracing::warn!` + early return for render errors

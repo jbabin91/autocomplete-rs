@@ -268,8 +268,12 @@ impl ApplicationHandler for OverlayApp {
                             }
                         }
                         Key::Named(NamedKey::Enter) => {
-                            if let Some(item) = self.suggestions.get(self.selected) {
-                                tracing::debug!(selection = %item.text, "completion accepted");
+                            if self.suggestions.get(self.selected).is_some() {
+                                tracing::debug!(
+                                    selection_index = self.selected,
+                                    total_suggestions = self.suggestions.len(),
+                                    "completion accepted",
+                                );
                             }
                             self.hide_window();
                         }
