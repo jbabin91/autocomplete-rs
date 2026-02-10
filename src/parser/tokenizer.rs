@@ -212,8 +212,13 @@ pub fn tokenize(buffer: &str, cursor: usize) -> TokenizeResult {
         });
     }
 
-    // Determine cursor position relative to tokens
-    let cursor = cursor.min(len);
+    // Determine cursor position relative to tokens.
+    // Clamp to buffer length and then to the nearest char boundary — cursor
+    // comes from untrusted protocol input and may land mid-UTF-8 sequence.
+    let mut cursor = cursor.min(len);
+    while cursor > 0 && !buffer.is_char_boundary(cursor) {
+        cursor -= 1;
+    }
     let mut cursor_token_index = None;
     let mut at_word_boundary = true;
     let mut prefix = String::new();
@@ -516,6 +521,15 @@ mod tests {
         assert_eq!(result.tokens[0].end, 3);
         assert_eq!(result.tokens[1].start, 4);
         assert_eq!(result.tokens[1].end, 10);
+    }
+
+    #[test]
+    fn cursor_mid_utf8_does_not_panic() {
+        // Cursor at byte 9 lands inside the 2-byte UTF-8 sequence for 'é'
+        // in "café" (bytes: c=5, a=6, f=7, 0xC3=8, 0xA9=9). Must not panic.
+        let result = tokenize("echo café", 9);
+        assert_eq!(result.cursor, 8); // clamped back to char boundary
+        assert!(!result.prefix.is_empty() || result.at_word_boundary);
     }
 
     #[test]

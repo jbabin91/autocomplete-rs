@@ -35,11 +35,11 @@ impl CompletionEngine for ParserEngine {
         let context = analyze_context(&result);
 
         debug!(
-            buffer = %request.buffer,
+            buffer_len = request.buffer.len(),
             cursor = request.cursor,
             ?context,
             token_count = result.tokens.len(),
-            prefix = %result.prefix,
+            prefix_len = result.prefix.len(),
             "parsed completion request"
         );
 
