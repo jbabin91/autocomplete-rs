@@ -200,15 +200,20 @@ impl ApplicationHandler for OverlayApp {
     fn proxy_wake_up(&mut self, event_loop: &dyn ActiveEventLoop) {
         // Drain all pending messages. If the channel is disconnected (daemon
         // thread exited), the iterator yields nothing — detect this and exit.
-        let messages: Vec<_> = self.rx.try_iter().collect();
+        let mut messages: Vec<_> = self.rx.try_iter().collect();
 
         if messages.is_empty() {
             // Check if the sender was dropped (daemon thread finished).
-            // try_recv() distinguishes Empty from Disconnected.
-            if let Err(std::sync::mpsc::TryRecvError::Disconnected) = self.rx.try_recv() {
-                tracing::info!("daemon thread exited, shutting down overlay");
-                event_loop.exit();
-                return;
+            // try_recv() distinguishes Empty from Disconnected, and may
+            // also return a real message that arrived after try_iter().
+            match self.rx.try_recv() {
+                Ok(msg) => messages.push(msg),
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    tracing::info!("daemon thread exited, shutting down overlay");
+                    event_loop.exit();
+                    return;
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {}
             }
         }
 
@@ -262,15 +267,19 @@ impl ApplicationHandler for OverlayApp {
                             self.hide_window();
                         }
                         Key::Named(NamedKey::ArrowDown) => {
-                            if !self.suggestions.is_empty() {
-                                self.selected = (self.selected + 1) % self.suggestions.len();
+                            let max_visible =
+                                renderer::MAX_VISIBLE_ITEMS.min(self.suggestions.len());
+                            if max_visible > 0 {
+                                self.selected = (self.selected + 1) % max_visible;
                                 self.render();
                             }
                         }
                         Key::Named(NamedKey::ArrowUp) => {
-                            if !self.suggestions.is_empty() {
+                            let max_visible =
+                                renderer::MAX_VISIBLE_ITEMS.min(self.suggestions.len());
+                            if max_visible > 0 {
                                 self.selected = if self.selected == 0 {
-                                    self.suggestions.len() - 1
+                                    max_visible - 1
                                 } else {
                                     self.selected - 1
                                 };

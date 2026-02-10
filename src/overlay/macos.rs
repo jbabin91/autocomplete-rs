@@ -29,12 +29,13 @@ impl OverlayBackend for MacosBackend {
         panel_width: f64,
         panel_height: f64,
     ) -> Result<OverlayPosition, PositioningError> {
+        // Gate all AppKit usage on main-thread check before any other calls.
+        let mtm = MainThreadMarker::new().ok_or(PositioningError::NotMainThread)?;
+
         let pid = get_frontmost_pid().ok_or(PositioningError::NoFrontmostApp)?;
         let bounds = get_window_bounds(pid)?;
 
         let (term_rows, term_cols) = get_terminal_size().ok_or(PositioningError::NoTerminalSize)?;
-
-        let mtm = MainThreadMarker::new().ok_or(PositioningError::NotMainThread)?;
         let screen_height = NSScreen::mainScreen(mtm)
             .map(|s| s.frame().size.height)
             .ok_or(PositioningError::NoScreen)?;
