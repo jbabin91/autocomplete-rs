@@ -45,6 +45,9 @@ pub fn render_completions(
     suggestions: &[Suggestion],
     selected: usize,
 ) {
+    if width == 0 || buf.is_empty() {
+        return;
+    }
     let height = buf.len() as u32 / width;
 
     // Fill background

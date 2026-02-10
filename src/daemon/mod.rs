@@ -68,6 +68,10 @@ pub fn start_with_overlay(socket_path: &str) -> Result<()> {
                     tracing::error!("daemon error: {e:#}");
                 }
             });
+
+            // Daemon finished (normal shutdown or error) — wake the event
+            // loop so it can detect the dropped sender and exit.
+            proxy.wake_up();
         })
         .context("failed to spawn Tokio thread")?;
 
