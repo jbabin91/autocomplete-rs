@@ -3,9 +3,12 @@
 This document details the planned design for the native overlay completion
 dropdown.
 
-**Status:** Proof-of-concept complete (`examples/overlay_poc.rs`). Production
-implementation not yet started. The previous inline ANSI approach has been
-superseded — see [ADR-0008](../adr/0008-native-overlay-dropdown.md).
+**Status:** macOS MVP implemented in `src/overlay/`. The daemon runs the
+overlay on the main thread (winit event loop) with Tokio on a background
+thread. Completions are forwarded to the overlay via `OverlayChannel`
+(mpsc + `EventLoopProxy::wake_up()`). The previous inline ANSI approach
+has been superseded — see [ADR-0008](../adr/0008-native-overlay-dropdown.md).
+Linux and Windows backends are follow-up work.
 
 ## Overview
 

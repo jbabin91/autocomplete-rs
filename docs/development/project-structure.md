@@ -31,7 +31,7 @@ library directly.
 
 **Purpose:** Library crate root — re-exports all public modules
 
-**Exports:** `daemon`, `engine`, `parser`, `protocol`
+**Exports:** `daemon`, `engine`, `logging`, `overlay`, `parser`, `protocol`, `storage`
 
 ### `src/main.rs`
 
@@ -40,20 +40,23 @@ library directly.
 **Responsibilities:**
 
 - Parse command-line arguments with Clap
-- Route to appropriate subcommand (daemon, stop, status, complete, install)
+- Route to appropriate subcommand (daemon, stop, status, complete, install, diagnose)
 - Handle top-level errors
 - Set up logging/tracing
+- For `daemon`: call `start_with_overlay()` (winit on main thread)
+- For other async commands: build a single-threaded Tokio runtime via `block_on()` helper
 - Send shutdown message to daemon for `stop` command
 
 **Key Types:**
 
 ```rust
 enum Commands {
-    Daemon { socket: String },   // Start the daemon
+    Daemon { socket: String },   // Start the daemon (with overlay)
     Stop { socket: String },     // Send shutdown message
     Status { socket: String },   // Check if daemon is running
     Complete { buffer, cursor, socket },  // Get completions
     Install { shell: String },   // Print shell integration instructions
+    Diagnose { db: PathBuf, json: bool }, // Show diagnostic report
 }
 ```
 
@@ -106,19 +109,21 @@ the default engine.
 
 ```sh
 daemon/
-├── mod.rs           # Thin facade: start() and start_with_engine()
+├── mod.rs           # Facade: start(), start_with_engine(), start_with_overlay(), run_daemon()
 ├── server.rs        # Accept loop, shutdown orchestration, socket permissions
 ├── handler.rs       # Per-connection request handling with timeouts/validation
-├── state.rs         # DaemonState (engine, semaphore, cancel token, metrics)
+├── state.rs         # DaemonState (engine, semaphore, cancel token, metrics, OverlayChannel)
 └── pid.rs           # RAII PidFile for single-instance enforcement
 ```
 
 **Key Functions:**
 
-- `start(socket_path)` — Start daemon with default `ParserEngine`
-- `start_with_engine(socket_path, engine)` — Start with custom engine
+- `start(socket_path)` — Start daemon with default `ParserEngine` (headless)
+- `start_with_engine(socket_path, engine, db_path)` — Start with custom engine (headless, used by tests)
+- `start_with_overlay(socket_path)` — Start with overlay window (winit on main thread, Tokio on background thread). Used by the `daemon` CLI command.
+- `run_daemon(socket_path, engine, db_path, overlay_channel)` — Shared startup/shutdown logic used by both `start_with_engine` and `start_with_overlay`
 - `handler::handle_connection(reader, writer, state, conn_id)` — Per-connection
-  logic (generic over `AsyncRead`/`AsyncWrite` for testability)
+  logic (generic over `AsyncRead`/`AsyncWrite` for testability). Forwards completions to overlay channel when present.
 
 **Performance Requirements:**
 
@@ -203,15 +208,44 @@ pub struct ParserEngine;  // Stateless, Send + Sync
 - Adding new completion context types
 - Optimizing parse performance
 
-### `src/tui/` (planned)
+### `src/overlay/`
 
-**Purpose:** Inline ANSI dropdown for completion display
+**Purpose:** Native overlay dropdown window for completion display
 
-**Current State:** Not yet implemented. The old Ratatui-based TUI has been
-removed. Will use raw ANSI escape codes via crossterm to render an inline
-dropdown below the cursor (see [ADR-0006](../adr/0006-inline-ansi-dropdown.md)).
+**Current State:** macOS MVP implemented. Linux/Windows backends are follow-up.
 
-**When to implement:** Phase 1 MVP
+**Components:**
+
+```sh
+overlay/
+├── mod.rs           # Module facade, OverlayMessage enum
+├── app.rs           # winit ApplicationHandler (OverlayApp)
+├── renderer.rs      # Pixel-buffer rendering (ARGB for softbuffer)
+├── font.rs          # Bitmap 5×7 glyph data, draw_char/draw_text
+├── positioning.rs   # Coordinate math, edge detection, flip-above
+├── backend.rs       # OverlayBackend trait, PositioningError
+└── macos.rs         # macOS backend: Accessibility API + TIOCGWINSZ
+```
+
+**Key Types:**
+
+- `OverlayMessage` — tagged enum (`UpdateCompletions` | `Hide` | `Shutdown`)
+  sent from daemon thread to overlay via `std::sync::mpsc`
+- `OverlayApp` — winit `ApplicationHandler`, owns the window and surface
+- `OverlayBackend` trait — platform-specific position computation
+- `MacosBackend` — queries terminal window bounds via Accessibility API
+
+**Architecture:** winit owns the main thread (macOS requirement). Tokio runs
+on a background thread. They communicate via `std::sync::mpsc` +
+`EventLoopProxy::wake_up()`. The `OverlayChannel` in `DaemonState` wraps the
+sender + a `WakeFn` closure to keep winit imports out of daemon code.
+
+**When to modify:**
+
+- Adding Linux/Windows backends
+- Implementing scroll offset for long suggestion lists
+- Wiring in real cursor position from shell integration
+- Improving rendering (anti-aliasing, theming)
 
 ### `src/specs/`
 
@@ -376,11 +410,11 @@ timestamps) to avoid collisions under parallel execution.
 
 ### Unit Tests
 
-Inline unit tests across modules:
+Unit tests across modules (109 total including integration tests):
 
 - `protocol` (12): serde round-trips, validation, `DaemonMessage` variants
-- `handler` (8): valid/invalid requests, shutdown, backward compat
-- `pid` (8): path derivation, process detection, acquire/release, stale cleanup
+- `handler` (12): valid/invalid requests, shutdown, backward compat, overlay forwarding
+- `pid` (6): path derivation, process detection, acquire/release, stale cleanup
 - `state` (4): connection guard, metrics, semaphore permits
 - `engine` (2): stub behavior, trait object behind `Arc`
 - `parser/tokenizer` (~80): words, quotes, escaping, operators, cursor
@@ -388,6 +422,11 @@ Inline unit tests across modules:
 - `parser/context` (~15): command/subcommand/option/argument/filename
   classification, pipeline segments, chain operators
 - `parser/engine` (3): empty suggestions, Send+Sync, empty buffer
+- `overlay::font` (3): glyph bounds, out-of-bounds safety, text rendering
+- `overlay::positioning` (5): cursor math, edge detection, flip-above
+- `overlay::renderer` (5): panel height, empty/populated rendering, selection
+- `logging` (16): config, fields, privacy redaction
+- `storage` (3): schema migrations, queries
 
 ## Benchmarks (`benches/`)
 
@@ -441,7 +480,9 @@ docs/
 │   ├── 0003-build-time-spec-parsing.md
 │   ├── 0004-direct-terminal-control.md
 │   ├── 0005-ratatui-for-tui.md        # Superseded
-│   └── 0006-inline-ansi-dropdown.md
+│   ├── 0006-inline-ansi-dropdown.md   # Superseded by 0008
+│   ├── 0007-logging-infrastructure.md
+│   └── 0008-native-overlay-dropdown.md
 ├── development/          # Developer guides
 │   ├── getting-started.md
 │   ├── project-structure.md (this file)
@@ -491,8 +532,8 @@ Daemon sends response
          ↓
 ZLE widget receives response
          ↓
-Inline Dropdown (not yet implemented)
-    - Renders dropdown below cursor
+Overlay Dropdown (src/overlay/)
+    - Renders native floating dropdown at cursor position
     - User selects "checkout"
          ↓
 ZLE widget updates buffer
@@ -503,11 +544,12 @@ ZLE widget updates buffer
 
 ```sh
 main.rs
-  ├── daemon (phase 1)
-  │   ├── parser (phase 1-2)
+  ├── daemon (implemented)
+  │   ├── parser (stub — phase 2)
   │   │   └── specs (phase 2)
-  │   └── dropdown (phase 1, not yet implemented)
+  │   └── overlay (macOS MVP implemented)
   │       └── theme (phase 3)
+  ├── storage (implemented)
   └── installer (phase 1)
       └── shell-integration/*.{zsh,sh,fish}
 ```

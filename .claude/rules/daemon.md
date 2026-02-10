@@ -12,6 +12,19 @@ paths:
 - **Engine trait** (`src/engine.rs`): `CompletionEngine` trait at crate root — daemon consumes via `Arc<dyn CompletionEngine>`. Enables single-process path without the daemon.
 - **Protocol** (`src/protocol.rs`): Shared types at crate root — both daemon and CLI client import from here.
 - **Daemon modules**: `mod.rs` (facade), `server.rs` (accept loop), `handler.rs` (per-connection), `state.rs` (shared state), `pid.rs` (single-instance).
+- **Overlay integration**: `DaemonState` carries `Option<OverlayChannel>`.
+  `OverlayChannel` wraps `std::sync::mpsc::Sender<OverlayMessage>` +
+  `WakeFn` (`Arc<dyn Fn() + Send + Sync>`) to keep winit imports out of
+  daemon code. Handler forwards completions and shutdown signals to the
+  overlay via this channel.
+
+## Entry Points
+
+- `start_with_engine()` — pure async, no UI. Used by tests and headless mode.
+- `start_with_overlay()` — winit on main thread + Tokio on background thread.
+  Used by the `daemon` CLI command. Both delegate to `run_daemon()` (shared
+  startup/shutdown logic) to avoid duplication.
+- `start()` — convenience wrapper for `start_with_engine()` with `StubEngine`.
 
 ## IPC Protocol
 

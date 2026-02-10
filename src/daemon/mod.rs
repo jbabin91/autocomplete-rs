@@ -12,16 +12,82 @@ use tracing::info;
 
 use crate::engine::CompletionEngine;
 use crate::logging;
+use crate::overlay::app::OverlayApp;
 use crate::parser::ParserEngine;
 use crate::storage::{self, StorageEvent, StorageHandle};
 
 use self::pid::PidFile;
-use self::state::DaemonState;
+use self::state::{DaemonState, OverlayChannel};
 
 /// Start the daemon with the default `ParserEngine`.
 pub async fn start(socket_path: &str) -> Result<()> {
     let db_path = storage::default_db_path();
     start_with_engine(socket_path, Arc::new(ParserEngine::new()), &db_path).await
+}
+
+/// Start the daemon with the overlay window on the main thread.
+///
+/// winit must own the main thread, so the Tokio runtime runs on a background
+/// thread. They communicate via `std::sync::mpsc` + `EventLoopProxy::wake_up()`.
+///
+/// This is the entry point used by the `daemon` CLI command. Tests use
+/// `start_with_engine()` directly (no winit involved).
+pub fn start_with_overlay(socket_path: &str) -> Result<()> {
+    use winit::event_loop::EventLoop;
+
+    let event_loop = EventLoop::new().context("failed to create event loop")?;
+    let (proxy, tx, rx) = OverlayApp::create_channel(&event_loop);
+
+    let socket = socket_path.to_string();
+    let tokio_handle = std::thread::Builder::new()
+        .name("tokio-runtime".into())
+        .spawn(move || {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .worker_threads(2)
+                .thread_name("tokio-worker")
+                .build()
+                .expect("failed to build Tokio runtime");
+
+            let wake = {
+                let proxy = proxy.clone();
+                Arc::new(move || proxy.wake_up())
+            };
+            let channel = OverlayChannel::new(tx, wake);
+
+            rt.block_on(async {
+                let db_path = storage::default_db_path();
+                if let Err(e) = run_daemon(
+                    &socket,
+                    Arc::new(ParserEngine::new()),
+                    &db_path,
+                    Some(channel),
+                )
+                .await
+                {
+                    tracing::error!("daemon error: {e:#}");
+                }
+            });
+
+            // Daemon finished (normal shutdown or error) — wake the event
+            // loop so it can detect the dropped sender and exit.
+            proxy.wake_up();
+        })
+        .context("failed to spawn Tokio thread")?;
+
+    // Run winit on the main thread (blocks until exit)
+    event_loop
+        .run_app(OverlayApp::new(rx))
+        .context("event loop error")?;
+
+    // winit exited — wait for Tokio thread to shut down
+    info!("overlay exited, waiting for daemon thread...");
+    match tokio_handle.join() {
+        Ok(()) => info!("daemon thread joined cleanly"),
+        Err(e) => tracing::error!("daemon thread panicked: {e:?}"),
+    }
+
+    Ok(())
 }
 
 /// Start the daemon with a custom completion engine.
@@ -33,6 +99,19 @@ pub async fn start_with_engine(
     socket_path: &str,
     engine: Arc<dyn CompletionEngine>,
     db_path: &Path,
+) -> Result<()> {
+    run_daemon(socket_path, engine, db_path, None).await
+}
+
+/// Shared daemon startup logic.
+///
+/// When `overlay_channel` is `Some`, completions are forwarded to the overlay
+/// window. When `None`, the daemon runs headless (used by tests).
+async fn run_daemon(
+    socket_path: &str,
+    engine: Arc<dyn CompletionEngine>,
+    db_path: &Path,
+    overlay_channel: Option<OverlayChannel>,
 ) -> Result<()> {
     let path = Path::new(socket_path);
 
@@ -67,6 +146,9 @@ pub async fn start_with_engine(
     let mode = logging::detect_mode();
 
     let mut state = DaemonState::new(engine, mode.clone()).with_session_id(session_id.clone());
+    if let Some(channel) = overlay_channel {
+        state = state.with_overlay(channel);
+    }
     if let Some(ref handle) = storage_handle {
         state = state.with_storage(handle.sender.clone());
     }

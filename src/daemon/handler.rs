@@ -6,6 +6,7 @@ use tokio::time::timeout;
 use tracing::{debug, instrument, warn};
 
 use crate::logging::{self, redact_sensitive_patterns};
+use crate::overlay::OverlayMessage;
 use crate::protocol::{
     CompletionRequest, DaemonMessage, ErrorResponse, MAX_REQUEST_SIZE, ShutdownAck,
     validate_request,
@@ -108,6 +109,9 @@ where
         ParsedMessage::Complete(req) => req,
         ParsedMessage::Shutdown => {
             debug!("received shutdown request");
+            if let Some(ref channel) = state.overlay_channel {
+                channel.send(OverlayMessage::Shutdown);
+            }
             let ack = ShutdownAck {
                 status: "shutting_down".into(),
             };
@@ -157,6 +161,13 @@ where
 
     // Generate completions
     let response = state.engine.complete(&request);
+
+    // Forward completions to overlay (non-blocking, best-effort)
+    if let Some(ref channel) = state.overlay_channel {
+        channel.send(OverlayMessage::UpdateCompletions {
+            suggestions: response.suggestions.clone(),
+        });
+    }
 
     debug!(suggestions = response.suggestions.len(), "response sent");
 
@@ -355,6 +366,45 @@ mod tests {
             "expected 'invalid payload' error, got: {}",
             parsed.error
         );
+    }
+
+    #[tokio::test]
+    async fn handler_forwards_to_overlay() {
+        use super::super::state::OverlayChannel;
+        use crate::overlay::OverlayMessage;
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let channel = OverlayChannel::new(tx, std::sync::Arc::new(|| {}));
+        let state = make_state().with_overlay(channel);
+
+        let resp = roundtrip(r#"{"buffer":"git ","cursor":4}"#, &state).await;
+        let _parsed: CompletionResponse = serde_json::from_str(&resp).unwrap();
+
+        // The handler should have forwarded to the overlay channel
+        let msg = rx.try_recv().expect("expected overlay message");
+        match msg {
+            OverlayMessage::UpdateCompletions { suggestions } => {
+                // StubEngine returns empty suggestions
+                assert!(suggestions.is_empty());
+            }
+            other => panic!("expected UpdateCompletions, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn handler_forwards_shutdown_to_overlay() {
+        use super::super::state::OverlayChannel;
+        use crate::overlay::OverlayMessage;
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let channel = OverlayChannel::new(tx, std::sync::Arc::new(|| {}));
+        let state = make_state().with_overlay(channel);
+
+        let resp = roundtrip(r#"{"type":"shutdown"}"#, &state).await;
+        let _parsed: ShutdownAck = serde_json::from_str(&resp).unwrap();
+
+        let msg = rx.try_recv().expect("expected overlay shutdown message");
+        assert!(matches!(msg, OverlayMessage::Shutdown));
     }
 
     #[tokio::test]

@@ -1,12 +1,46 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc;
 
 use tokio::sync::Semaphore;
 use tokio_util::sync::CancellationToken;
 
 use crate::engine::CompletionEngine;
 use crate::logging;
+use crate::overlay::OverlayMessage;
 use crate::storage::{StorageEvent, StorageEventSender};
+
+/// Type alias for the wake function that pokes the winit event loop.
+///
+/// Wrapping `EventLoopProxy::wake_up()` in a closure keeps winit imports
+/// out of the daemon module.
+type WakeFn = Arc<dyn Fn() + Send + Sync>;
+
+/// Channel for sending messages from the daemon to the overlay window.
+///
+/// Combines an `mpsc::Sender` with a wake function that pokes the winit
+/// event loop to process the message. Non-blocking — logs on closed channel.
+#[derive(Clone)]
+pub struct OverlayChannel {
+    tx: mpsc::Sender<OverlayMessage>,
+    wake: WakeFn,
+}
+
+impl OverlayChannel {
+    /// Create a new overlay channel.
+    pub fn new(tx: mpsc::Sender<OverlayMessage>, wake: WakeFn) -> Self {
+        Self { tx, wake }
+    }
+
+    /// Send a message to the overlay and wake the event loop.
+    pub fn send(&self, msg: OverlayMessage) {
+        if let Err(e) = self.tx.send(msg) {
+            tracing::debug!("overlay channel closed: {e}");
+        } else {
+            (self.wake)();
+        }
+    }
+}
 
 /// Maximum number of concurrent connections the daemon will accept.
 pub const MAX_CONCURRENT_CONNECTIONS: usize = 100;
@@ -37,6 +71,9 @@ pub struct DaemonState {
 
     /// Session ID for correlating events across tables.
     pub session_id: String,
+
+    /// Optional overlay channel for forwarding completions to the UI.
+    pub overlay_channel: Option<OverlayChannel>,
 }
 
 impl DaemonState {
@@ -51,6 +88,7 @@ impl DaemonState {
             active_connections: Arc::new(AtomicU64::new(0)),
             storage: None,
             session_id: String::new(),
+            overlay_channel: None,
         }
     }
 
@@ -65,6 +103,13 @@ impl DaemonState {
     #[must_use]
     pub fn with_session_id(mut self, session_id: String) -> Self {
         self.session_id = session_id;
+        self
+    }
+
+    /// Set the overlay channel for forwarding completions to the UI.
+    #[must_use]
+    pub fn with_overlay(mut self, channel: OverlayChannel) -> Self {
+        self.overlay_channel = Some(channel);
         self
     }
 
