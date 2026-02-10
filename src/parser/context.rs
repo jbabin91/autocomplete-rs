@@ -32,17 +32,26 @@ pub fn analyze_context(result: &TokenizeResult) -> CompletionContext {
         return CompletionContext::Command;
     }
 
-    // Find the start of the active segment (after the last chain operator)
-    let segment_start = find_segment_start(tokens, result.cursor_token_index);
-
-    // Check if the previous token is a redirection operator
-    let prev_token_idx = if result.at_word_boundary {
-        tokens.len().checked_sub(1)
+    // Compute the boundary: exclusive upper limit of "tokens before cursor".
+    // When inside a token, this is the cursor token's index (tokens before it).
+    // When at a word boundary, this is the index of the first token at/after the
+    // cursor position — only tokens before the cursor are considered.
+    let boundary = if let Some(idx) = result.cursor_token_index {
+        idx
     } else {
-        result.cursor_token_index.and_then(|i| i.checked_sub(1))
+        tokens
+            .iter()
+            .position(|t| t.start >= result.cursor)
+            .unwrap_or(tokens.len())
     };
 
-    if let Some(idx) = prev_token_idx {
+    // Find the start of the active segment (after the last chain operator).
+    // When inside a token, include it in the search (it might be an operator).
+    let search_end = result.cursor_token_index.map_or(boundary, |i| i + 1);
+    let segment_start = find_segment_start(tokens, search_end);
+
+    // Check if the previous token is a redirection operator
+    if let Some(idx) = boundary.checked_sub(1) {
         let prev = &tokens[idx];
         if prev.kind == TokenKind::Operator && is_redirect(&prev.text) {
             return CompletionContext::Filename;
@@ -61,18 +70,21 @@ pub fn analyze_context(result: &TokenizeResult) -> CompletionContext {
     }
 
     // Count Word tokens in the active segment before cursor
-    let word_count = count_words_before_cursor(tokens, segment_start, result);
+    let word_count = tokens[segment_start..boundary]
+        .iter()
+        .filter(|t| t.kind == TokenKind::Word)
+        .count();
 
     match word_count {
         0 => CompletionContext::Command,
         1 => {
-            let command = find_command(tokens, segment_start, tokens.len());
+            let command = find_command(tokens, segment_start, boundary);
             CompletionContext::Subcommand {
                 command: command.unwrap_or_default(),
             }
         }
         n => {
-            let command = find_command(tokens, segment_start, tokens.len());
+            let command = find_command(tokens, segment_start, boundary);
             CompletionContext::Argument {
                 command: command.unwrap_or_default(),
                 position: n - 1,
@@ -82,10 +94,8 @@ pub fn analyze_context(result: &TokenizeResult) -> CompletionContext {
 }
 
 /// Find the index where the active pipeline segment starts.
-/// Scans backward from the cursor (or end of tokens) for chain operators.
-fn find_segment_start(tokens: &[super::tokenizer::Token], cursor_idx: Option<usize>) -> usize {
-    let search_end = cursor_idx.map_or(tokens.len(), |i| i + 1);
-
+/// Scans backward from `search_end` (exclusive) for chain operators.
+fn find_segment_start(tokens: &[super::tokenizer::Token], search_end: usize) -> usize {
     for i in (0..search_end).rev() {
         if tokens[i].kind == TokenKind::Operator && is_chain_operator(&tokens[i].text) {
             return i + 1;
@@ -114,24 +124,6 @@ fn find_command(
         .iter()
         .find(|t| t.kind == TokenKind::Word)
         .map(|t| t.text.clone())
-}
-
-/// Count Word tokens before the cursor in the active segment.
-fn count_words_before_cursor(
-    tokens: &[super::tokenizer::Token],
-    segment_start: usize,
-    result: &TokenizeResult,
-) -> usize {
-    let end = if result.at_word_boundary {
-        tokens.len()
-    } else {
-        result.cursor_token_index.unwrap_or(tokens.len())
-    };
-
-    tokens[segment_start..end]
-        .iter()
-        .filter(|t| t.kind == TokenKind::Word)
-        .count()
 }
 
 #[cfg(test)]
@@ -257,6 +249,14 @@ mod tests {
                 position: 2,
             }
         );
+    }
+
+    #[test]
+    fn mid_buffer_cursor_ignores_later_tokens() {
+        // Cursor at position 11 (after "; ") — should only consider the segment
+        // starting after ";", not the "|" and tokens that come later in the buffer.
+        let result = tokenize("echo done; ls | grep foo", 11);
+        assert_eq!(analyze_context(&result), CompletionContext::Command);
     }
 
     #[test]

@@ -39,6 +39,8 @@ pub struct TokenizeResult {
     pub at_word_boundary: bool,
     /// The prefix of the current token up to the cursor position.
     pub prefix: String,
+    /// The clamped cursor position (byte offset into the buffer).
+    pub cursor: usize,
 }
 
 /// Internal FSM state for the tokenizer.
@@ -146,7 +148,7 @@ pub fn tokenize(buffer: &str, cursor: usize) -> TokenizeResult {
                     let op = read_operator(bytes, &mut i, len);
                     tokens.push(Token {
                         kind: TokenKind::Operator,
-                        text: op,
+                        text: op.into(),
                         start: op_start,
                         end: i,
                         quote_open: false,
@@ -248,6 +250,7 @@ pub fn tokenize(buffer: &str, cursor: usize) -> TokenizeResult {
         cursor_token_index,
         at_word_boundary,
         prefix,
+        cursor,
     }
 }
 
@@ -257,41 +260,34 @@ fn is_operator_start(ch: char) -> bool {
 }
 
 /// Read a full operator (with one-char lookahead for multi-char operators).
-/// Advances `i` past the operator.
-fn read_operator(bytes: &[u8], i: &mut usize, len: usize) -> String {
-    let ch = bytes[*i] as char;
+/// Advances `i` past the operator. Returns a static string slice — no allocation.
+fn read_operator(bytes: &[u8], i: &mut usize, len: usize) -> &'static str {
+    let ch = bytes[*i];
     *i += 1;
 
     match ch {
-        '|' => {
-            if *i < len {
-                let next = bytes[*i] as char;
-                if next == '|' {
-                    *i += 1;
-                    return "||".to_string();
-                }
-                if next == '&' {
-                    *i += 1;
-                    return "|&".to_string();
-                }
-            }
-            "|".to_string()
+        b'|' if *i < len && bytes[*i] == b'|' => {
+            *i += 1;
+            "||"
         }
-        '&' => {
-            if *i < len && bytes[*i] as char == '&' {
-                *i += 1;
-                return "&&".to_string();
-            }
-            "&".to_string()
+        b'|' if *i < len && bytes[*i] == b'&' => {
+            *i += 1;
+            "|&"
         }
-        '>' => {
-            if *i < len && bytes[*i] as char == '>' {
-                *i += 1;
-                return ">>".to_string();
-            }
-            ">".to_string()
+        b'|' => "|",
+        b'&' if *i < len && bytes[*i] == b'&' => {
+            *i += 1;
+            "&&"
         }
-        _ => ch.to_string(), // ';', '<'
+        b'&' => "&",
+        b'>' if *i < len && bytes[*i] == b'>' => {
+            *i += 1;
+            ">>"
+        }
+        b'>' => ">",
+        b';' => ";",
+        b'<' => "<",
+        _ => unreachable!("read_operator called with non-operator byte: {ch:#x}"),
     }
 }
 
