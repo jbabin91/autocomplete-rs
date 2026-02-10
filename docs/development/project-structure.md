@@ -83,11 +83,11 @@ All socket args support `AUTOCOMPLETE_RS_SOCKET` env var override.
 **Key Types:**
 
 - `CompletionEngine` trait — `fn complete(&self, request) -> CompletionResponse`
-- `StubEngine` — returns empty suggestions (placeholder until parser is wired in)
+- `StubEngine` — returns empty suggestions (used in tests and benchmarks)
 
 The trait is `Send + Sync` so the daemon can share it via `Arc<dyn
-CompletionEngine>`. Designed so the daemon-vs-single-process decision can be
-deferred.
+CompletionEngine>`. The daemon uses `ParserEngine` (from `src/parser/`) as
+the default engine.
 
 ### `src/daemon/`
 
@@ -115,7 +115,7 @@ daemon/
 
 **Key Functions:**
 
-- `start(socket_path)` — Start daemon with default `StubEngine`
+- `start(socket_path)` — Start daemon with default `ParserEngine`
 - `start_with_engine(socket_path, engine)` — Start with custom engine
 - `handler::handle_connection(reader, writer, state, conn_id)` — Per-connection
   logic (generic over `AsyncRead`/`AsyncWrite` for testability)
@@ -128,65 +128,78 @@ daemon/
 
 ### `src/parser/`
 
-**Purpose:** Parse command buffer and generate completions
+**Purpose:** Parse command buffer and classify completion context
 
 **Responsibilities:**
 
-- Tokenize shell command buffer
-- Identify command, subcommands, options, arguments
-- Match against completion specs
-- Generate context-aware suggestions
+- Tokenize shell command buffer (quotes, escaping, operators)
+- Track cursor position within the token stream
+- Classify completion context (command, subcommand, option, argument, filename)
+- Implement `CompletionEngine` trait for daemon integration
 
 **Key Components:**
 
 ```sh
 parser/
-├── mod.rs           # Parser coordination
-├── tokenizer.rs     # Split buffer into tokens (future)
-├── context.rs       # Determine completion context (future)
-└── matcher.rs       # Match specs to context (future)
+├── mod.rs           # Public facade with re-exports
+├── tokenizer.rs     # Single-pass FSM tokenizer (~540 lines)
+├── context.rs       # CompletionContext enum + analyze_context()
+└── engine.rs        # ParserEngine implementing CompletionEngine
 ```
 
-**Current State:** Stub implementation
+**Current State:** Tokenizer and context analysis implemented. Returns empty
+suggestions — spec-based suggestion generation is the next phase.
 
 **Key Types:**
 
 ```rust
-pub struct Parser {
-    specs: SpecLoader,
-}
+pub enum TokenKind { Word, Operator }
 
-pub struct ParseContext {
-    command: String,
-    subcommands: Vec<String>,
-    current_token: String,
-    cursor_position: usize,
-}
-
-pub struct Suggestion {
+pub struct Token {
+    kind: TokenKind,
     text: String,
-    description: Option<String>,
-    suggestion_type: SuggestionType,
+    start: usize,
+    end: usize,
+    quote_open: bool,
 }
+
+pub struct TokenizeResult {
+    tokens: Vec<Token>,
+    cursor_token_index: Option<usize>,
+    at_word_boundary: bool,
+    prefix: String,
+    cursor: usize,
+}
+
+pub enum CompletionContext {
+    Command,
+    Subcommand { command: String },
+    Option { command: String },
+    Argument { command: String, position: usize },
+    Filename,
+}
+
+pub struct ParserEngine;  // Stateless, Send + Sync
 ```
 
 **Parsing Pipeline:**
 
-1. **Tokenize:** `"git checkout -b "` → `["git", "checkout", "-b", ""]`
-2. **Context:** Identify we're at argument position after `-b` flag
-3. **Match:** Find `git checkout -b <branch-name>` spec
-4. **Generate:** Suggest branch names or templates
+1. **Tokenize:** FSM walks `buffer.char_indices()` — handles whitespace,
+   single/double quotes, backslash escaping, multi-char operators (`||`, `&&`,
+   `>>`, `|&`), cursor tracking with char-boundary clamping
+2. **Context:** Walk backward from cursor to find active pipeline segment,
+   count `Word` tokens to classify context
+3. **Suggest:** (not yet implemented — pending spec system)
 
 **Performance Requirements:**
 
 - Parsing time: <5ms
-- Support 600+ specs
 - Handle 100+ char buffers
 
 **When to modify:**
 
-- Implementing spec matching logic
-- Adding new completion types
+- Implementing spec matching logic (next phase)
+- Adding new completion context types
 - Optimizing parse performance
 
 ### `src/tui/` (planned)
@@ -341,7 +354,10 @@ bindkey '^[ ' _autocomplete_rs_widget  # Alt+Space
 
 ```sh
 tests/
-└── daemon_integration.rs  # Real socket IPC tests (7 tests)
+├── daemon_integration.rs   # Real socket IPC tests (7 tests)
+├── parser_integration.rs   # Parser Send+Sync, panic safety, context checks
+├── logging_integration.rs  # Logging integration tests
+└── storage_integration.rs  # Storage integration tests
 ```
 
 **Current tests:**
@@ -359,13 +375,18 @@ timestamps) to avoid collisions under parallel execution.
 
 ### Unit Tests
 
-34 inline unit tests across modules:
+Inline unit tests across modules:
 
 - `protocol` (12): serde round-trips, validation, `DaemonMessage` variants
 - `handler` (8): valid/invalid requests, shutdown, backward compat
 - `pid` (8): path derivation, process detection, acquire/release, stale cleanup
 - `state` (4): connection guard, metrics, semaphore permits
 - `engine` (2): stub behavior, trait object behind `Arc`
+- `parser/tokenizer` (~80): words, quotes, escaping, operators, cursor
+  positions, unclosed quotes, UTF-8, empty buffer
+- `parser/context` (~15): command/subcommand/option/argument/filename
+  classification, pipeline segments, chain operators
+- `parser/engine` (3): empty suggestions, Send+Sync, empty buffer
 
 ## Benchmarks (`benches/`)
 
@@ -379,7 +400,8 @@ benches/
 ├── engine.rs     # StubEngine::complete() via Arc<dyn CompletionEngine>
 ├── protocol.rs   # JSON deserialization + validate_request()
 ├── privacy.rs    # redact_buffer() + redact_sensitive_patterns()
-└── handler.rs    # Full handle_connection() async roundtrip (in-memory I/O)
+├── handler.rs    # Full handle_connection() async roundtrip (in-memory I/O)
+└── parser.rs     # tokenize() + ParserEngine::complete() (simple/quoted/pipe/complex)
 ```
 
 HTML reports are generated in `target/criterion/*/report/index.html`.

@@ -153,6 +153,27 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   mode and log `%reference` directly instead of cloning into a variable
 - Correlation IDs belong on the tracing span (`Span::current().record()`)
   so all downstream logs inherit them without explicit threading
+- **Never log raw user input** (buffers, prefixes, command text) — log
+  lengths or counts instead (`buffer_len`, `prefix_len`). User input
+  may contain secrets (passwords in env vars, tokens in URLs). Debug
+  logs can end up in crash reports, log aggregators, or shared terminals
+
+## String Safety
+
+- **Clamp byte offsets from untrusted input to char boundaries** before
+  slicing strings. Protocol messages carry `cursor: usize` as a byte
+  offset — if the remote sends an offset mid-UTF-8 sequence,
+  `&buffer[..cursor]` panics. Always validate:
+
+  ```rust
+  let mut cursor = cursor.min(buffer.len());
+  while cursor > 0 && !buffer.is_char_boundary(cursor) {
+      cursor -= 1;
+  }
+  ```
+
+  `str::floor_char_boundary()` does this but is only stable since 1.91 —
+  check MSRV before using it (see `Cargo.toml` `rust-version`)
 
 ## Tooling
 
