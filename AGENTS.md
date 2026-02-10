@@ -26,6 +26,7 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
 - **Overlay Dropdown** — Not yet implemented. Will render completions in a native overlay window positioned at the terminal cursor (like Fig.io). Uses platform-specific backends: NSPanel on macOS (via winit 0.31 `with_panel(true)`), override-redirect on X11, layer-shell on Wayland. See [ADR-0008](docs/adr/0008-native-overlay-dropdown.md) and the spike examples:
   - `examples/overlay_poc.rs` — raw objc2 NSPanel + Accessibility API positioning (macOS-only)
   - `examples/overlay_winit.rs` — winit 0.31 NSPanel via `with_panel(true)` + softbuffer rendering (cross-platform window creation, macOS NSPanel behavior)
+  - `examples/overlay_tokio.rs` — winit + Tokio async runtime coexistence (winit on main thread, Tokio on background thread, cross-thread mpsc + `EventLoopProxy::wake_up()`). Validates single-process daemon+overlay architecture with observed sub-ms wake latency in spike measurements.
 - **Parser** (`src/parser/`) — stub. Intended to tokenize the shell buffer and match against completion specs. Will implement `CompletionEngine` trait.
 - **Shell integration** (`shell-integration/zsh.zsh`) — ZLE widget that captures the buffer/cursor, calls the client, and inserts the selected completion.
 - **Socket path:** `/tmp/autocomplete-rs.sock` (override with `AUTOCOMPLETE_RS_SOCKET` env var)

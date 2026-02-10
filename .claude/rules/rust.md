@@ -134,6 +134,11 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - Doc comments on permission checks must describe the actual check,
   not an idealized one (e.g. "rejects group/other access" not
   "ensures 0700" if the check is `perms & 0o077 != 0`)
+- **Unix sockets:** Always remove stale socket files before `bind()`
+  (ignore `NotFound`, treat other errors as real). After a successful
+  bind, set permissions to `0o600` to restrict access to the owning
+  user. These rules apply everywhere sockets are created — daemon,
+  examples, and tests
 
 ## Logging
 
