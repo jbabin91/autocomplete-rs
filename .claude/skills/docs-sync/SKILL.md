@@ -1,7 +1,6 @@
 ---
 name: docs-sync
-description: 'Documentation sync after code review. Use when resolving PR review comments, fixing code from review feedback, adding new files or components, or changing architectural patterns.'
-user-invocable: false
+description: Documentation sync after code review. Use when resolving PR review comments, fixing code from review feedback, adding new files or components, or changing architectural patterns.
 ---
 
 # Docs Sync — Propagate Review Learnings
