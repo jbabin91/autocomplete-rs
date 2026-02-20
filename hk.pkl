@@ -52,9 +52,9 @@ hooks {
         fix = "markdownlint-cli2 --fix {{files}}"
       }
 
-      // Beads: flush pending changes to JSONL before commit
-      ["bd_flush"] {
-        check = "TERM=dumb bd hooks run pre-commit --quiet"
+      // Beads: export Dolt database to JSONL before commit
+      ["bd_pre_commit"] {
+        check = "TERM=dumb bd hook pre-commit --quiet"
       }
     }
   }
@@ -64,29 +64,6 @@ hooks {
     steps {
       ["test"] {
         check = "cargo nextest run --locked --all-features --no-tests=warn"
-      }
-
-      // Beads: sync before push
-      ["bd_sync"] {
-        check = "TERM=dumb bd hooks run pre-push --quiet"
-      }
-    }
-  }
-
-  // Beads: import JSONL after pull/merge
-  ["post-merge"] {
-    steps {
-      ["bd_import"] {
-        check = "TERM=dumb bd hooks run post-merge --quiet"
-      }
-    }
-  }
-
-  // Beads: import JSONL after branch checkout
-  ["post-checkout"] {
-    steps {
-      ["bd_import"] {
-        check = "TERM=dumb bd hooks run post-checkout --quiet"
       }
     }
   }
@@ -100,11 +77,20 @@ hooks {
     }
   }
 
-  // Beads: add agent identity trailers to commit messages
-  ["prepare-commit-msg"] {
+  // Beads: import JSONL into Dolt after pull/merge
+  ["post-merge"] {
     steps {
-      ["bd_trailers"] {
-        check = "TERM=dumb bd hooks run prepare-commit-msg --quiet"
+      ["bd_post_merge"] {
+        check = "TERM=dumb bd hook post-merge --quiet"
+      }
+    }
+  }
+
+  // Beads: import JSONL into Dolt after branch checkout
+  ["post-checkout"] {
+    steps {
+      ["bd_post_checkout"] {
+        check = "TERM=dumb bd hook post-checkout --quiet"
       }
     }
   }
