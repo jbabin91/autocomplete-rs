@@ -89,7 +89,7 @@ jobs:
         id: msrv
         run: echo "version=$(grep '^rust-version' Cargo.toml | sed 's/.*= *\"\(.*\)\"/\1/')" >> "$GITHUB_OUTPUT"
       - name: Setup Rust ${{ steps.msrv.outputs.version }}
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
         with:
           toolchain: ${{ steps.msrv.outputs.version }}
       - name: Restore cargo cache
