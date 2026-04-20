@@ -2,6 +2,5 @@
   "database": "dolt",
   "jsonl_export": "issues.jsonl",
   "backend": "dolt",
-  "dolt_server_port": 3307,
-  "dolt_database": "beads_autocomplete-rs"
+  "dolt_database": "beads_autocomplete_rs"
 }

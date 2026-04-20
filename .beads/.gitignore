@@ -22,6 +22,8 @@ redirect
 .jsonl.lock
 sync_base.jsonl
 export-state/
+export-state.json
+backup/
 
 # Ephemeral store (SQLite - wisps/molecules, intentionally not versioned)
 ephemeral.sqlite3
