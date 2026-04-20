@@ -54,7 +54,7 @@ hooks {
 
       // Beads: export Dolt database to JSONL before commit
       ["bd_pre_commit"] {
-        check = "TERM=dumb bd hook pre-commit --quiet"
+        check = "TERM=dumb bd hooks run pre-commit --quiet"
       }
     }
   }
@@ -81,7 +81,7 @@ hooks {
   ["post-merge"] {
     steps {
       ["bd_post_merge"] {
-        check = "TERM=dumb bd hook post-merge --quiet"
+        check = "TERM=dumb bd hooks run post-merge --quiet"
       }
     }
   }
@@ -90,7 +90,7 @@ hooks {
   ["post-checkout"] {
     steps {
       ["bd_post_checkout"] {
-        check = "TERM=dumb bd hook post-checkout --quiet"
+        check = "TERM=dumb bd hooks run post-checkout --quiet"
       }
     }
   }
