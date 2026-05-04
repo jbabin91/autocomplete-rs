@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4](https://github.com/jbabin91/autocomplete-rs/compare/v0.1.3...v0.1.4) - 2026-05-04
+
+### Added
+
+- *(overlay)* integrate native dropdown into daemon ([#38](https://github.com/jbabin91/autocomplete-rs/pull/38))
+- *(parser)* implement FSM tokenizer and context analysis ([#39](https://github.com/jbabin91/autocomplete-rs/pull/39))
+- *(overlay)* spike winit + Tokio async runtime coexistence ([#35](https://github.com/jbabin91/autocomplete-rs/pull/35))
+- *(overlay)* spike native overlay dropdown with NSPanel and winit ([#31](https://github.com/jbabin91/autocomplete-rs/pull/31))
+- *(bench)* add Criterion benchmarking harness ([#28](https://github.com/jbabin91/autocomplete-rs/pull/28))
+- *(logging)* wire request tracing into daemon handler ([#27](https://github.com/jbabin91/autocomplete-rs/pull/27))
+- *(storage)* add libSQL storage layer and diagnose CLI ([#26](https://github.com/jbabin91/autocomplete-rs/pull/26))
+- *(logging)* implement core logging module with privacy redaction
+- *(daemon)* implement production-quality daemon with Unix socket IPC ([#23](https://github.com/jbabin91/autocomplete-rs/pull/23))
+
+### Fixed
+
+- *(deps)* update all non-major dependencies ([#61](https://github.com/jbabin91/autocomplete-rs/pull/61))
+
+### Other
+
+- *(deps)* update rust crate libc to v0.2.186 ([#74](https://github.com/jbabin91/autocomplete-rs/pull/74))
+- *(deps)* bump rand to 0.9.4 for GHSA-cq8v-f236-94qc
+- *(deps)* refresh yanked wasm-bindgen family in Cargo.lock
+- update .gitignore and configuration for Dolt integration; add interactions.jsonl and metadata.json updates
+- *(deps)* update rust crate anyhow to v1.0.102 ([#56](https://github.com/jbabin91/autocomplete-rs/pull/56))
+- *(deps)* update rust crate clap to v4.5.60 ([#54](https://github.com/jbabin91/autocomplete-rs/pull/54))
+- *(deps)* update rust crate clap to v4.5.59 ([#50](https://github.com/jbabin91/autocomplete-rs/pull/50))
+- *(deps)* update rust crate uuid to v1.21.0 ([#47](https://github.com/jbabin91/autocomplete-rs/pull/47))
+- *(deps)* update rust crate libc to v0.2.182 ([#42](https://github.com/jbabin91/autocomplete-rs/pull/42))
+- *(deps)* update rust crate clap to v4.5.58 ([#41](https://github.com/jbabin91/autocomplete-rs/pull/41))
+- update lock file
+- update lock file
+- *(deps)* update rust crate libc to v0.2.181 ([#37](https://github.com/jbabin91/autocomplete-rs/pull/37))
+- *(deps)* update rust crate tempfile to v3.25.0 ([#36](https://github.com/jbabin91/autocomplete-rs/pull/36))
+- *(test)* exercise real daemon entrypoint in integration tests ([#33](https://github.com/jbabin91/autocomplete-rs/pull/33))
+- *(deps)* update rust crate core-graphics to 0.25 ([#32](https://github.com/jbabin91/autocomplete-rs/pull/32))
+- *(deps)* update rust crate criterion to 0.8 ([#29](https://github.com/jbabin91/autocomplete-rs/pull/29))
+
 ## [0.1.3](https://github.com/jbabin91/autocomplete-rs/compare/v0.1.2...v0.1.3) - 2026-02-06
 
 ### Other
