@@ -32,7 +32,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Remove stale branches
-        uses: fpicalausa/remove-stale-branches@7c4f2afe88a36c0f9114cd958380979b9d7323fb # v2.4.0
+        uses: fpicalausa/remove-stale-branches@b8aaebc3b28b9e34e010fa2b21ae360722a95581 # v2.5.0
         with:
           days-before-branch-stale: 30
           days-before-branch-delete: 7
