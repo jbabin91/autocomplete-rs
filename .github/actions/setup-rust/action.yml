@@ -9,7 +9,7 @@ runs:
       with:
         components: rustfmt, clippy
     - name: Install cargo-nextest
-      uses: taiki-e/install-action@e3134ec54b36203e18f2d1e80652058bd078dd91 # v2
+      uses: taiki-e/install-action@ec28e287910af896fd98e04056d31fa68607e7ad # v2
       with:
         tool: cargo-nextest
     - name: Restore cargo cache
