@@ -63,7 +63,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["v4"] }
 
 # Storage
-turso = { version = "0.5", default-features = false }
+turso = { version = "0.6", default-features = false }
 
 # Error handling
 anyhow = "1.0"
