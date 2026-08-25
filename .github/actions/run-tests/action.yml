@@ -1,9 +1,0 @@
-name: Run Tests
-description: Run tests with cargo-nextest. Requires Rust and cargo-nextest to be installed first.
-
-runs:
-  using: composite
-  steps:
-    - name: Run tests
-      run: cargo nextest run --locked --all-features --no-tests=warn
-      shell: bash

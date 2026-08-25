@@ -76,7 +76,7 @@ curl https://mise.run | sh
 mise install
 
 # Set up git hooks
-hk install
+mise run setup
 ```
 
 ### 5. Run Tests
@@ -143,7 +143,7 @@ cargo build
 # Run tests
 mise run test
 
-# Run all CI checks (format + check + lint + test)
+# Run everything CI runs (check + test + msrv + audit + scan-secrets)
 mise run ci
 ```
 
@@ -427,13 +427,13 @@ Expected output (when specs implemented):
 
 Ready to contribute? Great!
 
-1. Check project issues (`bd ready`) for current priorities
+1. Check [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues) for current priorities
 2. Look for issues tagged `good-first-issue`
 3. Read [Contributing Guide](contributing.md)
 
 ### Code Standards
 
-- Run `mise run ci` before committing (or let hk pre-commit hooks handle it)
+- Run `mise run ci` before committing (the lefthook pre-commit hook covers the staged files)
 - Fix clippy warnings (zero warnings policy)
 - Add tests for new functionality
 - Update documentation for user-facing changes
@@ -468,8 +468,7 @@ cargo flamegraph --bin autocomplete-rs -- daemon /tmp/test.sock
 
 - Read [Project Structure](project-structure.md) to understand the codebase
 - Read [Architecture Overview](../design/overview.md) for system design
-- Check project issues (`bd ready`) for what's being built
-- Check GitHub Issues for current work
+- Check [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues) for what's being built
 
 ## Getting Help
 

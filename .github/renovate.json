@@ -1,19 +1,68 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "automerge": true,
   "extends": [
     "config:recommended",
+    "helpers:pinGitHubActionDigestsToSemver",
+    "schedule:monthly",
+    ":maintainLockFilesMonthly",
     ":semanticCommits",
-    "helpers:pinGitHubActionDigests",
-    "group:allNonMajor"
+    ":semanticCommitTypeAll(chore)"
   ],
-  "labels": ["dependencies"],
-  "automerge": true,
-  "automergeType": "pr",
-  "platformAutomerge": true,
+  "labels": [
+    "dependencies"
+  ],
   "packageRules": [
     {
-      "matchUpdateTypes": ["major"],
-      "automerge": false
+      "description": "Reimplements group:allNonMajor plus digest updates, since the preset's minor/patch match misses digests and files each one as its own PR",
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch",
+      "matchPackageNames": [
+        "*"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pinDigest"
+      ]
+    },
+    {
+      "automerge": false,
+      "matchUpdateTypes": [
+        "major"
+      ]
+    },
+    {
+      "automerge": false,
+      "description": "A minor bump on a 0.x cargo dep is a breaking change under semver, so it gets its own PR and a human reviewer. Must stay ordered after the grouping rule above, since later packageRules win.",
+      "groupName": null,
+      "matchCurrentVersion": "<1.0.0",
+      "matchManagers": [
+        "cargo"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ]
+    },
+    {
+      "automerge": false,
+      "description": "clippy runs under -D warnings, so a toolchain bump can red CI on unchanged code. That gets a human. The mise manager sets packageName to a bare 'rust'; other tools there use repo slugs, so copying this rule needs that field checked.",
+      "groupName": null,
+      "matchManagers": [
+        "mise"
+      ],
+      "matchPackageNames": [
+        "rust"
+      ]
     }
-  ]
+  ],
+  "platformAutomerge": false,
+  "platformCommit": "enabled",
+  "prConcurrentLimit": 5,
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ]
+  }
 }

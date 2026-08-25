@@ -1,123 +1,151 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  CARGO_TERM_COLOR: always
-  RUSTFLAGS: -Dwarnings
-
+# Jobs are deliberately independent — none of them `needs` another, so a failure
+# can never downgrade another job to `skipped`. The gate accepts `skipped` only
+# for the jobs in its allowlist, so adding a `needs:` edge here turns the
+# resulting skip into a failure rather than a silent pass. Nor is any job gated
+# on a branch name: `head_ref` is chosen by whoever opens the pull request, so
+# skipping on it hands anyone a green check.
 jobs:
-  format:
-    name: Format
-    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          persist-credentials: false
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-      - name: Setup mise
-        uses: ./.github/actions/setup-mise
-      - name: Run static analysis
-        uses: ./.github/actions/static-analysis
-
-  lint:
-    name: Lint
-    needs: [format]
-    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
+  static-analysis:
+    name: Static Analysis
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      # Audit mode logs unauthorized egress without blocking; enforcement waits
+      # on an allowlist built from real runs.
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
-          persist-credentials: false
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-      - name: Run clippy
-        run: cargo clippy --locked --all-targets --all-features
+          egress-policy: audit
 
-  test:
-    name: Test
-    needs: [format]
-    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # Defined once in .mise.toml so local and CI cannot diverge.
+      - name: Check
+        run: mise run check
+
+      # Merge and fixup exemptions come from cog.toml, which the commit-msg hook
+      # reads too — so local and CI cannot disagree about what is acceptable.
+      - name: Commit messages
+        if: github.event_name == 'pull_request'
+        run: >
+          cog check
+          ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-      - name: Run tests
-        uses: ./.github/actions/run-tests
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Test
+        run: mise run test
 
   msrv:
     name: MSRV
-    needs: [format]
-    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Extract MSRV from Cargo.toml
-        id: msrv
-        run: echo "version=$(grep '^rust-version' Cargo.toml | sed 's/.*= *\"\(.*\)\"/\1/')" >> "$GITHUB_OUTPUT"
-      - name: Setup Rust ${{ steps.msrv.outputs.version }}
-        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
-        with:
-          toolchain: ${{ steps.msrv.outputs.version }}
-      - name: Restore cargo cache
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-      - name: Check MSRV compatibility
-        run: cargo check --locked --all-features
 
-  deny:
-    name: Deny
-    needs: [format]
-    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release-plz-')
+      # The full toolchain, because the task shells out to rustup to add the
+      # MSRV toolchain alongside the pinned one.
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # Reads `rust-version` from Cargo.toml rather than restating it, so the
+      # version the crate promises and the version CI proves cannot disagree.
+      - name: Check MSRV
+        run: mise run msrv
+
+  secret-scan:
+    name: Secret Scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history, because a secret stays live after the commit that
+          # removed it from the tree.
+          fetch-depth: 0
           persist-credentials: false
-      - name: Check dependencies
-        uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2
+
+      # Scoped to gitleaks so this job skips the Rust toolchain. mise resolves it
+      # through aqua, which verifies the download's checksum.
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          tools: gitleaks
+
+      # A backstop: by the time this runs the branch is pushed and any secret in
+      # it already exposed. lefthook's pre-commit gitleaks is what stops it
+      # leaving the machine.
+      #
+      # MISE_AUTO_INSTALL=0 is what makes the scoped install above mean anything:
+      # `mise run` otherwise installs every tool in .mise.toml before the task,
+      # compiling cargo-nextest from source to run a one-line secret scan.
+      - name: Run gitleaks
+        env:
+          MISE_AUTO_INSTALL: 0
+        run: mise run scan-secrets
 
   pr-title:
     name: PR Title
+    # The squash-merge subject becomes the release-plz changelog entry, so it
+    # has to be conventional even though cog only sees the individual commits.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-plz-')
     permissions:
       pull-requests: read
     steps:
@@ -126,52 +154,85 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  ci-status:
+  # Kept in its own file because it needs a trigger this workflow does not have:
+  # a weekly cron against a freshly fetched advisory database. Called here so
+  # CI Summary gates it on pull requests.
+  audit:
+    uses: ./.github/workflows/audit.yml
+
+  ci-summary:
     name: CI Status
-    if: always()
-    needs: [format, lint, test, msrv, deny, pr-title]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    if: always()
+    needs: [static-analysis, tests, msrv, secret-scan, pr-title, audit]
     steps:
-      - name: Summary
-        run: |
-          icon() {
-            case "$1" in
-              success) echo "✅";;
-              skipped) echo "⏭️";;
-              failure) echo "❌";;
-              cancelled) echo "🚫";;
-              *) echo "❓";;
-            esac
-          }
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
 
-          failed=false
-          jobs=(
-            "Format|${{ needs.format.result }}"
-            "Lint|${{ needs.lint.result }}"
-            "Test|${{ needs.test.result }}"
-            "MSRV|${{ needs.msrv.result }}"
-            "Deny|${{ needs.deny.result }}"
-            "PR Title|${{ needs.pr-title.result }}"
-          )
+      # Iterates `needs` so any job listed there is gated without editing this
+      # step. It gates every job in `needs`, not every job in the workflow — one
+      # omitted from `needs` is still ungated.
+      #
+      # jq writes to a file rather than a process substitution: `< <(...)` puts
+      # the producer outside `set -e` and `pipefail`, so a missing jq, malformed
+      # JSON, an empty `needs`, or a truncated stream all read as zero rows and
+      # exit green while a job is failing.
+      - name: Gate on all required jobs
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          # The only jobs whose `skipped` is legitimate — `pr-title` has nothing
+          # to validate on a push. A skip anywhere else fails the gate.
+          SKIPPABLE: pr-title
+        run: |
+          set -euo pipefail
+
+          command -v jq >/dev/null || { echo "::error title=CI gate::jq not found"; exit 1; }
+
+          expected=$(printf '%s' "$NEEDS" | jq -r 'length')
+          if [ "$expected" -eq 0 ]; then
+            echo "::error title=CI gate::needs is empty — the gate would pass without checking anything"
+            exit 1
+          fi
+
+          printf '%s' "$NEEDS" | jq -r 'to_entries[] | [.key, .value.result] | @tsv' > results.tsv
 
           {
             echo "## CI Summary"
             echo ""
-            echo "| Job | Status |"
-            echo "|-----|--------|"
-            for job in "${jobs[@]}"; do
-              name="${job%%|*}"
-              result="${job##*|}"
-              echo "| ${name} | $(icon "$result") ${result} |"
-              if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
-                failed=true
-              fi
-            done
+            echo "| Job | Result |"
+            echo "| --- | --- |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [[ "$failed" == "true" ]]; then
-            echo ""
-            echo "::error::CI failed — see table above for details"
+          seen=0
+          failed=0
+          while IFS=$'\t' read -r job result; do
+            seen=$((seen + 1))
+            # shellcheck disable=SC2016 # the backticks are markdown, not a subshell
+            printf '| %s | `%s` |\n' "$job" "$result" >> "$GITHUB_STEP_SUMMARY"
+            case "$result" in
+              success) ;;
+              skipped)
+                case " $SKIPPABLE " in
+                  *" $job "*) ;;
+                  *)
+                    echo "::error title=CI gate::Job '$job' was skipped but is not in SKIPPABLE — a needs: edge or an if: condition is suppressing a required check"
+                    failed=1
+                    ;;
+                esac
+                ;;
+              *)
+                echo "::error title=CI gate::Job '$job' did not succeed (result: $result)"
+                failed=1
+                ;;
+            esac
+          done < results.tsv
+
+          if [ "$seen" -ne "$expected" ]; then
+            echo "::error title=CI gate::read $seen of $expected jobs — results were truncated"
             exit 1
           fi
+
+          exit "$failed"

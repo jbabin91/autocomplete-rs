@@ -1521,13 +1521,13 @@ determine_context(tokens, cursor_position):
 
 ### B.4 Operators
 
-| Input            | Expected Tokens          |
-| ---------------- | ------------------------ | ----------- | ----------- |
-| `cmd1 \| cmd2`   | `["cmd1", "              | ", "cmd2"]` |
-| `cmd1 && cmd2`   | `["cmd1", "&&", "cmd2"]` |
-| `cmd1 \|\| cmd2` | `["cmd1", "              |             | ", "cmd2"]` |
-| `cmd1 ; cmd2`    | `["cmd1", ";", "cmd2"]`  |
-| `cmd > file`     | `["cmd", ">", "file"]`   |
+| Input            | Expected Tokens            |
+| ---------------- | -------------------------- |
+| `cmd1 \| cmd2`   | `["cmd1", "\|", "cmd2"]`   |
+| `cmd1 && cmd2`   | `["cmd1", "&&", "cmd2"]`   |
+| `cmd1 \|\| cmd2` | `["cmd1", "\|\|", "cmd2"]` |
+| `cmd1 ; cmd2`    | `["cmd1", ";", "cmd2"]`    |
+| `cmd > file`     | `["cmd", ">", "file"]`     |
 
 ### B.5 Complex Commands
 

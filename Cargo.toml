@@ -4,34 +4,33 @@ version = "0.1.3"
 authors = ["Jace Babin"]
 categories = ["command-line-utilities"]
 edition = "2024"
-rust-version = "1.89"
-homepage = "https://github.com/jbabin91/autocomplete-rs"
-keywords = ["autocomplete", "shell", "terminal", "completion", "cli"]
-license = "MIT"
-readme = "README.md"
-repository = "https://github.com/jbabin91/autocomplete-rs"
-description = "Fast, universal terminal autocomplete for all shells and terminals"
 exclude = [
   ".agents/",
   ".beads/",
   ".claude/",
+  ".editorconfig",
   ".github/",
-  ".markdownlint-cli2.jsonc",
-  ".prettierrc.toml",
+  ".gitleaks.toml",
+  ".mise.toml",
+  ".rumdl.toml",
   "cliff.toml",
   "clippy.toml",
   "cog.toml",
   "deny.toml",
   "dist-workspace.toml",
   "docs/",
-  "hk.pkl",
-  "mise.toml",
-  "PklProject",
-  "PklProject.deps.json",
+  "dprint.json",
+  "lefthook.yml",
   "release-plz.toml",
   "rustfmt.toml",
-  "taplo.toml",
 ]
+homepage = "https://github.com/jbabin91/autocomplete-rs"
+keywords = ["autocomplete", "shell", "terminal", "completion", "cli"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/jbabin91/autocomplete-rs"
+rust-version = "1.89"
+description = "Fast, universal terminal autocomplete for all shells and terminals"
 
 [lib]
 name = "autocomplete_rs"
@@ -50,7 +49,7 @@ tokio-util = { version = "0.7", features = ["rt"] } # CancellationToken
 libc = "0.2" # kill(pid, 0) for PID file
 
 # Serialization
-rmp-serde = "1.3"                                  # MessagePack for efficient spec storage
+rmp-serde = "1.3" # MessagePack for efficient spec storage
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -73,8 +72,17 @@ thiserror = "2.0"
 clap = { version = "4.5", features = ["derive", "env"] }
 
 # Overlay windowing
-winit = "0.31.0-beta.2"
 softbuffer = "0.4.8"
+# Defaults minus `wayland-csd-adwaita`, which pulls sctk-adwaita -> ab_glyph ->
+# ttf-parser (unmaintained, RUSTSEC-2026-0192, no upgrade available). CSD is
+# Wayland title bars; the overlay is a borderless panel and does not use them.
+# Cargo has no subtract-a-feature syntax, so the kept defaults are spelled out —
+# a new winit default will not reach this list on its own (autocomplete-rs-viw).
+winit = { version = "0.31.0-beta.2", default-features = false, features = [
+  "x11",
+  "wayland",
+  "wayland-dlopen",
+] }
 
 # macOS overlay positioning (Accessibility API)
 [target.'cfg(target_os = "macos")'.dependencies]

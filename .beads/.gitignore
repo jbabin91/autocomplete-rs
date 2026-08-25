@@ -53,5 +53,16 @@ beads.right.meta.json
 # NOTE: Do NOT add negation patterns (e.g., !issues.jsonl) here.
 # They would override fork protection in .git/info/exclude, allowing
 # contributors to accidentally commit upstream issue databases.
-# The JSONL files (issues.jsonl, interactions.jsonl) and config files
-# are tracked by git by default since no pattern above ignores them.
+# `interactions.jsonl` and the config files are tracked by git. `issues.jsonl`
+# is deliberately ignored below — the issue store lives in a Dolt remote.
+
+# Per-project environment file (Dolt connection config, GH#2520)
+.env
+
+# Issue store lives in Dolt; JSONL export is not the transport for this repo
+issues.jsonl
+
+# `bd init` writes .auto-import-issues.jsonl; it does not belong in this repo.
+# `.beads/hooks/` is deliberately NOT ignored — the generated shims are tracked
+# and lefthook calls them; see lefthook.yml.
+.auto-import-issues.jsonl

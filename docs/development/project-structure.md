@@ -460,12 +460,8 @@ HTML reports are generated in `target/criterion/*/report/index.html`.
 Uses [Beads](https://github.com/steveyegge/beads) for tracking features, bugs, and tasks
 with dependencies. Issues are tracked via `bd` CLI commands.
 
-**Key commands:**
-
-- `bd ready` - Show issues ready to work (no blockers)
-- `bd list` - List all issues
-- `bd show <id>` - View issue details
-- `bd create --title="..." --type=feature` - Create new issue
+Maintainers track work here; the store is a Dolt remote rather than this
+repository, so `bd` is a maintainer tool. Contributors use [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues).
 
 ## Documentation (`docs/`)
 
@@ -574,22 +570,24 @@ main.rs
 - `.gitignore` - Git ignored files
 - `rustfmt.toml` - Rust formatting rules (100 char width, 2024 edition)
 - `clippy.toml` - Clippy linting rules (cognitive complexity threshold)
-- `mise.toml` - Dev tools and task runner
-- `hk.pkl` - Git hooks configuration (Pkl language)
-- `taplo.toml` - TOML formatting rules
-- `.prettierrc.toml` - Prettier formatting rules
-- `.prettierignore` - Files excluded from prettier
-- `.markdownlint.json` - Markdown linting rules
+- `.mise.toml` - Pinned dev tools and task runner
+- `lefthook.yml` - Git hooks configuration
+- `dprint.json` - TOML/JSON/YAML formatting rules
+- `.rumdl.toml` - Markdown formatting and linting rules
+- `.gitleaks.toml` - Secret-scan allowlist
+- `.editorconfig` - Editor defaults
+- `cog.toml` - cocogitto conventional-commit rules
+- `.github/actionlint.yaml` - workflow-lint config (ignores the generated release.yml)
 - `deny.toml` - cargo-deny dependency policy (licenses, advisories, bans)
 - `dist-workspace.toml` - cargo-dist release configuration
 - `release-plz.toml` - release-plz versioning configuration
 - `.github/workflows/` - CI/CD workflows (ci, release-plz, release, audit, codeql, branch-cleanup)
-- `.github/actions/` - Reusable composite actions (setup-rust, setup-mise, static-analysis, run-tests)
+- `.github/actions/setup/` - Composite action installing mise and the pinned toolchain
 - `.github/renovate.json` - Dependency update automation
 
 ## Next Steps
 
 - Read [Getting Started](getting-started.md) to set up development
 - Read [Architecture Overview](../design/overview.md) for system design
-- Check project issues (`bd ready`) for current priorities
+- Check [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues) for current priorities
 - Read [Testing Guide](testing.md) for testing practices

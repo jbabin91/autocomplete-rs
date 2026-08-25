@@ -20,7 +20,6 @@ target/
 # IDE
 .idea/
 .vscode/
-.pkl-lsp/
 *.swp
 *.swo
 *~
@@ -45,8 +44,15 @@ Thumbs.db
 
 # Cache
 .cache/
-.rumdl-cache/
+.rumdl_cache/
 .python-version
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# review-cycle markers (session-local)
+.claude/.review-mark
+.claude/.no-review-gate
+.claude/.review-in-progress
+.claude/.review-pr-in-progress
+.claude/.review-stop-block

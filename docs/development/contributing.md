@@ -23,7 +23,7 @@ great together.
 4. **Create a branch:**
 
    ```sh
-   git checkout -b feature/my-contribution
+   git checkout -b feat/my-contribution
    ```
 
 ## Finding Something to Work On
@@ -40,7 +40,8 @@ chosen for newcomers and include:
 
 ### Current Priorities
 
-Check project issues (`bd ready`) for current phase priorities:
+Check [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues) for
+current phase priorities:
 
 **Phase 1 (MVP):** Foundation work
 
@@ -73,9 +74,10 @@ For significant new features:
 
 1. **Check existing issues** to avoid duplicates
 2. **Open an issue** on GitHub
-3. **Create a beads issue** (`bd create --title="..." --type=feature`)
-4. **Get feedback** before implementing
-5. **Update issue status** as work progresses
+3. **Get feedback** before implementing
+
+Maintainers track accepted work in beads, which is backed by a Dolt remote rather
+than this repository — `bd` is not needed to contribute.
 
 ## Development Workflow
 
@@ -98,16 +100,16 @@ For significant new features:
 ### 2. Test Your Changes
 
 ```sh
-# Run all CI checks (format + check + lint + test)
+# Run everything CI runs
 mise run ci
 
 # Or run individual checks
 mise run fmt       # Format all files
-mise run lint      # Run clippy + markdownlint
+mise run check     # Format check, clippy, markdown, workflows
 mise run test      # Run tests via nextest
 
 # Run benchmarks (if performance-critical)
-cargo bench
+mise run bench
 
 # Check docs
 cargo doc --no-deps --open
@@ -128,7 +130,7 @@ If your changes affect:
 
 ```sh
 # Push to your fork
-git push origin feature/my-contribution
+git push origin feat/my-contribution
 
 # Create PR on GitHub
 ```
@@ -317,7 +319,7 @@ We have strict performance requirements:
 2. **Benchmark:**
 
    ```sh
-   cargo bench
+   mise run bench
    ```
 
 3. **Optimize hot paths only**
@@ -325,7 +327,7 @@ We have strict performance requirements:
 4. **Verify improvement:**
 
    ```sh
-   cargo bench -- --baseline before
+   cargo bench --all-features -- --baseline before
    ```
 
 ### Optimization Techniques

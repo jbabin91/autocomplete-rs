@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+# Scoped to this literal string, in every file — deliberately not narrowed to the
+# fixture's path. A `paths` entry makes gitleaks skip the file before scanning
+# any content, exempting every future secret in it; measured, that holds even
+# inside the allowlist under `condition = "AND"`, so there is no way to add path
+# scoping here without reintroducing the whole-file skip.
+# Smoke-testing this hook with AKIAIOSFODNN7EXAMPLE will report no leaks —
+# gitleaks' default config allowlists the AWS docs example key. Use a key that
+# is not in anyone's example set.
+[[allowlists]]
+description = "Fake credential in the log-redaction test fixtures"
+regexTarget = "match"
+regexes = ['''api_key=sk-1234567890''']

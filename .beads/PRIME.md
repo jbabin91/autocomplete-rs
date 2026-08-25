@@ -14,7 +14,8 @@
 [ ] 4. git push                (push to remote)
 ```
 
-**Note:** Daemon is auto-syncing beads changes. No manual `bd sync` needed.
+**Note:** Issues live in a Dolt remote (see `.beads/.env`). Push them with
+`bd dolt push`; `bd sync` was removed in bd 1.2.2.
 
 ## Core Rules
 
@@ -57,7 +58,7 @@
 ### Sync & Collaboration
 
 - Daemon handles beads sync automatically (auto-commit + auto-push + auto-pull enabled)
-- `bd sync --status` - Check sync status
+- `bd dolt status` - Check Dolt engine/remote status
 
 ### Project Health
 

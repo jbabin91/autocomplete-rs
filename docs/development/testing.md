@@ -112,7 +112,7 @@ async fn shutdown_daemon(socket_path: &Path, handle: JoinHandle<()>) {
 **Run:**
 
 ```sh
-# All integration tests (flags defined in mise.toml)
+# All integration tests (flags defined in .mise.toml)
 mise run test
 
 # Specific test file
@@ -195,7 +195,7 @@ criterion_main!(benches);
 **Run:**
 
 ```sh
-# All benchmarks (flags defined in mise.toml)
+# All benchmarks (flags defined in .mise.toml)
 mise run bench
 
 # Specific suite
@@ -506,8 +506,7 @@ cargo tarpaulin --out Lcov | genhtml -o coverage/
 
 ## Continuous Integration
 
-Tests run in CI via the `run-tests` composite action. See
-`.github/actions/run-tests/action.yml` for the exact command and
+CI's Tests job runs `mise run test`. See `.mise.toml` for the exact commands and
 `.claude/rules/github-actions.md` for full CI/CD documentation.
 
 ## Test-Driven Development (TDD)
@@ -654,5 +653,5 @@ fn test_parser_output() {
 
 - Read [Contributing Guide](contributing.md) for contribution workflow
 - Read [Project Structure](project-structure.md) to understand codebase
-- Check project issues (`bd ready`) for current priorities
+- Check [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues) for current priorities
 - Start with tests tagged `good-first-issue`

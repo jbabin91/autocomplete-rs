@@ -1,16 +1,23 @@
 name: Security Audit
 
 on:
+  # ci.yml calls this on every pull request and push, which is what makes it
+  # gateable through CI Status. No push/pull_request triggers here, or it would
+  # run twice for the same commit.
+  workflow_call:
+  # The trigger it needs of its own: cargo-deny fetches the RustSec database at
+  # run time, so an advisory filed against an unchanged Cargo.lock stays
+  # invisible until something re-runs the check, and no commit ever will.
   schedule:
-    # Run weekly on Mondays at 6am UTC
     - cron: '0 6 * * 1'
-  push:
-    branches: [main]
-    paths:
-      - 'Cargo.toml'
-      - 'Cargo.lock'
+  workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   audit:
@@ -20,9 +27,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      # Audit mode logs unauthorized egress without blocking; enforcement waits
+      # on an allowlist built from real runs.
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # Full toolchain, not a scoped install: cargo-deny shells out to
+      # `cargo metadata` to build the graph.
+      - name: Setup
+        uses: ./.github/actions/setup
+
       - name: Audit dependencies
-        uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2
+        run: mise run audit

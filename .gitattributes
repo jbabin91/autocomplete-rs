@@ -1,2 +1,5 @@
-# Use bd merge for beads JSONL files
-.beads/issues.jsonl merge=beads
+# `interactions.jsonl` is an append-only audit trail: two branches each adding a
+# line conflict under the default driver, and `union` concatenates both sides.
+# Verified with `git merge-file`: default exits 1 with markers, --union exits 0
+# keeping both lines.
+.beads/interactions.jsonl merge=union

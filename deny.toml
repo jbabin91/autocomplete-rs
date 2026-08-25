@@ -3,26 +3,38 @@ all-features = true
 
 [advisories]
 yanked = "deny"
-# `paste` is unmaintained (RUSTSEC-2024-0436) but is a transitive dep of
-# turso_core — we can't remove it. The crate is feature-complete and has
-# no known security vulnerabilities; the advisory is informational only.
-ignore = ["RUSTSEC-2024-0436"]
+
+# There are no suppressions. Any entry added here must be scoped by advisory ID
+# rather than by crate, so a real vulnerability in the same dependency still
+# fails. `deny` on the unused case then makes that entry fail once its advisory
+# stops firing, forcing removal instead of leaving a stale suppression behind.
+unused-ignored-advisory = "deny"
 
 [licenses]
+# autocomplete-rs ships under MIT, so every entry must be compatible with
+# redistributing a statically linked binary under that license. Adding a license
+# is an accept — make it one deliberately rather than pasting in whatever a new
+# dependency dragged along.
 allow = [
-  "MIT",
   "Apache-2.0",
+  "MIT",
   "BSD-2-Clause",
   "BSD-3-Clause",
   "ISC",
   "Unicode-3.0",
-  "Unicode-DFS-2016",
 ]
+
+# Defaults to `warn`, which would let an entry outlive the crate that needed it
+# and pre-accept the next dependency that wants it. Same reasoning as
+# `unused-ignored-advisory` above.
+unused-allowed-license = "deny"
 
 [bans]
 multiple-versions = "warn"
 wildcards = "allow"
 
 [sources]
+# autocomplete-rs publishes to crates.io and Homebrew, so a dependency resolved
+# from anywhere but a known registry is a question about the release path itself.
 unknown-registry = "deny"
 unknown-git = "deny"

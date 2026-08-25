@@ -1,0 +1,129 @@
+output:
+  - failure
+  - execution_out
+  # Without this, a glob that matches nothing is indistinguishable from a check
+  # that passed.
+  - skips
+
+# Beads runs through the generated `.beads/hooks/*` shims, which are tracked.
+# `core.hooksPath` must stay unset so git keeps dispatching to lefthook, which
+# calls the shims as ordinary commands — `bd hooks install --beads` sets that
+# config and would silently bypass lefthook entirely.
+#
+# Lefthook compiles globs with no path separator, so a bare `*.md` matches at
+# any depth. A `**/`-prefixed pattern would still need a companion root-level
+# form, because `**/` requires a directory segment.
+#
+# `piped`, not `parallel`. Safety here means no command reads a file another
+# command writes, and enumerating those pairs kept missing one: the cross-type
+# case is `fmt-rust`, which reads `Cargo.toml` for the edition, against
+# `fmt-data`, which rewrites it. rustfmt and dprint both truncate in place, so a
+# concurrent reader can observe a zero-byte file and fail at random. Ordering
+# the group removes the whole class instead of the pairs we happened to spot.
+# `priority` is explicit because lefthook otherwise orders commands
+# alphabetically, which would put the reader before the writer.
+
+pre-commit:
+  piped: true
+  commands:
+    fmt-data:
+      priority: 1
+      glob: '*.{json,toml,yaml,yml}'
+      # Runs first: it rewrites `Cargo.toml`, which `fmt-rust` reads below.
+      #
+      # Exclusions live in dprint.json, not here, so `dprint fmt` by hand and
+      # the hook agree on what is generated. `--allow-no-files` is required
+      # because the glob still matches excluded paths (.beads/**, the
+      # cargo-dist-generated release.yml); when every staged path is excluded,
+      # bare `dprint fmt` exits 14 and blocks the commit.
+      run: dprint fmt --allow-no-files {staged_files}
+      stage_fixed: true
+    fmt-rust:
+      priority: 2
+      glob: '*.rs'
+      # rustfmt over `cargo fmt --all` so only staged files are touched.
+      # `skip_children` is what makes that true: rustfmt otherwise follows `mod`
+      # declarations and rewrites unstaged siblings, which `stage_fixed` then
+      # leaves dirty in the working tree. The bare `--skip-children` flag is
+      # rejected on stable; it has to go through `--config`.
+      #
+      # The edition is read from Cargo.toml rather than restated: a rustfmt.toml
+      # value would be overridden by `cargo fmt` in CI while still applying here.
+      #
+      # `clippy --fix` is not used: it would rewrite files lefthook has not
+      # staged.
+      run: >
+        rustfmt --config=skip_children=true
+        --edition "$(grep -m1 '^edition = "' Cargo.toml | cut -d'"' -f2)"
+        {staged_files}
+        && cargo clippy --all-targets --all-features --locked -- -D warnings
+      stage_fixed: true
+    fmt-md:
+      priority: 3
+      glob: '*.md'
+      # One command, not two: `rumdl fmt` exits 0 having fixed only what is
+      # auto-fixable, so the check is what blocks on a broken relative link.
+      run: rumdl fmt {staged_files} && rumdl check {staged_files}
+      stage_fixed: true
+    gitleaks:
+      priority: 4
+      # No glob: this runs on every commit, not on a file type. This is the
+      # layer that prevents a leak — CI's scan only fires once the branch is
+      # pushed and the secret already exposed.
+      run: gitleaks git --staged --redact --no-banner
+    beads:
+      priority: 5
+      # The generated shim, not a local wrapper: it already handles a missing
+      # `bd` (contributors are told they do not need it), the BEADS_HOOK_TIMEOUT
+      # watchdog with its timeout/gtimeout/perl fallbacks, exit 124/142 for a
+      # timeout, and exit 3 for an uninitialized database. Reimplementing that
+      # here means a second copy that drifts when beads updates its own.
+      env:
+        TERM: dumb
+      run: .beads/hooks/pre-commit
+
+commit-msg:
+  commands:
+    conventional-commit:
+      # Exemptions live in cog.toml so this and CI's `cog check` share them.
+      run: cog verify --file {1}
+
+post-merge:
+  commands:
+    beads:
+      env:
+        TERM: dumb
+      run: .beads/hooks/post-merge {1}
+
+post-checkout:
+  commands:
+    beads:
+      env:
+        TERM: dumb
+      run: .beads/hooks/post-checkout {1} {2} {3}
+
+pre-push:
+  # `piped`, not `parallel`: actionlint settles in ~0.07s and the test run takes
+  # minutes, so ordering them turns a workflow typo into an instant rejection
+  # instead of one that arrives after the whole suite. Lefthook does not cancel
+  # siblings on failure, so `parallel` here would always pay for both.
+  piped: true
+  commands:
+    # Not in pre-commit: dprint rewrites `.github/workflows/*.yml` in place and
+    # non-atomically, and a concurrent actionlint can read the file mid-write
+    # (a zero-byte state at the same inode was observed). The window is
+    # sub-millisecond and the result is a spurious lint error rather than a bad
+    # commit, but a hook that fails at random teaches people to pass
+    # --no-verify. Nothing writes workflows at pre-push time.
+    # `priority` is explicit because lefthook orders piped commands
+    # alphabetically, not by declaration — without it, renaming either command
+    # could silently reverse the pipe and put the slow one first.
+    actionlint:
+      priority: 1
+      glob: '.github/workflows/*.{yml,yaml}'
+      run: actionlint
+    test:
+      priority: 2
+      # The mise task, not a copy of it — nextest alone would let a failing
+      # doctest through.
+      run: mise run test

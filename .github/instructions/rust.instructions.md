@@ -12,8 +12,9 @@ conventions, see `.claude/rules/tooling.md` and `docs/development/testing.md`.
 - CI enforces rustfmt, clippy, and test passing — don't duplicate those checks
 - Focus on what CI can't catch: race conditions, missing timeouts, unguarded resource
   cleanup, doc/code divergence, and flag consistency across CI/hooks/mise
-- Hook parity: `check` and `fix` commands in hk.pkl must use identical flags (e.g. both
-  must include `--locked` if CI uses it) — flag asymmetry between check/fix paths
+- Hook scope: `lefthook.yml` runs formatters over `{staged_files}` while CI runs them
+  over the whole tree, so the flags differ by design. Flag a hook that inlines a check
+  CI defines as a `.mise.toml` task, rather than invoking the task
 
 ## Error Handling
 
