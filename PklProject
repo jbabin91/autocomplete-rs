@@ -1,7 +1,0 @@
-amends "pkl:Project"
-
-dependencies {
-  ["hk"] {
-    uri = "package://github.com/jdx/hk/releases/download/v1.19.0/hk@1.19.0"
-  }
-}

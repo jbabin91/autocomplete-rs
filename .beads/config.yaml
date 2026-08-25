@@ -1,2 +1,18 @@
+# The Dolt sync remote is deliberately NOT here. It is a per-machine value that
+# names a private host, and committing it both publishes that name and makes
+# `bd bootstrap` hard-fail for anyone who cannot reach it. It lives in
+# `.beads/.env`, which beads reads and this directory's .gitignore excludes:
+#
+#     BD_SYNC_REMOTE=ssh://user@host/srv/dolt/autocomplete-rs
+#
+# Without it, `bd bootstrap` creates an EMPTY local database — this repository
+# no longer carries a JSONL export, so there is no other issue source. A
+# maintainer on a new machine needs the remote; a contributor needs neither,
+# and the hooks skip beads when `bd` is absent.
+# Do not run `bd init` in this repo to get a database. Measured: it deletes the
+# issues.jsonl line from .beads/.gitignore, re-tracks the export, commits
+# .beads/hooks/*, sets core.hooksPath (which bypasses lefthook), and writes a
+# commit message `cog verify` rejects. Use `bd bootstrap`, which clones from the
+# remote above and leaves all of that alone.
 sync:
   mode: dolt-native

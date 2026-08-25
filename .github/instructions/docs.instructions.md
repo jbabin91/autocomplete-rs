@@ -11,13 +11,14 @@ deduplication principle, see `.claude/rules/tooling.md`.
 
 - Documentation must NOT duplicate exact command flags — flag raw `cargo clippy --all-targets
 --all-features` or similar in markdown files
-- Use `mise run <task>` abstractions or reference the source config file (mise.toml,
-  hk.pkl, ci.yml)
+- Use `mise run <task>` abstractions or reference the source config file
+  (`.mise.toml`, `lefthook.yml`, `ci.yml`)
 - The only exception is AGENTS.md which has a concise command reference block
 
 ## Accuracy
 
-- Flag references to `cargo test` — this project uses `cargo nextest run` exclusively
+- Flag bare `cargo test` for the suite — this project runs `cargo nextest run`.
+  `cargo test --doc` is correct and expected, since nextest does not run doctests
 - Flag socket path references that don't mention the `AUTOCOMPLETE_RS_SOCKET` env var
   override
 - Flag outdated architecture descriptions that don't reflect implemented components
@@ -28,6 +29,7 @@ deduplication principle, see `.claude/rules/tooling.md`.
 
 ## Style
 
-- Markdown must pass markdownlint-cli2 (config in `.markdownlint.json`)
-- Prettier formats markdown files (config in `.prettierrc.toml`)
+- Markdown must pass `rumdl check` (config in `.rumdl.toml`). rumdl also formats,
+  via `rumdl fmt`. dprint configures no markdown plugin, so rumdl is the only
+  writer; the `**/*.md` exclude in `dprint.json` guards against one being added
 - No trailing whitespace, single trailing newline

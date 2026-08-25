@@ -36,7 +36,11 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 
 - Use present tense for existing features ("The daemon listens...")
 - Use future tense or markers for planned features ("Phase 2 will add...")
-- Link to beads issues (`bd list`, `bd ready`) instead of removed ROADMAP.md
+- Contributor-facing docs (README, CONTRIBUTING, docs/development/) link to
+  GitHub Issues, never to `bd` commands. Beads is backed by a Dolt remote
+  rather than this repository, so a contributor who clones cannot run them.
+- Maintainer-facing files (AGENTS.md, .claude/rules/) may reference `bd`
+  freely
 - Keep ADRs immutable once accepted (add new ADRs to supersede)
 - Qualify spike measurements as observations, not guarantees — say
   "observed sub-ms on development hardware" not "sub-ms latency". Spike

@@ -19,6 +19,14 @@ jobs:
       group: release-plz
       cancel-in-progress: false
     steps:
+      # Audit mode logs unauthorized egress without blocking; enforcement waits
+      # on an allowlist built from real runs. This job holds contents: write and
+      # the crates.io OIDC token, so it is the one most worth watching.
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
@@ -30,8 +38,8 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+      - name: Setup
+        uses: ./.github/actions/setup
       - name: Run release-plz
         uses: release-plz/action@e8792575c7f2366cf6ff3ccc33ead9ace5b691c7 # v0.5.130
         env:

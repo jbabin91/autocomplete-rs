@@ -4,37 +4,41 @@ applyTo: '.github/workflows/**,.github/actions/**'
 
 # GitHub Actions Review Guidelines
 
-For full CI/CD documentation, see `.claude/rules/github-actions.md`. For the
-three-system consistency principle (CI/mise/hk), see `.claude/rules/tooling.md`.
+For full CI/CD documentation, see `.claude/rules/github-actions.md`. For how
+`.mise.toml` defines each check that CI and the hooks invoke, see
+`.claude/rules/tooling.md`.
 
 ## Workflow Hardening
 
-- `permissions: {}` at workflow level — flag workflows missing top-level empty
-  permissions block
+- Workflow-level `permissions` must be the narrowest scope the jobs need — flag a
+  workflow with no top-level block at all
 - Per-job permissions must be least-privilege — flag `contents: write` unless the
   job actually pushes
 - `persist-credentials: false` on all checkout steps unless git push is needed
 - All third-party actions must be SHA-pinned with `# vX.Y` comment — flag tag-only
   or branch references
+- No job may skip on a branch name — `head_ref` is chosen by whoever opens the PR,
+  so skipping on it hands anyone a green check
+- No job in `ci.yml` may `needs` another — an upstream failure turns a required job
+  into a `skipped` one, which a gate can read as passing — flag any gate that accepts `skipped` without an explicit allowlist of jobs permitted to skip
 
 ## Cargo in CI
 
-- All `cargo` commands must use `--locked` — flag any missing it (ensures Cargo.lock
-  match)
-- Clippy must use `--all-targets --all-features -- -D warnings` — flag missing flags
-- Nextest must use `--all-features` — flag bare `cargo nextest run`
+- Cargo commands belong in `.mise.toml` tasks, not inlined in a workflow step —
+  flag a `run:` block that calls `cargo` directly instead of `mise run <task>`
+- Those tasks must use `--locked`, so a lockfile behind `Cargo.toml` fails rather
+  than being silently rewritten
 
 ## Concurrency & Cancellation
 
 - `cancel-in-progress` must only apply to PR builds, not main branch runs — flag
   blanket `cancel-in-progress: true` without conditional
-- All CI jobs should skip on `release-plz-*` branches (only change Cargo.toml/lock/CHANGELOG)
 
 ## Composite Actions
 
-- Setup actions install tools; run actions execute checks — flag composite actions
-  that mix both responsibilities
-- Composition pattern: `checkout` then `setup-*` then `run-*`
+- Composite actions install tools; the checks themselves are `.mise.toml` tasks —
+  flag a composite action that inlines a check command
+- Composition pattern: `harden-runner`, `checkout`, `setup`, then `mise run <task>`
 
 ## release.yml
 

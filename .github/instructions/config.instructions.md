@@ -1,5 +1,5 @@
 ---
-applyTo: '**/*.toml,**/*.pkl,**/*.json,mise.toml,hk.pkl'
+applyTo: '**/*.toml,**/*.json,**/*.yml,.mise.toml,lefthook.yml,dprint.json'
 ---
 
 # Configuration File Review Guidelines
@@ -7,16 +7,26 @@ applyTo: '**/*.toml,**/*.pkl,**/*.json,mise.toml,hk.pkl'
 For tooling conventions and config details, see `.claude/rules/tooling.md`.
 For CI/CD workflow context, see `.claude/rules/github-actions.md`.
 
-## Three-System Consistency
+## Single Definition of Each Check
 
-Any change to a check command must be reflected in all three systems:
+`.mise.toml` defines what every check runs; CI calls `mise run <task>` rather than
+restating flags. Flag any workflow that inlines a check command instead of
+invoking the task.
 
-- **CI** (`.github/workflows/ci.yml` + `.github/actions/`) — source of truth
-- **mise** (`mise.toml`) — developer task runner
-- **hk** (`hk.pkl`) — git hooks
+- **`.mise.toml`** — source of truth for check commands
+- **`.github/workflows/ci.yml`** — decides which tasks gate a merge, not what they do
+- **`lefthook.yml`** — git hooks; these legitimately differ, because hooks operate
+  on staged files while CI operates on the whole tree
 
-Flag changes to check commands in one system without corresponding updates to the
-other two.
+## Pinning
+
+Every tool in `.mise.toml` must be an exact version — flag `latest`, `stable`, or
+any floating specifier. A floating version reds CI on unchanged code.
+
+## One Writer Per File Type
+
+rustfmt owns `.rs`, rumdl owns `.md`, dprint owns TOML/JSON/YAML. Flag any change
+that gives two formatters the same file type.
 
 ## Cargo.toml
 
@@ -26,16 +36,21 @@ other two.
 - Feature flags should be minimal — only enable what's needed
 - `[dev-dependencies]` for test-only crates — flag test utilities in main dependencies
 
-## hk.pkl
+## lefthook.yml
 
-- Written in Pkl (Apple's configuration language) — uses `//` comments, NOT `#`
-- All Rust and TOML steps must be custom overrides, not builtins — builtins use
-  minimal flags that differ from CI
-- Pre-commit must have `fix = true` and `stash = "git"`
-- Check commands must match CI flags exactly
+- Every formatter command must set `stage_fixed: true`, or it rewrites files the
+  commit does not pick up
+- A formatter needs a matching check command — `rumdl fmt` exits 0 leaving
+  non-auto-fixable violations behind. Chain it behind the formatter in the same
+  command (`fmt && check`), never as a sibling in a `parallel` group, or the
+  check can read the file before the formatter rewrote it
+- `core.hooksPath` must stay unset, or git bypasses lefthook silently
 
 ## deny.toml
 
 - Licenses: allow-list only (MIT, Apache-2.0, BSD, ISC, Unicode) — flag new license
   additions without justification
 - Sources: only crates.io — flag git dependencies or unknown registries
+- `unused-ignored-advisory` and `unused-allowed-license` must stay `deny`, so a
+  suppression that stops applying fails instead of lingering
+- Advisory ignores are scoped by ID, never by crate, and each carries a rationale

@@ -576,9 +576,13 @@ ls -la ~/.config/autocomplete-rs/config.toml
 Check syntax:
 
 ```sh
-# Install TOML linter (or use mise: mise install)
-taplo check ~/.config/autocomplete-rs/config.toml
+# dprint comes from `mise install`; run this from a repo clone, since --config is
+# required for a path outside the config file's own directory
+dprint check --config dprint.json ~/.config/autocomplete-rs/config.toml
 ```
+
+A parse error means the file is not valid TOML. A reported formatting difference
+does not — the loader does not care how the file is laid out.
 
 ### Colors Not Working
 
@@ -652,8 +656,8 @@ Next completion will use defaults.
 
 ## Next Steps
 
-- See [Troubleshooting](troubleshooting.md) for common issues
-- Check [Installation Guide](installation.md) for setup
+- See [Troubleshooting](../user-guide/troubleshooting.md) for common issues
+- Check [Installation Guide](../user-guide/installation.md) for setup
 - Read [ADR-0006](../adr/0006-inline-ansi-dropdown.md) for dropdown technical
   details
 

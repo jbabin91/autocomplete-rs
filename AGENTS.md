@@ -42,21 +42,31 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
 
 ## Development
 
-- **Rust 2024 Edition** (MSRV in `Cargo.toml` `rust-version`)
-- **Task runner:** mise (see mise.toml)
-- **Git hooks:** hk (see hk.pkl) — runs fmt, clippy, check on pre-commit; commit-msg validation; tests on pre-push
-- **Formatting:** rustfmt (100 char width), prettier for non-Rust files, taplo for TOML, markdownlint-cli2 for markdown
-- **Linting:** clippy with `-D warnings` (zero warnings policy)
+- **Rust 2024 Edition.** `.mise.toml` pins the toolchain CI builds with; `Cargo.toml`'s
+  `rust-version` is the lower MSRV the crate promises, verified by `mise run msrv`.
+- **Task runner:** mise (see `.mise.toml`). Every tool is pinned exact — a floating
+  version can red CI on code nobody touched.
+- **Git hooks:** lefthook (see `lefthook.yml`). `mise run setup` installs them.
+  `core.hooksPath` must stay unset, or git bypasses lefthook silently.
+- **Formatting:** one writer per file type — rustfmt owns `.rs` (100 char width),
+  rumdl owns `.md`, dprint owns TOML/JSON/YAML. Two formatters on one file oscillate.
+- **Linting:** clippy with `-D warnings` (zero warnings policy); actionlint for workflows
+- **Secrets:** gitleaks on pre-commit, with a full-history scan in CI as a backstop
 - **Commit messages:** Conventional Commits enforced by cocogitto (`cog verify`)
 
+CI runs these same tasks rather than restating their commands, so the two cannot drift.
+
 ```sh
+mise run check       # fmt + clippy + dprint + rumdl + actionlint  (CI: Static Analysis)
+mise run test        # nextest + doctests                          (CI: Tests)
+mise run msrv        # build against Cargo.toml's rust-version     (CI: MSRV)
+mise run audit       # cargo-deny advisories/licenses/sources      (CI: Audit)
+mise run scan-secrets # gitleaks over full history                 (CI: Secret Scan)
+mise run ci          # all of the above
+mise run fmt         # format everything
 mise run build       # debug build
 mise run release     # optimized build
-mise run test        # cargo nextest run --all-features
-mise run lint        # clippy
-mise run fmt         # format all files
 mise run bench       # cargo bench --all-features (Criterion)
-mise run ci          # fmt-check + check + lint + test
 cargo nextest run -E 'test(name)'  # run a single test by name
 cargo bench --bench engine         # run a single benchmark suite
 ```
@@ -89,7 +99,7 @@ cargo bench --bench engine         # run a single benchmark suite
 - Format: `type(scope): description` (scope optional)
 - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 - Breaking changes: `feat!:` or `BREAKING CHANGE:` footer
-- Enforced locally by hk commit-msg hook (`cog verify`)
+- Enforced locally by the lefthook commit-msg hook (`cog verify`)
 - Enforced in CI by PR title validation (`amannn/action-semantic-pull-request`)
 - **Commit timing:** See the `commit-discipline` skill for rules. In short: don't commit
   during active back-and-forth; commit when working autonomously or when asked.
@@ -118,11 +128,14 @@ For simple tasks/chores, use `bd create` directly.
 
    ```sh
    git pull --rebase
-   bd sync
+   bd dolt push   # issues live in a Dolt remote, not in this repo
    git push
    git status  # MUST show "up to date with origin"
    ```
 
+   `bd sync` no longer exists (removed in bd 1.2.2). The issue store is a Dolt
+   remote configured per-machine in `.beads/.env`; only the audit trail in
+   `.beads/interactions.jsonl` travels through git.
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed
 7. **Hand off** - Provide context for next session

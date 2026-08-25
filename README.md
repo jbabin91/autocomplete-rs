@@ -66,7 +66,8 @@ autocomplete system from scratch.
 - [ ] Fish support
 - [ ] WSL support
 
-See project issues (`bd list`) for detailed development plan.
+See [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues) for the
+detailed development plan.
 
 ## Quick Start
 
@@ -141,19 +142,20 @@ User types "git checkout " + Alt+Space
 mise install
 
 # Common tasks
+mise run setup       # install git hooks
 mise run build       # debug build
 mise run release     # optimized build
-mise run test        # cargo nextest run --all-features
-mise run lint        # clippy
+mise run check       # format check, clippy, markdown, workflows
+mise run test        # cargo nextest run --all-features + doctests
 mise run fmt         # format all files
-mise run ci          # fmt-check + check + lint + test
+mise run ci          # everything CI runs
 ```
 
 **Git workflow:** GitHub Flow with conventional commits. Squash or rebase merges
 only.
 
-**CI:** GitHub Actions runs lint, test, and conventional commit checks on every
-push and PR.
+**CI:** GitHub Actions runs six jobs on every push and PR — Static Analysis,
+Tests, MSRV, Secret Scan, PR Title, and Audit — gated by CI Status.
 
 See [AGENTS.md](AGENTS.md) for full development guidelines.
 
@@ -182,7 +184,7 @@ Contributions welcome! This project is in early development and there's lots to
 do.
 
 1. Read [Contributing Guide](docs/CONTRIBUTING.md)
-2. Check project issues (`bd ready`) for current priorities
+2. Check [GitHub Issues](https://github.com/jbabin91/autocomplete-rs/issues) for current priorities
 3. Fork, branch (`feat/`, `fix/`, `refactor/`, `chore/`), and submit a PR
 4. Use [conventional commits](https://www.conventionalcommits.org/)
 
@@ -200,7 +202,7 @@ do.
 
 - **Language:** [Rust](https://www.rust-lang.org/) 2024 Edition
 - **Dev Tools:** [mise](https://mise.jdx.dev/) (tool & task manager)
-- **Git Hooks:** [hk](https://hk.jdx.dev/) (with Rust builtins)
+- **Git Hooks:** [lefthook](https://lefthook.dev/)
 - **Async Runtime:** [Tokio](https://tokio.rs/)
 - **Overlay:** Platform-specific backends — NSPanel (macOS), x11rb (Linux X11), layer-shell (Wayland)
 - **CLI:** [Clap](https://github.com/clap-rs/clap) (derive)

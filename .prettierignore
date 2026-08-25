@@ -1,5 +1,0 @@
-# cargo-dist managed workflow (dist generate-ci owns this file)
-.github/workflows/release.yml
-
-# release-plz managed changelog
-CHANGELOG.md

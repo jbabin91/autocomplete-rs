@@ -1,0 +1,200 @@
+[tools]
+# Prebuilt binaries from GitHub releases or aqua, with no Node runtime. The one
+# exception is cargo-nextest: it has no aqua entry, so the `cargo:` backend
+# compiles it from source on a cold cache.
+#
+# mise owns the Rust toolchain, components included, so CI installs exactly one
+# and `cargo clippy` resolves deterministically.
+#
+# Exact versions, never `latest`: clippy runs under `-D warnings`, so a toolchain
+# release that adds a lint turns CI red with no commit anyone reviewed. A
+# `latest` prettier did exactly that here, reddening a file nobody had touched
+# and costing two months of CI.
+# `renovate.json` keeps the rust pin out of automerge so bumps stay reviewed.
+#
+# This pin is the toolchain CI builds with, deliberately NOT Cargo.toml's
+# `rust-version` (1.89) — the lower MSRV the crate promises, verified by its own
+# CI job.
+rust = { version = "1.98.0", components = "clippy,rustfmt,rust-src,rust-analyzer" }
+lefthook = "2.1.11"
+dprint = "0.56.1"
+rumdl = "0.2.60"
+# actionlint covers the shell inlined in workflow `run:` blocks, which is where
+# the only non-trivial scripting in this repo lives. It does not lint shell
+# itself — it shells out to shellcheck, and silently reports nothing when
+# shellcheck is missing, so the pin below is what makes that coverage real
+# rather than dependent on ambient PATH.
+actionlint = "1.7.12"
+# Pinned for actionlint, not invoked directly: shellcheck rejects zsh (SC1071),
+# and `shell-integration/zsh.zsh` is this repo's only shell file.
+shellcheck = "0.11.0"
+# The security tools resolve through aqua, which verifies SHA256/SHA512 on every
+# download and checks cosign, SLSA, and GitHub attestations where published.
+# That is why they are pinned here rather than curled in a workflow step or
+# pulled through cargo-deny-action, whose Dockerfile fetches the binary with no
+# checksum at all.
+gitleaks = "8.30.1"
+"aqua:EmbarkStudios/cargo-deny" = "0.20.2"
+# aqua, not cargo: the cargo backend compiles cocogitto from source on every
+# cold CI cache. Exact, because cog parses commit messages for both the
+# commit-msg hook and CI, and a 7.x release could change what either accepts.
+"aqua:cocogitto/cocogitto" = "7.0.0"
+"cargo:cargo-nextest" = "0.9.106"
+
+[tasks.setup]
+description = "Bootstrap a fresh clone"
+# `bd bootstrap`, never `bd init`: bootstrap clones the issue graph from the
+# remote in .beads/.env and leaves core.hooksPath and AGENTS.md alone. `bd init`
+# does neither — see .beads/config.yaml. Skipped when `bd` is absent, because
+# beads is maintainer bookkeeping and contributors are told they do not need it.
+#
+# lefthook installs last and owns .git/hooks: mise installs the binary but writes
+# no hooks, which is what this breaks on a fresh clone.
+run = [
+  # lefthook first: it is what this task exists for, and a beads failure must not
+  # leave a clone with no git hooks.
+  "lefthook install",
+  # Only when no working database is present: with a remote configured,
+  # `bd bootstrap` on an existing database attempts a clone that fails with
+  # "database exists" rather than the status report its --help describes.
+  "command -v bd >/dev/null || exit 0; bd list >/dev/null 2>&1 && exit 0; bd bootstrap --yes || echo 'warning: bd bootstrap failed — hooks are installed and the repo is usable, but the issue tracker is not populated'",
+]
+
+[tasks.fmt]
+description = "Format everything"
+# One writer per file type: rustfmt owns .rs, rumdl owns .md, dprint owns the
+# rest. dprint has no markdown plugin configured, so the `**/*.md` exclude in
+# dprint.json is insurance rather than the mechanism — it keeps that true if one
+# is ever added. Two formatters on one file oscillate, each undoing the other.
+run = ["cargo fmt --all", "dprint fmt", "rumdl fmt ."]
+
+# CI invokes these tasks directly rather than restating their commands, so the
+# two cannot drift. `--locked` fails when Cargo.lock is behind Cargo.toml instead
+# of silently rewriting it.
+[tasks.check]
+description = "Static analysis — what CI's static-analysis job runs"
+run = [
+  # A tool that repoints core.hooksPath makes git dispatch there and bypass
+  # lefthook silently: formatting, cog verify, and the gitleaks scan all stop
+  # running. Tests where git resolves hooks rather than whether the config is
+  # set — an empty value passes `test -z` but resolves to the worktree root.
+  "case \"$(git rev-parse --git-path hooks)\" in .git/hooks|*/.git/hooks) ;; *) echo \"git resolves hooks to $(git rev-parse --git-path hooks) — lefthook is bypassed; run: git config --unset core.hooksPath\"; exit 1 ;; esac",
+  "cargo fmt --all --check",
+  "cargo clippy --all-targets --all-features --locked -- -D warnings",
+  "dprint check",
+  # rumdl exits 0 when it matches no files, so a widened exclude would turn
+  # markdown linting into a silent no-op. `--output-format text` is pinned
+  # because $RUMDL_OUTPUT_FORMAT would otherwise change the summary this parses,
+  # and an unreadable count fails closed rather than skipping the floor.
+  '''
+  out=$(rumdl check --output-format text . 2>&1) || { printf '%s\n' "$out"; exit 1; }
+  printf '%s\n' "$out"
+  case "$out" in
+    *"No markdown files"*)
+      echo "rumdl matched no files — check .rumdl.toml excludes and .gitignore"
+      exit 1
+      ;;
+  esac
+  seen=$(printf '%s' "$out" | sed -n 's/.*in \([0-9][0-9]*\) file.*/\1/p' | tail -1)
+  case "$seen" in
+    ''|*[!0-9]*)
+      echo "could not read rumdl's file count — its summary wording changed; update this guard"
+      exit 1
+      ;;
+  esac
+  # Excludes come from .rumdl.toml so there is one list, not a copy that
+  # false-positives the moment someone adds an entry there.
+  pat=$(sed -n '/^exclude = \[/,/^\]/ s/^[[:space:]]*"\([^"]*\)".*/\1/p' .rumdl.toml | sed 's/[.[\*^$]/\\&/g' | paste -sd'|' -)
+  want=$(git -c core.quotePath=false ls-files '*.md' | grep -vE "^(${pat})(/|$)" | while read -r f; do [ -f "$f" ] && echo x; done | wc -l | tr -d ' ')
+  if [ "$want" -eq 0 ]; then
+    echo "no tracked markdown files found — the exclude pattern in this guard is wrong"
+    exit 1
+  fi
+  if [ "$seen" -lt "$want" ]; then
+    echo "rumdl checked $seen of $want tracked markdown files — an exclude in .rumdl.toml or a .gitignore entry is dropping files"
+    exit 1
+  fi
+  ''',
+  # actionlint delegates shell linting to shellcheck and reports nothing at all
+  # when it is missing — exit 0, no output. Every other shellcheck failure mode
+  # is loud; absence is the silent one, so assert it rather than trusting the pin.
+  "command -v shellcheck >/dev/null || { echo 'shellcheck missing — actionlint would silently skip all shell linting'; exit 1; }",
+  "actionlint",
+]
+
+[tasks.audit]
+description = "Dependency advisories, licenses, and sources — what CI's audit job runs"
+# Checks and feature selection live in deny.toml.
+run = "cargo-deny --locked check all"
+
+[tasks.scan-secrets]
+description = "Secret scan over full history — what CI's secret-scan job runs"
+# `--redact` because finding output otherwise prints the matched secret in full,
+# and in CI that lands in a world-readable log at a stable URL.
+run = '''
+out=$(gitleaks git --no-banner --redact -v . 2>&1) || { printf '%s\n' "$out"; exit 1; }
+printf '%s\n' "$out"
+# A substring test for "0 commits scanned" also matches 10, 240, 250 — compare
+# counts instead. `-v` keeps the file/line/rule of a finding; --redact still
+# hides the secret itself under it.
+scanned=$(printf '%s' "$out" | grep -oE '[0-9]+ commits scanned' | tail -1 | cut -d' ' -f1)
+case "$scanned" in
+  ''|*[!0-9]*)
+    echo "could not read gitleaks' commit count — its wording changed; update this guard"
+    exit 1
+    ;;
+esac
+want=$(git rev-list --all --count)
+if [ "$scanned" -lt "$want" ]; then
+  echo "gitleaks scanned $scanned of $want commits — check .gitleaks.toml allowlists and the checkout fetch-depth"
+  exit 1
+fi
+'''
+
+[tasks.test]
+description = "Tests — what CI's tests job runs"
+# nextest does not run doctests, hence the second command.
+run = [
+  "cargo nextest run --all-features --locked --no-tests=warn",
+  "cargo test --doc --all-features --locked",
+]
+
+[tasks.msrv]
+description = "Check the crate still builds on its promised MSRV"
+# The version comes from Cargo.toml rather than being restated, so the promise
+# and the check cannot disagree.
+run = '''
+msrv=$(grep -m1 '^rust-version' Cargo.toml | cut -d'"' -f2)
+# cut exits 0 whatever grep did, so an absent or restructured rust-version
+# would otherwise reach rustup as an empty toolchain name.
+case "$msrv" in
+  [0-9]*.[0-9]*) ;;
+  *) echo "could not read rust-version from Cargo.toml (got: '$msrv')"; exit 1 ;;
+esac
+rustup toolchain install "$msrv" --profile minimal
+cargo "+$msrv" check --all-features --locked --all-targets
+'''
+
+[tasks.build]
+description = "Build in debug mode"
+run = "cargo build"
+
+[tasks.release]
+description = "Build optimized release"
+run = "cargo build --release"
+
+[tasks.bench]
+description = "Run benchmarks"
+run = "cargo bench --all-features"
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "cargo clean"
+
+[tasks.install]
+description = "Install binary locally"
+run = "cargo install --path ."
+
+[tasks.ci]
+description = "Everything CI runs, locally"
+depends = ["check", "test", "msrv", "audit", "scan-secrets"]

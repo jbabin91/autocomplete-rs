@@ -18,11 +18,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # The branch name is attacker-controlled: anyone who can open a pull
+      # request chooses it. Interpolated into the script it would run as shell in
+      # a job holding `contents: write`, so it arrives as data.
       - name: Delete branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api repos/${{ github.repository }}/git/refs/heads/${{ github.event.pull_request.head.ref }} -X DELETE
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: gh api "repos/${REPO}/git/refs/heads/${BRANCH}" -X DELETE
 
   # Remove branches with no activity for 30+ days
   stale:
