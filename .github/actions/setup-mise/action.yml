@@ -11,7 +11,7 @@ runs:
   using: composite
   steps:
     - name: Setup mise
-      uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
+      uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
       with:
         install_args: taplo npm:prettier npm:markdownlint-cli2
         cache_key: ${{ inputs.cache_key_prefix }}-{{platform}}-{{install_args_hash}}
