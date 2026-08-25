@@ -144,9 +144,15 @@ case "$scanned" in
     exit 1
     ;;
 esac
-want=$(git rev-list --all --count)
+# --no-merges because gitleaks reads `git log -p`, which emits no patch for a
+# merge commit and so never counts one. On a pull_request event the checked-out
+# ref is GitHub's synthetic merge commit, which counting it would put one above
+# gitleaks every time. Its resolution goes unscanned, which is empty by
+# construction — GitHub only builds that ref for a conflict-free merge, and this
+# repo squash-merges, so no merge commit ever lands on main.
+want=$(git rev-list --all --count --no-merges)
 if [ "$scanned" -lt "$want" ]; then
-  echo "gitleaks scanned $scanned of $want commits — check .gitleaks.toml allowlists and the checkout fetch-depth"
+  echo "gitleaks scanned $scanned of $want non-merge commits — check .gitleaks.toml allowlists and the checkout fetch-depth"
   exit 1
 fi
 '''
