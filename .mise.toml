@@ -134,27 +134,30 @@ description = "Secret scan over full history — what CI's secret-scan job runs"
 run = '''
 out=$(gitleaks git --no-banner --redact -v . 2>&1) || { printf '%s\n' "$out"; exit 1; }
 printf '%s\n' "$out"
-# A substring test for "0 commits scanned" also matches 10, 240, 250 — compare
-# counts instead. `-v` keeps the file/line/rule of a finding; --redact still
-# hides the secret itself under it.
+# The way this scan goes quiet is a shallow checkout: gitleaks walks whatever
+# history is present and exits 0 over one commit as happily as over all of it.
+# actions/checkout defaults to depth 1, so assert the depth here rather than
+# trusting the workflow to keep fetch-depth: 0.
+case "$(git rev-parse --is-shallow-repository)" in
+  false) ;;
+  *) echo "shallow clone — gitleaks saw only the tip; set fetch-depth: 0 on the checkout"; exit 1 ;;
+esac
+# Deliberately not an equality against `git rev-list --count`. gitleaks tallies
+# only commits that add lines, so a merge or a deletion-only commit is absent
+# from its total by design: measured here, a440746 deletes 84 files and adds
+# nothing, and gitleaks reports 243 where git counts 244. Requiring the two to
+# match red-lines CI on every such commit.
 scanned=$(printf '%s' "$out" | grep -oE '[0-9]+ commits scanned' | tail -1 | cut -d' ' -f1)
 case "$scanned" in
   ''|*[!0-9]*)
     echo "could not read gitleaks' commit count — its wording changed; update this guard"
     exit 1
     ;;
+  0)
+    echo "gitleaks scanned 0 commits — check .gitleaks.toml allowlists and the checkout"
+    exit 1
+    ;;
 esac
-# --no-merges because gitleaks reads `git log -p`, which emits no patch for a
-# merge commit and so never counts one. On a pull_request event the checked-out
-# ref is GitHub's synthetic merge commit, which counting it would put one above
-# gitleaks every time. Its resolution goes unscanned, which is empty by
-# construction — GitHub only builds that ref for a conflict-free merge, and this
-# repo squash-merges, so no merge commit ever lands on main.
-want=$(git rev-list --all --count --no-merges)
-if [ "$scanned" -lt "$want" ]; then
-  echo "gitleaks scanned $scanned of $want non-merge commits — check .gitleaks.toml allowlists and the checkout fetch-depth"
-  exit 1
-fi
 '''
 
 [tasks.test]
