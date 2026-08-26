@@ -40,6 +40,17 @@ gitleaks = "8.30.1"
 # commit-msg hook and CI, and a 7.x release could change what either accepts.
 "aqua:cocogitto/cocogitto" = "7.0.0"
 "cargo:cargo-nextest" = "0.9.143"
+# The release pipeline's own tool. CI never installs it — release.yml fetches
+# dist by curl and no CI job runs it — so this pin exists to give `dist
+# generate-ci` a declared version locally, reachable as `mise exec -- dist`.
+#
+# It does not by itself win on PATH: a Homebrew cargo-dist shadows it, because
+# /opt/homebrew/bin precedes mise's tool directories in a normal macOS shell.
+# Nothing here guards the version, because dist already does — it refuses to run
+# against a config declaring a different one ("You're running dist 0.32.0, but
+# 'cargo-dist-version = 0.30.3' is set"). Bumping this means running `dist init`,
+# so renovate.json keeps it off automerge.
+"aqua:axodotdev/cargo-dist" = "0.30.3"
 
 [tasks.setup]
 description = "Bootstrap a fresh clone"
