@@ -23,6 +23,27 @@ pub fn detect_mode() -> Mode {
     }
 }
 
+/// Whether `name` is a file the daily rolling appender produces.
+///
+/// Matches `autocomplete-rs.log.YYYY-MM-DD` exactly, so unrelated files that merely share
+/// the prefix are never deleted.
+fn is_rolling_log_name(name: &str) -> bool {
+    let Some(date) = name.strip_prefix(&format!("{LOG_FILE_PREFIX}.")) else {
+        return false;
+    };
+    let bytes = date.as_bytes();
+    bytes.len() == 10
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes
+            .iter()
+            .enumerate()
+            .all(|(i, b)| matches!(i, 4 | 7) || b.is_ascii_digit())
+}
+
+/// Base name the rolling appender writes; daily files append `.YYYY-MM-DD`.
+pub const LOG_FILE_PREFIX: &str = "autocomplete-rs.log";
+
 /// Return the default log directory: `~/.autocomplete-rs/logs/`.
 pub fn default_log_dir() -> PathBuf {
     crate::paths::home_dir()
@@ -99,7 +120,14 @@ pub fn cleanup_old_logs(dir: &Path, days: u32) -> Result<()> {
         let path = entry.path();
 
         // Only clean up .log files
-        if path.extension().and_then(|e| e.to_str()) != Some("log") {
+        // The rolling appender writes `autocomplete-rs.log.YYYY-MM-DD`, whose extension is
+        // the date — matching on `.log` skipped every file and deleted nothing. Match the
+        // date shape too, so an adjacent `autocomplete-rs.log.backup` is left alone.
+        let is_log_file = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(is_rolling_log_name);
+        if !is_log_file {
             continue;
         }
 
@@ -191,14 +219,44 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let log_dir = tmp.path();
 
-        // Create a "new" log file
-        let new_file = log_dir.join("autocomplete-rs.2025-01-01.log");
-        let mut f = fs::File::create(&new_file).unwrap();
+        // The appender writes `autocomplete-rs.log.YYYY-MM-DD`. Using any other shape here
+        // is what let a filter matching `extension() == "log"` pass while deleting nothing
+        // in production.
+        let log_file = log_dir.join(format!("{LOG_FILE_PREFIX}.2025-01-01"));
+        let mut f = fs::File::create(&log_file).unwrap();
         writeln!(f, "recent log").unwrap();
 
-        // cleanup_old_logs with 0 days should remove everything
         cleanup_old_logs(log_dir, 0).unwrap();
-        assert!(!new_file.exists());
+        assert!(
+            !log_file.exists(),
+            "a file named as the appender names it must be eligible for cleanup"
+        );
+    }
+
+    #[test]
+    fn test_cleanup_spares_files_that_merely_share_the_prefix() {
+        let tmp = tempfile::tempdir().unwrap();
+        let keep = [
+            format!("{LOG_FILE_PREFIX}.backup"),
+            LOG_FILE_PREFIX.to_string(),
+            "autocomplete-rs.logging-notes".to_string(),
+            format!("{LOG_FILE_PREFIX}.2026-8-1"),
+        ];
+        for name in &keep {
+            fs::write(tmp.path().join(name), b"keep me").unwrap();
+        }
+        let rolled = tmp.path().join(format!("{LOG_FILE_PREFIX}.2025-01-01"));
+        fs::write(&rolled, b"delete me").unwrap();
+
+        cleanup_old_logs(tmp.path(), 0).unwrap();
+
+        for name in &keep {
+            assert!(
+                tmp.path().join(name).exists(),
+                "{name} is not a rolled log file and must be left alone"
+            );
+        }
+        assert!(!rolled.exists(), "a rolled log file must be eligible");
     }
 
     #[test]
