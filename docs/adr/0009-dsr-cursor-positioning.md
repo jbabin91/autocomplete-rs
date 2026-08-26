@@ -1,6 +1,6 @@
 # ADR-0009: DSR Cursor Positioning
 
-**Status:** Accepted
+**Status:** Accepted — see [Erratum (2026-08-26)](#erratum-2026-08-26)
 **Date:** 2026-08-25
 **Decision Makers:** Project Team
 **Technical Story:** Make the terminal report its own cursor position instead of
@@ -176,3 +176,21 @@ where DSR's cell granularity proves insufficient.
 - ghost-complete architecture: <https://github.com/StanMarek/ghost-complete>
 - DSR / CPR: ECMA-48 §8.3.35, VT100 `ESC[6n`
 - Tracking issue: `autocomplete-rs-17o`
+
+## Erratum (2026-08-26)
+
+The original text is preserved above; two of its characterizations of
+ghost-complete were corrected by a code-level review of its v0.19.0 source
+(see [fig-successor-cohort.md](../research/fig-successor-cohort.md)):
+
+- "cursor position is known exactly and never queried" is wrong. ghost-complete
+  dead-reckons the cursor from a VT parse of the output stream and reconciles it
+  by emitting its own `ESC[6n` queries, arbitrated against other programs' DSRs
+  through an owner-tagged FIFO queue (`crates/gc-parser/src/state.rs`). Its two
+  shipped positioning bugs (#58, #64) came from that arbitration — field
+  evidence that directly informs this ADR's implementation.
+- Its FAQ's "no fragile shell internals to hook into" framing is contradicted
+  by its shipped zsh plugin, which installs a `zle-line-pre-redraw` hook and
+  reports `$BUFFER`/`$CURSOR` in a private OSC escape. The rejection rationale
+  above (PTY proxy owns the entire I/O stream) stands; the premise that
+  in-grid rendering removes the need for shell integration does not.

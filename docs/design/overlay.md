@@ -44,6 +44,11 @@ original UX.
 
 ## Positioning Pipeline
 
+Per [ADR-0009](../adr/0009-dsr-cursor-positioning.md), the cursor cell will come
+from the terminal itself (DSR `ESC[6n`, queried by the shell widget); the
+pipeline below supplies the window rect on every platform and is the full
+fallback when a terminal ignores DSR.
+
 1. **Query terminal window bounds** — platform-specific (Accessibility API on
    macOS, X11 window attributes on Linux, Win32 on Windows)
 2. **Get terminal grid dimensions** — `TIOCGWINSZ` ioctl (or Windows console API)
@@ -95,3 +100,20 @@ original UX.
 - `WS_EX_NOACTIVATE` extended style — non-activating window
 - `Win32 GetWindowRect` for terminal position
 - `windows` crate for Win32 API
+
+## Limitation: Remote Shells
+
+A native overlay can only track a terminal on the local machine. In an SSH
+session the shell — and therefore the widget and daemon — runs on the remote
+host, where there is no display to draw on. In-grid tools (PTY proxies, ANSI
+popups) work over SSH because their UI travels inside the terminal byte stream;
+ours does not. This is a deliberate trade documented in
+[fig-successor-cohort.md](../research/fig-successor-cohort.md) §6.1: a richer
+local UI that never sits in the terminal's I/O path, at the cost of the overlay
+in remote sessions. The planned degradation is in-ZLE rendering — ghost text
+via `POSTDISPLAY` first — never a PTY proxy or wrapper. Selecting it needs a
+remote-session check that survives multiplexers: `$SSH_TTY` is absent from
+tmux's default `update-environment` list, so a pane in a remote tmux may not
+carry it and would wrongly read as local. Local tmux is unaffected in principle
+(the terminal and cursor are local), but both the detection and the positioning
+inside multiplexers need their own testing.
