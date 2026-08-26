@@ -89,9 +89,13 @@ cargo bench --bench engine         # run a single benchmark suite
 - **Branch naming:** `feat/`, `fix/`, `refactor/`, `chore/` prefixes (match conventional commit types)
 - **Merging:** Squash merge or rebase merge only — no merge commits
 - **CI:** All PRs must pass the `CI Status` gate check before merging
-- **Code review:** Copilot reviews all PRs (including drafts) automatically and
-  re-reviews on every push. Review guidelines are in `.github/instructions/rust.instructions.md`.
-  Address or reply to review comments, then resolve the threads.
+- **Code review:** no reviewer bot comments on PRs — nothing catches a design or
+  correctness mistake after you push. CI still gates the mechanical checks (clippy
+  `-D warnings`, cargo-deny, gitleaks) and CodeQL runs post-merge on `main`.
+  Substantive review happens locally before the commit, via the `review-cycle` skill.
+  The rules live in `.claude/rules/` and load automatically when a matching file is
+  touched — so opening an unrelated file yields none of them. Address or reply to any
+  human review comments, then resolve the threads.
 - **PR body:** Use `.github/pull_request_template.md` — fill in Summary (what and why) and Resolves (bead or issue)
 
 **Commit conventions:** [Conventional Commits](https://www.conventionalcommits.org/)

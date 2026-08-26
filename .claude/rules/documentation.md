@@ -1,8 +1,6 @@
 ---
 paths:
-  - 'docs/**/*.md'
-  - 'README.md'
-  - 'docs/CONTRIBUTING.md'
+  - '**/*.md'
 ---
 
 # Documentation Rules
@@ -31,6 +29,25 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 - `docs/development/` — Developer guides (setup, structure, testing, contributing)
 - `docs/research/` — Industry analysis and findings
 - `docs/user-guide/` — End-user docs (install, config, troubleshooting)
+
+## Command References
+
+- Don't duplicate exact command flags in prose — a raw `cargo clippy --all-targets
+  --all-features` in a doc drifts the moment `.mise.toml` changes
+- Use `mise run <task>`, or point at the source config (`.mise.toml`, `lefthook.yml`,
+  `ci.yml`). `.claude/rules/tooling.md` carries the same rule for config files, but
+  its path scope never loads it while you are editing markdown
+- AGENTS.md's concise command block is the deliberate exception
+
+## Snippet Fidelity
+
+- Code snippets in design docs must match the real signatures, types, and serde
+  attributes in `src/` — a snippet that drifts is read as current and believed
+- Watch the details that drift silently: type widths (`AtomicU32` where the code
+  uses `AtomicU64`), `rename_all` values, and `Option<T>` on a required field
+- The suite runs `cargo nextest run`; a bare `cargo test` in docs is wrong.
+  `cargo test --doc` is correct and expected, since nextest does not run doctests
+- Socket path references mention the `AUTOCOMPLETE_RS_SOCKET` override
 
 ## Conventions
 
