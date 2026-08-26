@@ -18,7 +18,8 @@ pub fn build_subscriber(cfg: &LogConfig) -> Result<Vec<WorkerGuard>> {
         libc::umask(0o077);
     }
 
-    let file_appender = tracing_appender::rolling::daily(&cfg.log_dir, "autocomplete-rs.log");
+    let file_appender =
+        tracing_appender::rolling::daily(&cfg.log_dir, super::config::LOG_FILE_PREFIX);
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
     guards.push(guard);
 
