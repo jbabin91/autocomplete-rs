@@ -1,8 +1,3 @@
----
-paths:
-  - '**/*.md'
----
-
 # Documentation Rules
 
 ## Reality Check
@@ -25,6 +20,7 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 ## Doc Structure
 
 - `docs/adr/` — Architecture Decision Records (use ADR template)
+- `docs/conventions/` — coding conventions, read before touching the matching area
 - `docs/design/` — Design specs (overview, daemon, parser, tui, configuration)
 - `docs/development/` — Developer guides (setup, structure, testing, contributing)
 - `docs/research/` — Industry analysis and findings
@@ -35,8 +31,7 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 - Don't duplicate exact command flags in prose — a raw `cargo clippy --all-targets
   --all-features` in a doc drifts the moment `.mise.toml` changes
 - Use `mise run <task>`, or point at the source config (`.mise.toml`, `lefthook.yml`,
-  `ci.yml`). `.claude/rules/tooling.md` carries the same rule for config files, but
-  its path scope never loads it while you are editing markdown
+  `ci.yml`). [`tooling-and-formatting.md`](tooling-and-formatting.md) carries the same rule for config files
 - AGENTS.md's concise command block is the deliberate exception
 
 ## Snippet Fidelity
@@ -56,7 +51,7 @@ This project is pre-alpha. Much of the existing documentation describes planned 
 - Contributor-facing docs (README, CONTRIBUTING, docs/development/) link to
   GitHub Issues, never to `bd` commands. Beads is backed by a Dolt remote
   rather than this repository, so a contributor who clones cannot run them.
-- Maintainer-facing files (AGENTS.md, .claude/rules/) may reference `bd`
+- Maintainer-facing files (AGENTS.md, `docs/conventions/`) may reference `bd`
   freely
 - Keep ADRs immutable once accepted (add new ADRs to supersede)
 - Qualify spike measurements as observations, not guarantees — say

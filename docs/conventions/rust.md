@@ -1,12 +1,8 @@
----
-paths:
-  - '**/*.rs'
----
-
 # Rust Patterns
 
 General patterns for writing Rust in this codebase. For daemon-specific
-rules see `daemon.md`. For tooling and CI see `tooling.md`.
+rules see [`daemon.md`](daemon.md). For tooling and CI see
+[`tooling-and-formatting.md`](tooling-and-formatting.md).
 
 ## Error Handling
 

@@ -1,18 +1,3 @@
----
-paths:
-  - 'lefthook.yml'
-  - '.mise.toml'
-  - 'dprint.json'
-  - '.rumdl.toml'
-  - '.gitleaks.toml'
-  - '.editorconfig'
-  - 'rustfmt.toml'
-  - 'clippy.toml'
-  - 'deny.toml'
-  - 'build.rs'
-  - 'Cargo.toml'
----
-
 # Tooling & Config Rules
 
 ## Dependencies

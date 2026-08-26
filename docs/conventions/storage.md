@@ -1,8 +1,3 @@
----
-paths:
-  - 'src/storage/**'
----
-
 # Storage Layer Rules
 
 ## Architecture

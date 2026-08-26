@@ -1,12 +1,3 @@
----
-paths:
-  - '.github/workflows/**'
-  - '.github/actions/**'
-  - '.github/renovate.json'
-  - 'dist-workspace.toml'
-  - 'deny.toml'
----
-
 # GitHub Actions & CI/CD
 
 ## Workflows

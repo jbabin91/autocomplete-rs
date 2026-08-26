@@ -1,9 +1,3 @@
----
-paths:
-  - 'src/overlay/**'
-  - 'docs/design/overlay.md'
----
-
 # Native Overlay Dropdown Rules
 
 ## Target Architecture
@@ -12,7 +6,7 @@ The completion dropdown renders as a **native overlay window** positioned at
 the terminal cursor — like Fig.io's approach, NOT inline ANSI rendering.
 Platform-specific backends handle window creation and positioning.
 
-See [ADR-0008](docs/adr/0008-native-overlay-dropdown.md) for the full decision.
+See [ADR-0008](../adr/0008-native-overlay-dropdown.md) for the full decision.
 
 Platform backends:
 

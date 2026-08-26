@@ -196,7 +196,7 @@ passes its name via the `tools` input, and must also set `MISE_AUTO_INSTALL=0` o
 the step that runs the task — `mise run` otherwise installs the rest of
 `.mise.toml` on demand and the scoping saves nothing.
 
-See `.claude/rules/github-actions.md` for full CI/CD documentation.
+See `docs/conventions/github-actions.md` for full CI/CD documentation.
 
 ## Additional Tools (Optional)
 
