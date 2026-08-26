@@ -10,6 +10,8 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 
 ## Error Handling
 
+- `unwrap()`/`expect()` only in tests and known-safe const contexts — a panic in
+  a long-running daemon takes the process with it
 - `anyhow::Result` for application code, `thiserror` for library errors
 - Never `let _ =` on a `Result` — check `ErrorKind::NotFound` vs real errors:
   - Functions: `return Err(e).context("what failed")`
@@ -73,10 +75,14 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
   positives from error messages)
 - Handle zero-byte `read_line` as EOF — don't fall through to JSON parsing
 - Tagged enums (`#[serde(tag = "type")]`) for IPC message boundaries
+- A payload carrying a `"type"` field that matches no known variant is an error,
+  not a fallback — silently treating it as a bare request hides protocol drift
 
 ## Async
 
 - `CancellationToken` for shutdown — not booleans or channels
+- Wake on events (`tokio::sync::Notify`, channels), don't poll with `sleep` —
+  the Testing section's narrow exception does not extend to production paths
 - `tokio::select!` with `biased;` when branch priority matters
 - `tokio::time::timeout` on all socket I/O (reads AND writes)
 - Track spawned tasks in `JoinSet` — no orphan tasks
@@ -92,8 +98,15 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 
 - `cargo nextest` (not `cargo test`)
 - Test helpers must assert every intermediate result — no `let _ =`
+- A test with no assertion, or only `assert!(true)`, tests nothing
+- A test comment must match what the assertion actually checks — a comment
+  describing a stronger check than the code enforces is worse than none
 - Wrap I/O test helpers in `tokio::time::timeout` to prevent hangs
 - Atomic counters for unique socket paths, not timestamps or random values
+- Clean up sockets and temp directories via RAII (`Drop`/`TempDir`), never with a
+  call on the happy path — an `assert!` that fires before it leaves the directory
+  behind, and the next run starts from dirty state. Note `Drop` never runs for a
+  `static`, so a `OnceLock<TempDir>` leaks rather than reaps
 - When testing spawned tasks/actors, await the `JoinHandle` after sending
   a shutdown signal — never use `sleep()` to "wait for processing". Fixed
   sleeps are flaky under load and slow down the suite
@@ -147,6 +160,9 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - Never use `Path::exists()` for control flow — it returns `false`
   for permission errors, masking the real issue. Use `fs::metadata()`
   with explicit `ErrorKind::NotFound` matching instead
+- Check `metadata.is_dir()` after resolving a directory path — a regular file
+  sitting where a directory belongs must fail with that reason, not a later
+  confusing error
 - Create secure directories atomically with
   `DirBuilder::new().mode(0o700).create()` — avoids TOCTOU windows
   between `create_dir_all` + `set_permissions`
@@ -171,6 +187,7 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 
 - Structured logging via `tracing` — `println!`/`eprintln!` only for
   CLI user-facing output
+- `#[instrument(skip_all)]` on async functions taking non-`Debug` parameters
 - **Log level must match operational importance**: operational failures
   that matter in production (write timeouts, connection failures) use
   `warn!` or `error!`, not `debug!`. Production filters at `info` level,

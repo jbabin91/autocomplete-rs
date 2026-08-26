@@ -15,6 +15,13 @@ paths:
 
 # Tooling & Config Rules
 
+## Dependencies
+
+- A new dependency justifies its inclusion — flag a large transitive tree pulled in
+  for a small feature
+- Feature flags stay minimal: enable only what is used
+- Test-only crates belong in `[dev-dependencies]`, never in the main table
+
 ## Pinning
 
 Every tool in `.mise.toml` is pinned to an exact version, the Rust toolchain
