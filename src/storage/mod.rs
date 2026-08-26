@@ -3,11 +3,9 @@ pub mod events;
 pub mod queries;
 pub mod schema;
 
-use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tracing::debug;
@@ -119,53 +117,11 @@ pub async fn open_readonly(db_path: &Path) -> Result<Connection> {
 }
 
 /// Return the default database path: `~/.autocomplete-rs/autocomplete.db`.
-pub fn default_db_path() -> PathBuf {
-    crate::paths::home_dir()
-        .join(".autocomplete-rs")
-        .join("autocomplete.db")
+pub fn default_db_path() -> Result<PathBuf> {
+    Ok(crate::paths::data_dir()?.join("autocomplete.db"))
 }
 
 /// Ensure the parent directory of the DB file exists and is not group/other accessible.
-///
-/// New directories are created atomically with mode 0700 via `DirBuilder` (no TOCTOU window).
-/// Existing directories are accepted as long as they have no group/other permission bits set.
 fn ensure_data_dir(db_path: &Path) -> Result<()> {
-    use std::os::unix::fs::DirBuilderExt;
-
-    let dir = db_path
-        .parent()
-        .context("database path has no parent directory")?;
-
-    match fs::metadata(dir) {
-        Ok(metadata) => {
-            if !metadata.is_dir() {
-                bail!(
-                    "data directory path {} exists but is not a directory",
-                    dir.display()
-                );
-            }
-            let perms = metadata.permissions().mode() & 0o777;
-            if perms & 0o077 != 0 {
-                bail!(
-                    "data directory {} has insecure permissions {:o} \
-                     (must not be group/other accessible)",
-                    dir.display(),
-                    perms
-                );
-            }
-            Ok(())
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            fs::DirBuilder::new()
-                .recursive(true)
-                .mode(0o700)
-                .create(dir)
-                .context("failed to create data directory")?;
-            Ok(())
-        }
-        Err(e) => Err(e).context(format!(
-            "failed to check data directory at {}",
-            dir.display()
-        )),
-    }
+    crate::paths::ensure_private_parent(db_path).map(|_| ())
 }

@@ -132,8 +132,11 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 
 ## Shared Helpers
 
-- Cross-module utilities live in `src/paths.rs` (`pub(crate)`) — e.g.
-  `home_dir()` for resolving `$HOME` with `/tmp` fallback. Don't
+- Cross-module utilities live in `src/paths.rs` — mostly `pub(crate)`, with the
+  few items the binary and integration tests need (`default_socket_path`,
+  `MAX_SOCKET_PATH_LEN`) exported. `home_dir()` resolves `$HOME` and returns an
+  error when it is unset: a missing `$HOME` must never fall back to `/tmp`, which
+  is world-writable and is what the private data directory exists to avoid. Don't
   duplicate small helpers across modules; extract to a shared location
 - When adding behavior that multiple modules need (mode detection,
   path resolution), prefer re-exporting from the owning module rather
@@ -150,6 +153,14 @@ rules see `daemon.md`. For tooling and CI see `tooling.md`.
 - Doc comments on permission checks must describe the actual check,
   not an idealized one (e.g. "rejects group/other access" not
   "ensures 0700" if the check is `perms & 0o077 != 0`)
+- **Private directories:** Go through `paths::ensure_private_dir` /
+  `ensure_private_parent` rather than hand-rolling a mode check. They answer one
+  question — is this path inside the data directory? — and callers pass no policy.
+  A path inside it is tightened to 0700 in place, every level from the root down;
+  anything else is reported with an actionable message rather than chmodded, since
+  it may hold unrelated files. Containment rejects `..` and refuses to resolve
+  through a symlink, and the check-and-chmod happen on one pinned descriptor
+  (`O_NOFOLLOW`), because `stat`-then-`chmod` on a path is a winnable race
 - **Unix sockets:** Always remove stale socket files before `bind()`
   (ignore `NotFound`, treat other errors as real). After a successful
   bind, set permissions to `0o600` to restrict access to the owning

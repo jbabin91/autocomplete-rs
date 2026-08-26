@@ -87,7 +87,9 @@ cargo nextest run --no-capture
 static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
 fn temp_socket_path() -> PathBuf {
     let id = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
-    PathBuf::from(format!("/tmp/autocomplete-rs-test-{}-{}.sock", std::process::id(), id))
+    // The daemon refuses a group/other-accessible socket directory, so sockets live in a
+    // per-process 0700 directory that is removed when the test binary exits.
+    test_socket_dir().join(format!("{}.sock", id))
 }
 
 // Helper that asserts every step — never discard intermediate results.

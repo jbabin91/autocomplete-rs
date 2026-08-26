@@ -15,7 +15,7 @@ autocomplete-rs --version
 ps aux | grep autocomplete-rs
 
 # 3. Check socket exists
-ls -la /tmp/autocomplete-rs.sock
+ls -la ~/.autocomplete-rs/daemon.sock
 
 # 4. Check shell integration loaded
 bindkey | grep autocomplete  # zsh
@@ -132,10 +132,10 @@ Verify in `Cargo.toml`:
 
 ```sh
 # Try starting daemon manually
-autocomplete-rs daemon /tmp/autocomplete-rs.sock
+autocomplete-rs daemon
 
 # Check for errors
-RUST_LOG=debug autocomplete-rs daemon /tmp/autocomplete-rs.sock
+RUST_LOG=debug autocomplete-rs daemon
 ```
 
 **Common errors:**
@@ -153,10 +153,10 @@ Error: Address already in use (os error 48)
 pkill autocomplete-rs
 
 # Remove stale socket
-rm /tmp/autocomplete-rs.sock
+rm ~/.autocomplete-rs/daemon.sock
 
 # Restart
-autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+autocomplete-rs daemon &
 ```
 
 **2. Permission denied:**
@@ -173,7 +173,7 @@ ls -la /tmp/
 
 # Use user-writable location
 mkdir -p ~/.cache/autocomplete-rs
-autocomplete-rs daemon ~/.cache/autocomplete-rs/daemon.sock &
+autocomplete-rs daemon --socket ~/.cache/autocomplete-rs/daemon.sock &
 
 # Update config to match
 ```
@@ -202,7 +202,7 @@ mkdir -p ~/.cache/autocomplete-rs
 
 ```sh
 # Run in foreground with debug logging
-RUST_LOG=debug autocomplete-rs daemon /tmp/autocomplete-rs.sock
+RUST_LOG=debug autocomplete-rs daemon
 
 # Check system logs (macOS)
 log show --predicate 'process == "autocomplete-rs"' --last 1m
@@ -224,7 +224,7 @@ journalctl -u autocomplete-rs --since "1 minute ago"
 2. Include rust backtrace:
 
    ```sh
-   RUST_BACKTRACE=1 autocomplete-rs daemon /tmp/autocomplete-rs.sock
+   RUST_BACKTRACE=1 autocomplete-rs daemon
    ```
 
 ### Daemon Unresponsive
@@ -235,7 +235,7 @@ journalctl -u autocomplete-rs --since "1 minute ago"
 
 ```sh
 # Test daemon directly
-echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
+echo '{"buffer":"git checkout","cursor":13}' | nc -U ~/.autocomplete-rs/daemon.sock
 
 # Should return JSON response
 ```
@@ -246,7 +246,7 @@ echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
    ```sh
    # Daemon socket
-   ls -la /tmp/autocomplete-rs.sock
+   ls -la ~/.autocomplete-rs/daemon.sock
 
    # Shell integration uses same path?
    grep AUTOCOMPLETE_RS_SOCKET ~/.zshrc
@@ -270,7 +270,7 @@ echo '{"buffer":"git checkout","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 
    ```sh
    pkill autocomplete-rs
-   autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+   autocomplete-rs daemon &
    ```
 
 ## Shell Integration Issues
@@ -346,7 +346,7 @@ ps aux | grep autocomplete-rs
 
 # If not running, widget should auto-start it
 # If auto-start fails, start manually:
-autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+autocomplete-rs daemon &
 ```
 
 ### Wrong Completions
@@ -383,10 +383,10 @@ implementation!
 
    ```sh
    # Daemon startup
-   time autocomplete-rs daemon /tmp/test.sock &
+   time autocomplete-rs daemon --socket /tmp/test.sock &
 
    # Request latency
-   time echo '{"buffer":"git","cursor":3}' | nc -U /tmp/autocomplete-rs.sock
+   time echo '{"buffer":"git","cursor":3}' | nc -U ~/.autocomplete-rs/daemon.sock
 
    # Full flow
    time (trigger completion in shell)
@@ -417,7 +417,7 @@ implementation!
    ```sh
    # Start daemon at shell startup
    if ! pgrep autocomplete-rs > /dev/null; then
-     autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+     autocomplete-rs daemon &
    fi
    ```
 
@@ -579,7 +579,7 @@ implementation!
 **Solution:**
 
 ```sh
-autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+autocomplete-rs daemon &
 ```
 
 ### "Request timeout"
@@ -611,7 +611,7 @@ autocomplete-rs daemon /tmp/autocomplete-rs.sock &
 3. Try with debug logging:
 
    ```sh
-   RUST_LOG=debug autocomplete-rs daemon /tmp/autocomplete-rs.sock 2> /tmp/debug.log
+   RUST_LOG=debug autocomplete-rs daemon 2> /tmp/debug.log
    ```
 
 4. Gather version info:
@@ -659,7 +659,7 @@ If none of the above helps:
 1. **Enable maximum debugging:**
 
    ```sh
-   RUST_LOG=trace RUST_BACKTRACE=full autocomplete-rs daemon /tmp/autocomplete-rs.sock 2> /tmp/full-debug.log
+   RUST_LOG=trace RUST_BACKTRACE=full autocomplete-rs daemon 2> /tmp/full-debug.log
    ```
 
 2. **Trigger the issue**

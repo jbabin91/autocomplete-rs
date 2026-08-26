@@ -58,10 +58,10 @@ User Types: "git che" + Alt+Space
        │
        ▼
 ┌──────────────────────────────────────────────────────────┐
-│ 1. SHELL INTEGRATION (shell-integration/zsh.zsh)        │
-│    - ZLE captures: buffer="git che", cursor=7           │
-│    - Creates JSON: {"buffer":"git che","cursor":7}      │
-│    - Opens Unix socket: /tmp/autocomplete-rs.sock       │
+│ 1. SHELL INTEGRATION (shell-integration/zsh.zsh)         │
+│    - ZLE captures: buffer="git che", cursor=7            │
+│    - Creates JSON: {"buffer":"git che","cursor":7}       │
+│    - Opens Unix socket: ~/.autocomplete-rs/daemon.sock   │
 │    - Sends request                                       │
 └──────────────────────────────────────────────────────────┘
        │
@@ -401,7 +401,7 @@ Daemon
 ### Unix Socket Permissions
 
 ```sh
-/tmp/autocomplete-rs.sock
+~/.autocomplete-rs/daemon.sock
   - Owner: user
   - Permissions: 0600 (user read/write only)
   - No other users can connect
@@ -438,8 +438,8 @@ Daemon
 
 **Multi-user system:**
 
-- Socket path includes UID: `/tmp/autocomplete-rs-$UID.sock`
-- Separate daemon per user
+- Separate daemon per user (already the case: the socket lives in the user's own
+  `~/.autocomplete-rs/`, which is kept at mode 0700)
 
 **Custom specs:**
 

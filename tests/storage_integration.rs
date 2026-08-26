@@ -1,9 +1,11 @@
+use std::os::unix::fs::PermissionsExt;
+
 use autocomplete_rs::storage::events::{DiagnosticCategory, Severity};
 use autocomplete_rs::storage::{self, StorageEvent};
 
 #[tokio::test]
 async fn full_lifecycle_with_tempdir() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = private_tempdir();
     let db_path = dir.path().join("data").join("autocomplete.db");
 
     // Initialize storage
@@ -103,7 +105,7 @@ async fn full_lifecycle_with_tempdir() {
 
 #[tokio::test]
 async fn diagnose_report_on_empty_db() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = private_tempdir();
     let db_path = dir.path().join("data").join("empty.db");
 
     let handle = storage::init(&db_path).await.unwrap();
@@ -120,7 +122,7 @@ async fn diagnose_report_on_empty_db() {
 
 #[tokio::test]
 async fn data_dir_permissions() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = private_tempdir();
     let data_dir = dir.path().join("autocomplete-rs");
     let db_path = data_dir.join("autocomplete.db");
 
@@ -135,4 +137,16 @@ async fn data_dir_permissions() {
         mode, 0o700,
         "data directory should have exact 0700 permissions"
     );
+}
+
+/// A temp directory at mode 0700.
+///
+/// `tempfile` honours the umask (0755 in practice), but the daemon refuses to put private
+/// data in a group/other-accessible directory — as a real user's `~/.autocomplete-rs`
+/// would never be.
+fn private_tempdir() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().expect("failed to create temp dir");
+    std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700))
+        .expect("failed to restrict temp dir");
+    dir
 }

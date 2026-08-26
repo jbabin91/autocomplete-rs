@@ -8,7 +8,7 @@ use autocomplete_rs::logging::{
 
 #[test]
 fn test_log_config_production_defaults() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let cfg = LogConfig {
         mode: Mode::Production,
         log_dir: tmp.path().to_path_buf(),
@@ -23,7 +23,7 @@ fn test_log_config_production_defaults() {
 
 #[test]
 fn test_log_dir_creation_with_permissions() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = private_tempdir();
     let log_dir = tmp.path().join("test-logs");
 
     // init_with_config would create this, but we test the dir creation logic
@@ -39,7 +39,7 @@ fn test_log_dir_creation_with_permissions() {
 
 #[test]
 fn test_default_log_dir_path() {
-    let dir = default_log_dir();
+    let dir = default_log_dir().expect("HOME is set in the test environment");
     let path_str = dir.to_string_lossy();
     assert!(path_str.contains("autocomplete-rs"));
     assert!(path_str.ends_with("logs"));
@@ -90,4 +90,16 @@ fn test_request_id_generation() {
     for id in &ids {
         assert_eq!(id.len(), 36);
     }
+}
+
+/// A temp directory at mode 0700.
+///
+/// `tempfile` honours the umask (0755 in practice), but the daemon refuses to put private
+/// data in a group/other-accessible directory — as a real user's `~/.autocomplete-rs`
+/// would never be.
+fn private_tempdir() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().expect("failed to create temp dir");
+    std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700))
+        .expect("failed to restrict temp dir");
+    dir
 }

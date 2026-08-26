@@ -55,7 +55,7 @@ static GUARDS: OnceLock<Vec<WorkerGuard>> = OnceLock::new();
 /// and installs the global tracing subscriber. Safe to call once.
 pub fn init() -> Result<()> {
     let mode = config::detect_mode();
-    let log_dir = config::resolve_log_dir();
+    let log_dir = config::resolve_log_dir()?;
     let retention_days = config::retention_days(&mode);
     let enable_console = config::console_enabled(&mode);
     let redact_buffers = should_redact(&mode);
@@ -77,13 +77,13 @@ pub fn init() -> Result<()> {
 /// a background cleanup of old log files. Returns an error if called
 /// more than once.
 pub fn init_with_config(config: LogConfig) -> Result<()> {
-    // Ensure log directory exists with correct permissions
-    config::ensure_log_dir(&config.log_dir).context("failed to set up log directory")?;
+    // Runs before the subscriber exists, so what it did comes back as data and is logged
+    // below rather than warned about here, where it would go nowhere.
+    let dir_actions =
+        config::ensure_log_dir(&config.log_dir).context("failed to set up log directory")?;
 
-    // Build and install subscriber
     let guards = layers::build_subscriber(&config).context("failed to build tracing subscriber")?;
 
-    // Store guards; fail if already initialized
     GUARDS
         .set(guards)
         .map_err(|_| anyhow::anyhow!("logging already initialized"))?;
@@ -97,10 +97,10 @@ pub fn init_with_config(config: LogConfig) -> Result<()> {
         "logging initialized"
     );
 
+    crate::paths::log_dir_actions(&dir_actions);
+
     // Clean up old logs (best-effort)
-    let log_dir = config.log_dir.clone();
-    let retention = config.retention_days;
-    if let Err(e) = config::cleanup_old_logs(&log_dir, retention) {
+    if let Err(e) = config::cleanup_old_logs(&config.log_dir, config.retention_days) {
         tracing::warn!("failed to clean up old logs: {e}");
     }
 
@@ -108,6 +108,6 @@ pub fn init_with_config(config: LogConfig) -> Result<()> {
 }
 
 /// Return the default log directory path (`~/.autocomplete-rs/logs/`).
-pub fn default_log_dir() -> PathBuf {
+pub fn default_log_dir() -> Result<PathBuf> {
     config::default_log_dir()
 }
