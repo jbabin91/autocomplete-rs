@@ -46,12 +46,10 @@ gitleaks = "8.30.1"
 #
 # It does not by itself win on PATH: a Homebrew cargo-dist shadows it, because
 # /opt/homebrew/bin precedes mise's tool directories in a normal macOS shell.
-# That is why the version check below compares declarations rather than trusting
-# whichever binary PATH resolves — regenerating with the wrong one rewrites the
-# installer URL in release.yml, and the check reads that.
-#
-# Bumping this means regenerating release.yml, so renovate.json keeps it off
-# automerge.
+# Nothing here guards the version, because dist already does — it refuses to run
+# against a config declaring a different one ("You're running dist 0.32.0, but
+# 'cargo-dist-version = 0.30.3' is set"). Bumping this means running `dist init`,
+# so renovate.json keeps it off automerge.
 "aqua:axodotdev/cargo-dist" = "0.30.3"
 
 [tasks.setup]
@@ -160,32 +158,6 @@ run = [
   if [ -n "$bad" ]; then
     printf '%s\n' "$bad"
     echo "release.yml and dist-workspace.toml disagree — sync both, since \`dist generate-ci\` regenerates release.yml from the TOML"
-    exit 1
-  fi
-  ''',
-  # cargo-dist's version is written in three places: the pin above, the
-  # cargo-dist-version dist reads, and the installer URL dist bakes into
-  # release.yml. That third copy is what makes this checkable — regenerating
-  # with the wrong binary rewrites it, so a stray `dist` on PATH (Homebrew ships
-  # a floating cargo-dist, and its bin directory precedes mise's on a normal
-  # macOS PATH) cannot quietly reformat the release pipeline from a different
-  # version's template.
-  '''
-  mise_v=$(sed -n 's|^"aqua:axodotdev/cargo-dist" = "\([^"]*\)".*|\1|p' .mise.toml)
-  toml_v=$(sed -n 's|^cargo-dist-version = "\([^"]*\)".*|\1|p' dist-workspace.toml)
-  yml_v=$(grep -oE 'cargo-dist/releases/download/v[0-9]+\.[0-9]+\.[0-9]+/' .github/workflows/release.yml | head -1 | sed 's|.*/v||; s|/$||')
-  for v in "$mise_v" "$toml_v" "$yml_v"; do
-    case "$v" in
-      [0-9]*.[0-9]*.[0-9]*) ;;
-      *)
-        echo "could not read a cargo-dist version (mise='$mise_v' dist-workspace='$toml_v' release.yml='$yml_v') — one of those declarations moved; update this guard"
-        exit 1
-        ;;
-    esac
-  done
-  if [ "$mise_v" != "$toml_v" ] || [ "$mise_v" != "$yml_v" ]; then
-    echo "cargo-dist version disagrees: .mise.toml=$mise_v dist-workspace.toml=$toml_v release.yml=$yml_v"
-    echo "upgrading cargo-dist means bumping the pin, bumping cargo-dist-version, and regenerating release.yml — all three, or the release pipeline runs a version nothing else declares"
     exit 1
   fi
   ''',
