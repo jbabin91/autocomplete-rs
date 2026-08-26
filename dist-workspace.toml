@@ -32,16 +32,24 @@ pr-run-mode = "skip"
 github-attestations = true
 # Embed dependency tree in binaries for security scanning (cargo audit bin)
 cargo-auditable = true
-# Allow Renovate to update action SHAs directly in release.yml
-# Remove temporarily when regenerating: dist generate-ci
+# release.yml is hand-edited after generation, so dist must not treat it as
+# stale. Remove temporarily when regenerating: dist generate-ci
 allow-dirty = ["ci"]
 # Use ubuntu-latest so Renovate doesn't create PRs for runner updates
 [dist.github-custom-runners]
 global = "ubuntu-latest"
 
-# Pin GitHub Actions to specific commit SHAs for supply chain security
+# Pin GitHub Actions to specific commit SHAs for supply chain security.
+#
+# This block is what release.yml is generated from, so it is the source of
+# truth and `mise run check` fails when the two disagree. The version comment
+# is load-bearing twice over: it is the only thing that says what a SHA is to
+# someone reviewing a bump, and the renovate.json customManager reads it as the
+# current version. Every SHA here is a release tag's own commit — an untagged
+# mid-stream commit has no honest version to write next to it, and Renovate
+# cannot resolve one either.
 [dist.github-action-commits]
-"actions/checkout" = "0c366fd6a839edf440554fa01a7085ccba70ac98"
-"actions/upload-artifact" = "47309c993abb98030a35d55ef7ff34b7fa1074b5"
-"actions/download-artifact" = "37930b1c2abaa49bbe596cd826c3c89aef350131"
-"actions/attest-build-provenance" = "c44148e5bf178192efd8947e07a0d439a356c60b"
+"actions/checkout" = "df4cb1c069e1874edd31b4311f1884172cec0e10" # v6.0.3
+"actions/upload-artifact" = "bbbca2ddaa5d8feaa63e36b76fdaad77386f024f" # v7.0.0
+"actions/download-artifact" = "37930b1c2abaa49bbe596cd826c3c89aef350131" # v7.0.0
+"actions/attest-build-provenance" = "e4d4f7c39adfa4c260fb5c147f0622000aa14b99" # v4.0.0

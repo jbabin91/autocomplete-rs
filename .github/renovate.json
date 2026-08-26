@@ -64,5 +64,18 @@
     "labels": [
       "security"
     ]
-  }
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The action pins in [dist.github-action-commits] are release.yml's source of truth, but they live in a TOML file no built-in manager reads, so they went un-updated while Renovate bumped the generated workflow instead. Matching on the trailing version comment is what lets it resolve a tag here; a bare SHA gives it no current version to compare against.",
+      "managerFilePatterns": [
+        "/^dist-workspace\\.toml$/"
+      ],
+      "matchStrings": [
+        "\"(?<depName>[^\"]+)\" = \"(?<currentDigest>[0-9a-f]{40})\" # (?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-tags"
+    }
+  ]
 }
