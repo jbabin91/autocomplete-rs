@@ -36,6 +36,7 @@ Each ADR follows this structure:
 | [0006](0006-inline-ansi-dropdown.md)    | Inline ANSI Dropdown    | Superseded | 2025-12-01 |
 | [0007](0007-logging-infrastructure.md)  | Logging Infrastructure  | Accepted   | 2026-02-06 |
 | [0008](0008-native-overlay-dropdown.md) | Native Overlay Dropdown | Accepted   | 2026-02-08 |
+| [0009](0009-dsr-cursor-positioning.md)  | DSR Cursor Positioning  | Accepted   | 2026-08-25 |
 
 ## When to Write an ADR
 
