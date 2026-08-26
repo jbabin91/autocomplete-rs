@@ -70,10 +70,12 @@ plus:
   shellcheck for inline `run:` blocks and silently skips them without it)
 - cargo-deny (dependency advisories, licenses, sources)
 - cargo-nextest (fast test runner)
-- cargo-dist (release pipeline generator) — pinned so `dist` here is the
-  version `dist-workspace.toml` declares. Homebrew's formula floats and its
-  bin directory usually precedes mise's, so an unpinned `dist generate-ci`
-  can rewrite `release.yml` from a different version's template
+- cargo-dist (release pipeline generator) — pinned to the version
+  `dist-workspace.toml` declares, reachable as `mise exec -- dist`. The pin does
+  not win on PATH by itself: a Homebrew `cargo-dist` shadows it, since
+  `/opt/homebrew/bin` comes before mise's tool directories in a normal macOS
+  shell. `mise run check` compares the three places the version is written
+  rather than trusting whichever binary PATH resolves
 
 `core.hooksPath` must stay unset. Some tools set it, which makes git dispatch
 there and bypass lefthook with no visible symptom: formatting, `cog verify`, and
