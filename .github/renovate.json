@@ -55,6 +55,18 @@
       "matchPackageNames": [
         "rust"
       ]
+    },
+    {
+      "automerge": false,
+      "description": "A cargo-dist bump is never just a version bump: release.yml must be regenerated from the new template and cargo-dist-version updated to match, neither of which Renovate can do. `mise run check` fails until all three agree, so this gets a human. The package name the mise manager reports for an aqua tool is not certain, hence both forms \u2014 and the check is the backstop if neither matches, since a red PR cannot automerge.",
+      "groupName": null,
+      "matchManagers": [
+        "mise"
+      ],
+      "matchPackageNames": [
+        "axodotdev/cargo-dist",
+        "aqua:axodotdev/cargo-dist"
+      ]
     }
   ],
   "platformAutomerge": false,

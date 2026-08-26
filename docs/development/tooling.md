@@ -70,6 +70,10 @@ plus:
   shellcheck for inline `run:` blocks and silently skips them without it)
 - cargo-deny (dependency advisories, licenses, sources)
 - cargo-nextest (fast test runner)
+- cargo-dist (release pipeline generator) — pinned so `dist` here is the
+  version `dist-workspace.toml` declares. Homebrew's formula floats and its
+  bin directory usually precedes mise's, so an unpinned `dist generate-ci`
+  can rewrite `release.yml` from a different version's template
 
 `core.hooksPath` must stay unset. Some tools set it, which makes git dispatch
 there and bypass lefthook with no visible symptom: formatting, `cog verify`, and
