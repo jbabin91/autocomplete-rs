@@ -120,6 +120,36 @@ run = [
   # is loud; absence is the silent one, so assert it rather than trusting the pin.
   "command -v shellcheck >/dev/null || { echo 'shellcheck missing — actionlint would silently skip all shell linting'; exit 1; }",
   "actionlint",
+  # release.yml is generated from [dist.github-action-commits] in
+  # dist-workspace.toml, and Renovate edits the generated file rather than the
+  # source. Left to itself the pair drifts — measured, attest-build-provenance
+  # already had — and the next `dist generate-ci` rewrites release.yml from the
+  # TOML, silently reverting the pin in the one workflow holding contents:write
+  # and publishing binaries and attestations. A downgrade that arrives as
+  # regeneration noise is not something review catches, so assert it here.
+  '''
+  pins=$(sed -n '/^\[dist\.github-action-commits\]/,/^\[/ s/^"\([^"]*\)" = "\([0-9a-f]\{40\}\)".*/\1 \2/p' dist-workspace.toml)
+  if [ -z "$pins" ]; then
+    echo "parsed no pins from [dist.github-action-commits] — the block moved or its format changed; update this guard"
+    exit 1
+  fi
+  bad=$(printf '%s\n' "$pins" | while read -r action sha; do
+    [ -n "$action" ] || continue
+    found=$(grep -oE "$action@[0-9a-f]{40}" .github/workflows/release.yml | cut -d@ -f2 | sort -u)
+    if [ -z "$found" ]; then
+      echo "$action is pinned in dist-workspace.toml but appears nowhere in release.yml"
+      continue
+    fi
+    printf '%s\n' "$found" | while read -r f; do
+      [ "$f" = "$sha" ] || echo "$action: release.yml has $f, dist-workspace.toml has $sha"
+    done
+  done)
+  if [ -n "$bad" ]; then
+    printf '%s\n' "$bad"
+    echo "release.yml and dist-workspace.toml disagree — sync both, since \`dist generate-ci\` regenerates release.yml from the TOML"
+    exit 1
+  fi
+  ''',
 ]
 
 [tasks.audit]
