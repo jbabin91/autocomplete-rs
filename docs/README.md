@@ -18,6 +18,8 @@ Welcome to the autocomplete-rs documentation!
   codebase
 - [Testing](development/testing.md) - How to run and write tests
 - [Contributing](development/contributing.md) - How to contribute to the project
+- [Conventions](conventions/) - Coding conventions; read the one covering the area
+  you are changing, before writing
 
 ### Design Specs
 

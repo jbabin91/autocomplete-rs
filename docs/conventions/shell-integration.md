@@ -1,8 +1,3 @@
----
-paths:
-  - 'shell-integration/**'
----
-
 # Shell Integration Development Rules
 
 ## ZSH Widget (`zsh.zsh`)

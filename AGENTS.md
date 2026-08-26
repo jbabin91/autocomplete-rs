@@ -80,6 +80,30 @@ cargo bench --bench engine         # run a single benchmark suite
 - Clap derive for CLI argument parsing
 - Serde + serde_json for IPC serialization
 
+## Conventions
+
+Detailed conventions live in `docs/conventions/`. Nothing loads them automatically —
+read the one covering the files you are about to touch, **before** writing, not after.
+
+| File | Read before touching |
+| ---- | -------------------- |
+| [`rust.md`](docs/conventions/rust.md) | any `.rs` file — error handling, `unwrap()`/`expect()` scope, async, RAII cleanup, filesystem, logging |
+| [`daemon.md`](docs/conventions/daemon.md) | `src/daemon/`, `src/protocol.rs`, `src/engine.rs` — socket lifecycle, backpressure, PID file, shutdown |
+| [`storage.md`](docs/conventions/storage.md) | `src/storage/` — turso, the write actor, migrations |
+| [`dropdown.md`](docs/conventions/dropdown.md) | `src/overlay/`, `docs/design/overlay.md` — winit, rendering, panic safety in `ApplicationHandler` |
+| [`shell-integration.md`](docs/conventions/shell-integration.md) | `shell-integration/` — ZLE widget contract |
+| [`tooling-and-formatting.md`](docs/conventions/tooling-and-formatting.md) | `Cargo.toml`, `build.rs`, `.mise.toml`, `lefthook.yml`, `dprint.json`, `deny.toml`, `rustfmt.toml`, `clippy.toml`, `.rumdl.toml`, `.gitleaks.toml`, `.editorconfig` |
+| [`github-actions.md`](docs/conventions/github-actions.md) | `.github/workflows/`, `.github/actions/`, `.github/renovate.json`, `dist-workspace.toml`, `deny.toml` — hardening, pinning, the CI gate |
+| [`documentation.md`](docs/conventions/documentation.md) | any `.md` — command references, snippet fidelity, tense |
+
+This column is the complete trigger list, transcribed from the `paths:` frontmatter
+these files carried when the harness matched them automatically. Keep it that way: a
+path missing here is a path with no guidance.
+
+The two that bite hardest and apply almost everywhere: `unwrap()`/`expect()` belong
+only in tests and known-safe const contexts, and sockets and temp directories are
+cleaned up via RAII, never by a call on the happy path.
+
 ## Git Workflow
 
 **Branching:** GitHub Flow — `main` is the only long-lived branch.
@@ -92,9 +116,8 @@ cargo bench --bench engine         # run a single benchmark suite
 - **Code review:** no reviewer bot comments on PRs — nothing catches a design or
   correctness mistake after you push. CI still gates the mechanical checks (clippy
   `-D warnings`, cargo-deny, gitleaks) and CodeQL runs post-merge on `main`.
-  Substantive review happens locally before the commit, via the `review-cycle` skill.
-  The rules live in `.claude/rules/` and load automatically when a matching file is
-  touched — so opening an unrelated file yields none of them. Address or reply to any
+  Substantive review happens locally before the commit, via the `review-cycle` skill,
+  against the conventions in `docs/conventions/` (see below). Address or reply to any
   human review comments, then resolve the threads.
 - **PR body:** Use `.github/pull_request_template.md` — fill in Summary (what and why) and Resolves (bead or issue)
 
@@ -117,7 +140,7 @@ cargo bench --bench engine         # run a single benchmark suite
 
 For simple tasks/chores, use `bd create` directly.
 
-**Releases:** release-plz (versioning + changelog + crates.io via OIDC) + cargo-dist (binaries + installers + Homebrew tap). See `.claude/rules/github-actions.md` for full CI/CD documentation.
+**Releases:** release-plz (versioning + changelog + crates.io via OIDC) + cargo-dist (binaries + installers + Homebrew tap). See `docs/conventions/github-actions.md` for full CI/CD documentation.
 
 ## Landing the Plane (Session Completion)
 

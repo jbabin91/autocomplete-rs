@@ -478,12 +478,24 @@ docs/
 │   ├── 0005-ratatui-for-tui.md        # Superseded
 │   ├── 0006-inline-ansi-dropdown.md   # Superseded by 0008
 │   ├── 0007-logging-infrastructure.md
-│   └── 0008-native-overlay-dropdown.md
+│   ├── 0008-native-overlay-dropdown.md
+│   └── 0009-dsr-cursor-positioning.md
+├── conventions/          # Coding conventions, read before changing an area
+│   ├── rust.md
+│   ├── daemon.md
+│   ├── storage.md
+│   ├── dropdown.md
+│   ├── shell-integration.md
+│   ├── tooling-and-formatting.md
+│   ├── github-actions.md
+│   └── documentation.md
 ├── development/          # Developer guides
 │   ├── getting-started.md
 │   ├── project-structure.md (this file)
 │   ├── testing.md
+│   ├── tooling.md
 │   └── contributing.md
+├── research/             # Industry analysis
 ├── user-guide/           # User documentation
 │   ├── installation.md
 │   └── troubleshooting.md

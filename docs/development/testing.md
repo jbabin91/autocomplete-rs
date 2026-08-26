@@ -509,7 +509,7 @@ cargo tarpaulin --out Lcov | genhtml -o coverage/
 ## Continuous Integration
 
 CI's Tests job runs `mise run test`. See `.mise.toml` for the exact commands and
-`.claude/rules/github-actions.md` for full CI/CD documentation.
+`docs/conventions/github-actions.md` for full CI/CD documentation.
 
 ## Test-Driven Development (TDD)
 

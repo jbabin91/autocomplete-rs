@@ -1,10 +1,3 @@
----
-paths:
-  - 'src/daemon/**'
-  - 'src/protocol.rs'
-  - 'src/engine.rs'
----
-
 # Daemon Development Rules
 
 ## Architecture
