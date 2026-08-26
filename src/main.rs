@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use autocomplete_rs::daemon;
 use autocomplete_rs::protocol::{CompletionRequest, DaemonMessage, PROTOCOL_VERSION, ShutdownAck};
 use autocomplete_rs::storage;
@@ -9,7 +9,19 @@ use clap::{Parser, Subcommand};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
-const DEFAULT_SOCKET: &str = "/tmp/autocomplete-rs.sock";
+/// Resolve the socket path from the flag, the environment, or the default.
+///
+/// The default depends on `$HOME`, which can be missing, so it is resolved here rather
+/// than as a clap `default_value` — an unset `$HOME` becomes a clear error instead of a
+/// path under `/tmp`.
+fn resolve_socket(explicit: Option<String>) -> Result<String> {
+    match explicit {
+        Some(path) => Ok(path),
+        None => Ok(autocomplete_rs::paths::default_socket_path()?
+            .to_string_lossy()
+            .into_owned()),
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "autocomplete-rs")]
@@ -23,21 +35,21 @@ struct Cli {
 enum Commands {
     /// Start the autocomplete daemon
     Daemon {
-        /// Unix socket path
-        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
-        socket: String,
+        /// Unix socket path [default: ~/.autocomplete-rs/daemon.sock]
+        #[arg(short, long, env = "AUTOCOMPLETE_RS_SOCKET")]
+        socket: Option<String>,
     },
     /// Stop the running daemon
     Stop {
-        /// Unix socket path
-        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
-        socket: String,
+        /// Unix socket path [default: ~/.autocomplete-rs/daemon.sock]
+        #[arg(short, long, env = "AUTOCOMPLETE_RS_SOCKET")]
+        socket: Option<String>,
     },
     /// Check daemon status
     Status {
-        /// Unix socket path
-        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
-        socket: String,
+        /// Unix socket path [default: ~/.autocomplete-rs/daemon.sock]
+        #[arg(short, long, env = "AUTOCOMPLETE_RS_SOCKET")]
+        socket: Option<String>,
     },
     /// Get completion suggestions for a command buffer
     Complete {
@@ -46,9 +58,9 @@ enum Commands {
         /// Cursor position in the buffer
         #[arg(short, long)]
         cursor: usize,
-        /// Unix socket path
-        #[arg(short, long, default_value = DEFAULT_SOCKET, env = "AUTOCOMPLETE_RS_SOCKET")]
-        socket: String,
+        /// Unix socket path [default: ~/.autocomplete-rs/daemon.sock]
+        #[arg(short, long, env = "AUTOCOMPLETE_RS_SOCKET")]
+        socket: Option<String>,
     },
     /// Install shell integration
     Install {
@@ -57,9 +69,9 @@ enum Commands {
     },
     /// Show diagnostic report from the storage database
     Diagnose {
-        /// Path to the storage database
-        #[arg(long, default_value_os_t = storage::default_db_path())]
-        db: PathBuf,
+        /// Path to the storage database [default: ~/.autocomplete-rs/autocomplete.db]
+        #[arg(long)]
+        db: Option<PathBuf>,
         /// Output as JSON instead of human-readable format
         #[arg(long)]
         json: bool,
@@ -80,6 +92,8 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Daemon { socket } => {
+            let socket = resolve_socket(socket)?;
+
             // Initialize logging before starting the daemon
             autocomplete_rs::logging::init().context("failed to initialize logging")?;
             tracing::info!("Starting autocomplete daemon on {}", socket);
@@ -87,17 +101,23 @@ fn main() -> Result<()> {
             // winit must own the main thread; Tokio runs on a background thread.
             daemon::start_with_overlay(&socket)?;
         }
-        Commands::Stop { socket } => block_on(stop_daemon(&socket))?,
-        Commands::Status { socket } => block_on(status_command(&socket))?,
+        Commands::Stop { socket } => block_on(stop_daemon(&resolve_socket(socket)?))?,
+        Commands::Status { socket } => block_on(status_command(&resolve_socket(socket)?))?,
         Commands::Complete {
             buffer,
             cursor,
             socket,
-        } => block_on(complete_command(&buffer, cursor, &socket))?,
+        } => block_on(complete_command(&buffer, cursor, &resolve_socket(socket)?))?,
         Commands::Install { shell } => {
             install_command(&shell)?;
         }
-        Commands::Diagnose { db, json } => block_on(diagnose_command(&db, json))?,
+        Commands::Diagnose { db, json } => {
+            let db = match db {
+                Some(path) => path,
+                None => storage::default_db_path()?,
+            };
+            block_on(diagnose_command(&db, json))?
+        }
     }
 
     Ok(())
@@ -126,7 +146,14 @@ async fn complete_command(buffer: &str, cursor: usize, socket_path: &str) -> Res
 
     // Read response
     let mut response_line = String::new();
-    reader.read_line(&mut response_line).await?;
+    // A zero-byte read is EOF, not a response: the daemon closed without answering.
+    // Printing the empty string here would look like "no suggestions" to the widget.
+    if reader.read_line(&mut response_line).await? == 0 {
+        bail!(
+            "the daemon at {socket_path} closed the connection without responding; \
+             it may have crashed — check ~/.autocomplete-rs/logs/"
+        );
+    }
 
     // Output raw response for shell integration to consume
     print!("{}", response_line.trim());
@@ -175,8 +202,10 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
                         println!("Daemon responded unexpectedly: {}", ack_line.trim());
                     }
                 },
-                Ok(Err(e)) => println!("Daemon stopped (read error: {e})"),
-                Err(_) => println!("Daemon stop requested (timed out waiting for ack)"),
+                Ok(Err(e)) => {
+                    bail!("could not read the daemon's shutdown acknowledgement: {e}")
+                }
+                Err(_) => bail!("timed out waiting for the daemon to acknowledge shutdown"),
             }
         }
         Err(e) => {
@@ -193,7 +222,10 @@ async fn stop_daemon(socket_path: &str) -> Result<()> {
                 }
                 println!("Removed stale socket (daemon was not running)");
             } else {
-                eprintln!("Could not connect to daemon: {e}");
+                return Err(e).context(format!(
+                    "could not reach the daemon at {socket_path}; it may be running as \
+                     another user, or the socket may be unreadable"
+                ));
             }
         }
     }
@@ -293,12 +325,14 @@ async fn diagnose_command(db_path: &std::path::Path, json: bool) -> Result<()> {
         println!("  Shell:    {shell}");
     }
     println!("  DB path:  {}", db_path.display());
-    if let Ok(metadata) = std::fs::metadata(db_path) {
-        let size_kb = metadata.len() / 1024;
-        println!("  DB size:  {size_kb} KB");
+    match std::fs::metadata(db_path) {
+        Ok(metadata) => println!("  DB size:  {} KB", metadata.len() / 1024),
+        Err(e) => println!("  DB size:  unavailable ({e})"),
     }
-    let log_dir = autocomplete_rs::logging::default_log_dir();
-    println!("  Log dir:  {}", log_dir.display());
+    match autocomplete_rs::logging::default_log_dir() {
+        Ok(dir) => println!("  Log dir:  {}", dir.display()),
+        Err(e) => println!("  Log dir:  unavailable ({e})"),
+    }
     println!();
 
     // Recent sessions

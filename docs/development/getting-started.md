@@ -151,7 +151,7 @@ mise run ci
 
 ```sh
 # Start daemon manually (for debugging)
-./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock
+./target/debug/autocomplete-rs daemon
 
 # In another terminal, trigger completion
 ./target/debug/autocomplete-rs complete "git chec" 8
@@ -161,10 +161,10 @@ mise run ci
 
 ```sh
 # Enable debug logging
-RUST_LOG=debug ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock
+RUST_LOG=debug ./target/debug/autocomplete-rs daemon
 
 # Or trace level for verbose output
-RUST_LOG=trace ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock
+RUST_LOG=trace ./target/debug/autocomplete-rs daemon
 ```
 
 ### Hot Reloading During Development
@@ -176,7 +176,7 @@ Since the daemon runs persistently, you need to restart it to see changes:
 pkill autocomplete-rs
 
 # Start new version
-./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+./target/debug/autocomplete-rs daemon &
 
 # Or use this helper script (create in project root)
 ./dev-reload.sh
@@ -187,7 +187,7 @@ Create `dev-reload.sh`:
 ```sh
 #!/bin/bash
 pkill autocomplete-rs
-cargo build && ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+cargo build && ./target/debug/autocomplete-rs daemon &
 ```
 
 ### IDE Setup
@@ -311,7 +311,7 @@ Solution: Kill existing daemon
 ```sh
 pkill autocomplete-rs
 # or
-rm /tmp/autocomplete-rs.sock
+rm ~/.autocomplete-rs/daemon.sock
 ```
 
 **Issue: Completions not appearing**
@@ -319,13 +319,13 @@ rm /tmp/autocomplete-rs.sock
 Check:
 
 1. Is daemon running? `ps aux | grep autocomplete-rs`
-2. Socket exists? `ls -la /tmp/autocomplete-rs.sock`
+2. Socket exists? `ls -la ~/.autocomplete-rs/daemon.sock`
 3. ZLE widget bound? `bindkey | grep autocomplete`
 
 Debug:
 
 ```sh
-RUST_LOG=debug ./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock
+RUST_LOG=debug ./target/debug/autocomplete-rs daemon
 ```
 
 **Issue: Build fails with deno_ast errors**
@@ -349,7 +349,7 @@ lldb ./target/debug/autocomplete-rs
 
 # Set breakpoint
 (lldb) b daemon::start
-(lldb) run daemon /tmp/autocomplete-rs.sock
+(lldb) run daemon ~/.autocomplete-rs/daemon.sock
 ```
 
 ### Tracing Requests
@@ -403,7 +403,7 @@ Integration tests in `tests/` verify:
 1. Start daemon:
 
 ```sh
-./target/debug/autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+./target/debug/autocomplete-rs daemon &
 ```
 
 1. Test completion:

@@ -228,7 +228,7 @@ The daemon starts automatically when you first trigger a completion.
 To start the daemon manually:
 
 ```sh
-autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+autocomplete-rs daemon &
 ```
 
 This is useful for:
@@ -244,10 +244,10 @@ This is useful for:
 ps aux | grep autocomplete-rs
 
 # Check if socket exists
-ls -la /tmp/autocomplete-rs.sock
+ls -la ~/.autocomplete-rs/daemon.sock
 
 # Test daemon connection
-echo '{"buffer":"git checkout ","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
+echo '{"buffer":"git checkout ","cursor":13}' | nc -U ~/.autocomplete-rs/daemon.sock
 ```
 
 ### Stop the Daemon
@@ -257,7 +257,7 @@ echo '{"buffer":"git checkout ","cursor":13}' | nc -U /tmp/autocomplete-rs.sock
 pkill autocomplete-rs
 
 # Or remove socket (daemon will exit)
-rm /tmp/autocomplete-rs.sock
+rm ~/.autocomplete-rs/daemon.sock
 ```
 
 The daemon will auto-restart on next completion request.
@@ -288,7 +288,7 @@ Common key codes:
 Start daemon with custom path:
 
 ```sh
-autocomplete-rs daemon ~/.cache/my-autocomplete.sock &
+autocomplete-rs daemon --socket ~/.cache/my-autocomplete.sock &
 ```
 
 Update shell integration to use same path:
@@ -339,7 +339,7 @@ rm -rf ~/.cache/autocomplete-rs
 
 ```sh
 pkill autocomplete-rs
-rm /tmp/autocomplete-rs.sock
+rm ~/.autocomplete-rs/daemon.sock
 ```
 
 **Reload shell:**
@@ -387,7 +387,7 @@ autocomplete-rs --version
 
 ```sh
 # Start daemon
-autocomplete-rs daemon /tmp/autocomplete-rs.sock &
+autocomplete-rs daemon &
 
 # Wait a moment
 sleep 1
@@ -396,7 +396,7 @@ sleep 1
 ps aux | grep autocomplete-rs
 
 # Check socket exists
-ls -la /tmp/autocomplete-rs.sock
+ls -la ~/.autocomplete-rs/daemon.sock
 ```
 
 ### 3. Test Completion (Manual)

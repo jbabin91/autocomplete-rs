@@ -174,7 +174,7 @@ fn generate_suggestions() { }
 
 // Constants: SCREAMING_SNAKE_CASE
 const MAX_SUGGESTIONS: usize = 100;
-const DEFAULT_SOCKET_PATH: &str = "/tmp/autocomplete-rs.sock";
+const DEFAULT_SOCKET_PATH: &str = "~/.autocomplete-rs/daemon.sock";
 
 // Modules: snake_case
 mod daemon;

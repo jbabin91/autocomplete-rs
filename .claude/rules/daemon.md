@@ -55,7 +55,7 @@ paths:
 
 ## Socket Lifecycle
 
-- Default path: `/tmp/autocomplete-rs.sock` (override via `AUTOCOMPLETE_RS_SOCKET` env var)
+- Default path: `~/.autocomplete-rs/daemon.sock` (override via `AUTOCOMPLETE_RS_SOCKET` env var)
 - PID file for single-instance enforcement (`*.sock` → `*.pid`) — uses atomic `create_new(true)` to prevent TOCTOU races
 - Socket permissions set to `0o600` after bind
 - Remove stale socket file on startup before binding

@@ -1,9 +1,8 @@
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use tracing::warn;
 
 use super::Mode;
@@ -45,18 +44,16 @@ fn is_rolling_log_name(name: &str) -> bool {
 pub const LOG_FILE_PREFIX: &str = "autocomplete-rs.log";
 
 /// Return the default log directory: `~/.autocomplete-rs/logs/`.
-pub fn default_log_dir() -> PathBuf {
-    crate::paths::home_dir()
-        .join(".autocomplete-rs")
-        .join("logs")
+pub fn default_log_dir() -> Result<PathBuf> {
+    Ok(crate::paths::data_dir()?.join("logs"))
 }
 
 /// Return a custom log directory from env, or the default.
-pub fn resolve_log_dir() -> PathBuf {
-    std::env::var("AUTOCOMPLETE_LOG_DIR")
-        .ok()
-        .map(PathBuf::from)
-        .unwrap_or_else(default_log_dir)
+pub fn resolve_log_dir() -> Result<PathBuf> {
+    match std::env::var_os("AUTOCOMPLETE_LOG_DIR") {
+        Some(dir) if !dir.is_empty() => Ok(PathBuf::from(dir)),
+        _ => default_log_dir(),
+    }
 }
 
 /// Return the retention days for a given mode.
@@ -76,31 +73,14 @@ pub fn console_enabled(mode: &Mode) -> bool {
     matches!(mode, Mode::Development)
 }
 
-/// Create the log directory with 0700 permissions, or validate existing perms.
-pub fn ensure_log_dir(path: &Path) -> Result<()> {
-    if path.exists() {
-        let metadata = fs::metadata(path).context("failed to read log directory metadata")?;
-        if !metadata.is_dir() {
-            bail!(
-                "log directory path {} exists but is not a directory",
-                path.display()
-            );
-        }
-        let perms = metadata.permissions().mode() & 0o777;
-        if perms & 0o077 != 0 {
-            bail!(
-                "log directory {} has insecure permissions {:o} (expected 0700)",
-                path.display(),
-                perms
-            );
-        }
-        Ok(())
-    } else {
-        fs::create_dir_all(path).context("failed to create log directory")?;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o700))
-            .context("failed to set log directory permissions")?;
-        Ok(())
-    }
+/// Create the log directory at mode 0700, along with any of our own ancestors.
+///
+/// Returns what was acted on so the caller can log it once a subscriber exists; this runs
+/// before one does. A log directory outside our data directory is validated, not modified:
+/// `AUTOCOMPLETE_LOG_DIR` can name anywhere, and chmodding it could revoke access to
+/// unrelated files.
+pub fn ensure_log_dir(path: &Path) -> Result<Vec<(PathBuf, crate::paths::DirAction)>> {
+    crate::paths::ensure_private_dir(path)
 }
 
 /// Delete log files older than `retention_days` from the given directory.
@@ -156,6 +136,8 @@ pub fn cleanup_old_logs(dir: &Path, days: u32) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::fs::PermissionsExt;
+
     use super::*;
 
     #[test]
@@ -197,19 +179,50 @@ mod tests {
     }
 
     #[test]
-    fn test_ensure_log_dir_insecure_perms() {
+    fn test_ensure_log_dir_reports_insecure_custom_dir_without_mutating_it() {
+        // AUTOCOMPLETE_LOG_DIR can name any directory. Silently chmodding a path the user
+        // chose could revoke access to unrelated files, so a custom dir is reported on.
         let tmp = tempfile::tempdir().unwrap();
         let log_dir = tmp.path().join("logs");
         fs::create_dir_all(&log_dir).unwrap();
         fs::set_permissions(&log_dir, fs::Permissions::from_mode(0o755)).unwrap();
-        let result = ensure_log_dir(&log_dir);
-        assert!(result.is_err());
+
+        let err = ensure_log_dir(&log_dir).expect_err("a custom 0755 log dir must be reported");
         assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("insecure permissions")
+            err.to_string().contains("chmod 700"),
+            "error should be actionable: {err}"
         );
+
+        let perms = fs::metadata(&log_dir).unwrap().permissions().mode() & 0o777;
+        assert_eq!(
+            perms, 0o755,
+            "custom dir must be left untouched, got {perms:o}"
+        );
+    }
+
+    #[test]
+    fn test_ensure_log_dir_tightens_the_shared_data_root() {
+        // Regression: create_dir_all left the shared data directory at the umask default,
+        // which then blocked the daemon socket from binding in that same directory.
+        let tmp = tempfile::tempdir().unwrap();
+        crate::paths::tests::with_home(Some(tmp.path().to_str().unwrap()), || {
+            let root = tmp.path().join(".autocomplete-rs");
+            fs::create_dir_all(&root).unwrap();
+            fs::set_permissions(&root, fs::Permissions::from_mode(0o755)).unwrap();
+
+            let log_dir = default_log_dir().unwrap();
+            // Pre-create the leaf too, so both levels exercise repair rather than the leaf
+            // being created private and never needing it.
+            fs::create_dir_all(&log_dir).unwrap();
+            fs::set_permissions(&log_dir, fs::Permissions::from_mode(0o755)).unwrap();
+
+            ensure_log_dir(&log_dir).expect("the default layout is ours to repair");
+
+            let root_perms = fs::metadata(&root).unwrap().permissions().mode() & 0o777;
+            assert_eq!(root_perms, 0o700, "data root left at {root_perms:o}");
+            let leaf_perms = fs::metadata(&log_dir).unwrap().permissions().mode() & 0o777;
+            assert_eq!(leaf_perms, 0o700, "log dir left at {leaf_perms:o}");
+        });
     }
 
     #[test]
@@ -220,12 +233,13 @@ mod tests {
         let log_dir = tmp.path();
 
         // The appender writes `autocomplete-rs.log.YYYY-MM-DD`. Using any other shape here
-        // is what let a filter matching `extension() == "log"` pass while deleting nothing
-        // in production.
+        // is what let a filter that matched `extension() == "log"` pass while deleting
+        // nothing in production.
         let log_file = log_dir.join(format!("{LOG_FILE_PREFIX}.2025-01-01"));
         let mut f = fs::File::create(&log_file).unwrap();
         writeln!(f, "recent log").unwrap();
 
+        // cleanup_old_logs with 0 days should remove everything
         cleanup_old_logs(log_dir, 0).unwrap();
         assert!(
             !log_file.exists(),
@@ -235,6 +249,8 @@ mod tests {
 
     #[test]
     fn test_cleanup_spares_files_that_merely_share_the_prefix() {
+        // Widening the filter from `extension() == "log"` to a prefix match fixed
+        // "deletes nothing" but would have deleted these.
         let tmp = tempfile::tempdir().unwrap();
         let keep = [
             format!("{LOG_FILE_PREFIX}.backup"),
@@ -276,7 +292,7 @@ mod tests {
 
     #[test]
     fn test_default_log_dir_contains_autocomplete() {
-        let dir = default_log_dir();
+        let dir = default_log_dir().expect("HOME is set in the test environment");
         assert!(dir.to_string_lossy().contains("autocomplete-rs"));
         assert!(dir.to_string_lossy().contains("logs"));
     }

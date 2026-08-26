@@ -22,7 +22,7 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
   - `schema.rs` — version-tracked migrations (v1: sessions, diagnostics, metrics)
   - `actor.rs` — background write actor with batched transactions (channel+actor pattern)
   - `queries.rs` — read queries for `diagnose` command (`DiagnoseReport`)
-- **Shared utilities** (`src/paths.rs`) — `pub(crate)` helpers used across modules (e.g. `home_dir()` for `$HOME` resolution).
+- **Shared utilities** (`src/paths.rs`) — path resolution and private-directory handling shared across modules: `home_dir()` (errors when `$HOME` is unset — never falls back to `/tmp`), `data_dir()`, `default_socket_path()`, and `ensure_private_dir()` with its `Repair::Yes`/`Repair::No` policy.
 - **Overlay Dropdown** (`src/overlay/`) — native overlay window positioned at the terminal cursor (like Fig.io). macOS MVP implemented; Linux/Windows are follow-up. See [ADR-0008](docs/adr/0008-native-overlay-dropdown.md).
   - `mod.rs` — module facade, `OverlayMessage` enum (tagged for cross-thread IPC)
   - `app.rs` — winit `ApplicationHandler` (`OverlayApp`): window creation, message dispatch, keyboard navigation, rendering. Window starts hidden, shown when non-empty suggestions arrive.
@@ -38,7 +38,7 @@ Three-component design: a Tokio-based daemon (Unix socket server), a CLI client,
   - `context.rs` — `CompletionContext` enum (`Command`, `Subcommand`, `Option`, `Argument`, `Filename`) and `analyze_context()` which walks the tokenized buffer to classify what the user is completing
   - `engine.rs` — `ParserEngine` (stateless, `Send + Sync`) wired into the daemon. MVP returns empty suggestions; spec-based generation is the next phase
 - **Shell integration** (`shell-integration/zsh.zsh`) — ZLE widget that captures the buffer/cursor, calls the client, and inserts the selected completion.
-- **Socket path:** `/tmp/autocomplete-rs.sock` (override with `AUTOCOMPLETE_RS_SOCKET` env var)
+- **Socket path:** `~/.autocomplete-rs/daemon.sock` (override with `AUTOCOMPLETE_RS_SOCKET` env var)
 
 ## Development
 

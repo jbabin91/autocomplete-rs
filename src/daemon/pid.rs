@@ -41,6 +41,12 @@ impl PidFile {
                         );
                     }
                     debug!(pid, "removing stale PID file (process is dead)");
+                } else {
+                    tracing::warn!(
+                        path = %pid_path.display(),
+                        "PID file is unparseable; replacing it — \
+                         a running daemon may lose single-instance protection"
+                    );
                 }
 
                 // Stale or corrupt PID file — remove and recreate atomically.
@@ -124,10 +130,10 @@ mod tests {
 
     #[test]
     fn derive_pid_path_from_sock() {
-        let socket = Path::new("/tmp/autocomplete-rs.sock");
+        let socket = Path::new("/home/u/.autocomplete-rs/daemon.sock");
         assert_eq!(
             derive_pid_path(socket),
-            Path::new("/tmp/autocomplete-rs.pid")
+            Path::new("/home/u/.autocomplete-rs/daemon.pid")
         );
     }
 

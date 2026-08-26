@@ -1,6 +1,8 @@
 # ADR-0002: Daemon Architecture with Unix Sockets
 
 **Status:** Accepted **Date:** 2025-10-25 **Decision Makers:** Project Team
+**Amended:** the socket path in "Socket Location" below was superseded by the move to
+`~/.autocomplete-rs/daemon.sock`; the rest of this decision stands.
 **Technical Story:** Choose communication architecture between shell and
 autocomplete engine
 
@@ -234,6 +236,11 @@ simpler and faster for local use.
 - Standard tmp location
 - Auto-cleanup on reboot
 - Check before creating (handle existing daemon)
+
+> **Superseded.** The socket now lives at `~/.autocomplete-rs/daemon.sock`. `/tmp` is
+> world-writable, so another local user can pre-create the path and accept our clients'
+> connections before the daemon binds. The reasoning above is kept as the record of what
+> was decided in 2025-10.
 
 ### Protocol
 

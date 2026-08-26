@@ -198,22 +198,20 @@ impl ApplicationHandler for OverlayApp {
     }
 
     fn proxy_wake_up(&mut self, event_loop: &dyn ActiveEventLoop) {
-        // Drain all pending messages. If the channel is disconnected (daemon
-        // thread exited), the iterator yields nothing — detect this and exit.
-        let mut messages: Vec<_> = self.rx.try_iter().collect();
-
-        if messages.is_empty() {
-            // Check if the sender was dropped (daemon thread finished).
-            // try_recv() distinguishes Empty from Disconnected, and may
-            // also return a real message that arrived after try_iter().
+        // Drain to disconnection, not just to empty. winit coalesces multiple wake_up()
+        // calls into one, so the wake carrying the daemon's final message can be the same
+        // wake that signals its exit. Checking for disconnect only on an empty drain then
+        // misses it and the loop blocks in Wait forever.
+        let mut messages = Vec::new();
+        let mut disconnected = false;
+        loop {
             match self.rx.try_recv() {
                 Ok(msg) => messages.push(msg),
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    tracing::info!("daemon thread exited, shutting down overlay");
-                    event_loop.exit();
-                    return;
+                    disconnected = true;
+                    break;
                 }
-                Err(std::sync::mpsc::TryRecvError::Empty) => {}
             }
         }
 
@@ -240,6 +238,11 @@ impl ApplicationHandler for OverlayApp {
                     return;
                 }
             }
+        }
+
+        if disconnected {
+            tracing::info!("daemon thread exited, shutting down overlay");
+            event_loop.exit();
         }
     }
 

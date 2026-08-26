@@ -24,7 +24,7 @@ cat > ~/.config/autocomplete-rs/config.toml << 'EOF'
 
 [general]
 # Socket path for daemon communication
-socket_path = "/tmp/autocomplete-rs.sock"
+socket_path = "~/.autocomplete-rs/daemon.sock"
 
 # Maximum number of suggestions to display
 max_suggestions = 10
@@ -80,14 +80,15 @@ Where the daemon listens for requests:
 
 ```toml
 [general]
-socket_path = "/tmp/autocomplete-rs.sock"
+socket_path = "~/.autocomplete-rs/daemon.sock"
 ```
 
 **Options:**
 
-- `/tmp/autocomplete-rs.sock` (default)
-- `~/.cache/autocomplete-rs/daemon.sock` (user-specific)
-- Custom path
+- `~/.autocomplete-rs/daemon.sock` (default)
+- Custom path — must be a directory you own at mode 0700. Only the default data
+  directory is tightened automatically; anywhere else the daemon reports the problem
+  rather than changing permissions on a directory that may hold unrelated files.
 
 **When to change:**
 
@@ -122,7 +123,7 @@ debug = true
 View logs:
 
 ```sh
-autocomplete-rs daemon /tmp/autocomplete-rs.sock 2> /tmp/autocomplete-debug.log &
+autocomplete-rs daemon 2> /tmp/autocomplete-debug.log &
 ```
 
 ## Theme Configuration (Phase 3)
@@ -492,7 +493,7 @@ autocomplete-rs config validate
 ```text
 ✓ Config file: /Users/you/.config/autocomplete-rs/config.toml
 ✓ Syntax: Valid TOML
-✓ Socket path: /tmp/autocomplete-rs.sock (writable)
+✓ Socket path: ~/.autocomplete-rs/daemon.sock (writable)
 ✓ Theme: mocha (valid)
 ✓ Max suggestions: 10 (valid range)
 ✓ Key binding: \e  (valid)

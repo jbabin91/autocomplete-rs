@@ -1,6 +1,7 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
@@ -16,11 +17,80 @@ use autocomplete_rs::protocol::{CompletionResponse, ErrorResponse, ShutdownAck};
 /// Atomic counter to ensure unique socket paths across parallel tests.
 static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+/// Shared 0700 directory holding test sockets, reused across runs.
+///
+/// Not a `TempDir`: destructors never run for `static`s, so a `OnceLock<TempDir>` leaks a
+/// fresh directory per test process instead of reaping it. A single deterministic root
+/// keeps that bounded. The name is predictable, so it is validated rather than trusted —
+/// `symlink_metadata` refuses a symlink pointing somewhere world-writable, and the mode
+/// and owner must both be ours. Short segments keep sockets clear of the `sun_path` limit.
+fn test_socket_dir() -> &'static Path {
+    static DIR: OnceLock<PathBuf> = OnceLock::new();
+    DIR.get_or_init(|| {
+        use std::os::unix::fs::{DirBuilderExt, MetadataExt};
+
+        // SAFETY: `getuid` takes no arguments, cannot fail, and has no side effects.
+        let uid = unsafe { libc::getuid() };
+        let dir = PathBuf::from(format!("/tmp/acrs-test-{uid}"));
+
+        // symlink_metadata, not metadata: a symlink planted here must not be followed.
+        match std::fs::symlink_metadata(&dir) {
+            Ok(meta) => {
+                assert!(
+                    meta.is_dir(),
+                    "{} must be a directory, not a symlink or file",
+                    dir.display()
+                );
+                assert_eq!(
+                    meta.uid(),
+                    uid,
+                    "{} is owned by another user",
+                    dir.display()
+                );
+                assert_eq!(
+                    meta.permissions().mode() & 0o777,
+                    0o700,
+                    "{} must be private",
+                    dir.display()
+                );
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                std::fs::DirBuilder::new()
+                    .recursive(true)
+                    .mode(0o700)
+                    .create(&dir)
+                    .unwrap_or_else(|e| panic!("failed to create {}: {e}", dir.display()));
+            }
+            Err(e) => panic!("failed to stat {}: {e}", dir.display()),
+        }
+        dir
+    })
+    .as_path()
+}
+
+/// A private directory under the shared root that is removed when the test ends.
+fn scoped_socket_dir(prefix: &str) -> tempfile::TempDir {
+    let dir = tempfile::Builder::new()
+        .prefix(prefix)
+        .tempdir_in(test_socket_dir())
+        .expect("failed to create scoped socket directory");
+    std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700))
+        .expect("failed to restrict scoped socket directory");
+    dir
+}
+
 /// Generate a unique temp socket path to avoid test collisions.
 fn temp_socket_path() -> PathBuf {
-    let pid = std::process::id();
-    let id = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
-    PathBuf::from(format!("/tmp/autocomplete-rs-test-{}-{}.sock", pid, id))
+    test_socket_dir().join(format!("{}.sock", unique_suffix()))
+}
+
+/// Unique within this machine: the root is shared across concurrent test processes.
+fn unique_suffix() -> String {
+    format!(
+        "{}-{}",
+        std::process::id(),
+        TEST_COUNTER.fetch_add(1, Ordering::Relaxed)
+    )
 }
 
 /// Start a daemon in the background, returning a handle to shut it down.
@@ -240,9 +310,9 @@ async fn malformed_json_returns_error() {
 
 #[tokio::test]
 async fn pid_file_path_derivation() {
-    let socket = PathBuf::from("/tmp/autocomplete-rs.sock");
+    let socket = PathBuf::from("/home/u/.autocomplete-rs/daemon.sock");
     let pid = derive_pid_path(&socket);
-    assert_eq!(pid, PathBuf::from("/tmp/autocomplete-rs.pid"));
+    assert_eq!(pid, PathBuf::from("/home/u/.autocomplete-rs/daemon.pid"));
 }
 
 #[tokio::test]
@@ -259,6 +329,140 @@ async fn envelope_and_bare_request_both_work() {
     let _: CompletionResponse = serde_json::from_str(&resp2).unwrap();
 
     shutdown_daemon(&path, handle).await;
+}
+
+/// The daemon must create a missing socket directory at 0700 before it needs it.
+///
+/// Regression: deleting the `ensure_private_parent` call in `run_daemon` left every test
+/// passing, because the shared helper pre-creates its directory at 0700 and the guard
+/// took the already-private path. This test starts from a directory that does not exist,
+/// which also pins the ordering — `PidFile::acquire` writes into this same directory and
+/// fails outright if the guard has not run yet.
+#[tokio::test]
+async fn full_entrypoint_creates_missing_socket_directory() {
+    let scope = scoped_socket_dir("miss-");
+    let parent = scope.path().join("d");
+    let socket = parent.join("d.sock");
+    assert!(
+        std::fs::metadata(&parent).is_err(),
+        "precondition: parent must not exist"
+    );
+
+    let db = private_tempdir();
+    let handle = start_full_daemon(&socket, &db.path().join("test.db")).await;
+
+    let meta = std::fs::metadata(&parent).expect("daemon should have created the parent");
+    assert_eq!(
+        meta.permissions().mode() & 0o777,
+        0o700,
+        "socket directory must be created private"
+    );
+    assert!(
+        std::fs::metadata(derive_pid_path(&socket)).is_ok(),
+        "PID file should have landed in the created directory"
+    );
+
+    shutdown_full_daemon(&socket, handle).await;
+}
+
+/// A group/other-accessible socket directory the user chose is refused, not modified.
+///
+/// Repairing is reserved for the default data directory; silently chmodding a path the
+/// user pointed at could revoke access to unrelated files beneath it.
+#[tokio::test]
+async fn full_entrypoint_rejects_open_socket_directory() {
+    let scope = scoped_socket_dir("open-");
+    let parent = scope.path().join("d");
+    std::fs::create_dir(&parent).unwrap();
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let socket = parent.join("d.sock");
+
+    let db = private_tempdir();
+    let db_path = db.path().join("test.db");
+    let engine: Arc<dyn CompletionEngine> = Arc::new(StubEngine);
+    let err = tokio::time::timeout(
+        Duration::from_secs(10),
+        autocomplete_rs::daemon::start_with_engine(socket.to_str().unwrap(), engine, &db_path),
+    )
+    .await
+    .expect("daemon must fail fast, not start and serve")
+    .expect_err("an open socket directory must be refused");
+
+    let msg = format!("{err:#}");
+    assert!(
+        msg.contains("group/other accessible"),
+        "error should name the problem: {msg}"
+    );
+    assert_eq!(
+        std::fs::metadata(&parent).unwrap().permissions().mode() & 0o777,
+        0o755,
+        "a user-chosen directory must be left untouched"
+    );
+    assert!(
+        std::fs::metadata(&socket).is_err(),
+        "no socket should have been created"
+    );
+}
+
+/// A database directory that cannot exist is fatal, not a silent degrade.
+///
+/// Regression: `storage::init` degrades gracefully on failure, which previously demoted a
+/// rejected data directory to a warning while the daemon carried on serving.
+#[tokio::test]
+async fn full_entrypoint_rejects_unusable_database_directory() {
+    let scope = scoped_socket_dir("dbbl-");
+    let parent = scope.path().join("d");
+    std::fs::create_dir(&parent).unwrap();
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o700)).unwrap();
+
+    // A regular file where the database's directory should be.
+    let blocker = parent.join("blocked");
+    std::fs::write(&blocker, b"not a directory").unwrap();
+
+    let socket = parent.join("d.sock");
+    let engine: Arc<dyn CompletionEngine> = Arc::new(StubEngine);
+    let err = tokio::time::timeout(
+        Duration::from_secs(10),
+        autocomplete_rs::daemon::start_with_engine(
+            socket.to_str().unwrap(),
+            engine,
+            &blocker.join("autocomplete.db"),
+        ),
+    )
+    .await
+    .expect("daemon must fail fast, not start and serve")
+    .expect_err("an unusable database directory must be refused");
+
+    assert!(
+        format!("{err:#}").contains("database directory is not usable"),
+        "unexpected error: {err:#}"
+    );
+}
+
+/// An over-long socket path is rejected with guidance, not an opaque `bind` failure.
+#[tokio::test]
+async fn full_entrypoint_rejects_over_long_socket_path() {
+    let long_name = "x".repeat(autocomplete_rs::paths::MAX_SOCKET_PATH_LEN);
+    let socket = test_socket_dir().join(format!("{long_name}.sock"));
+
+    let db = private_tempdir();
+    let engine: Arc<dyn CompletionEngine> = Arc::new(StubEngine);
+    let err = tokio::time::timeout(
+        Duration::from_secs(10),
+        autocomplete_rs::daemon::start_with_engine(
+            socket.to_str().unwrap(),
+            engine,
+            &db.path().join("test.db"),
+        ),
+    )
+    .await
+    .expect("daemon must fail fast, not start and serve")
+    .expect_err("an over-long socket path must be refused");
+
+    assert!(
+        format!("{err:#}").contains("AUTOCOMPLETE_RS_SOCKET"),
+        "error should tell the user how to fix it: {err:#}"
+    );
 }
 
 // ─── Full entrypoint tests ──────────────────────────────────────────────────
@@ -291,7 +495,7 @@ async fn start_full_daemon(
         if handle.is_finished() {
             match handle.await {
                 Ok(Ok(())) => panic!("daemon exited immediately without error"),
-                Ok(Err(e)) => panic!("daemon failed to start: {e}"),
+                Ok(Err(e)) => panic!("daemon failed to start: {e:#}"),
                 Err(e) => panic!("daemon task panicked: {e}"),
             }
         }
@@ -337,7 +541,7 @@ async fn shutdown_full_daemon(
 
 #[tokio::test]
 async fn full_entrypoint_lifecycle() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = private_tempdir();
     let socket_path = temp_socket_path();
     let db_path = dir.path().join("data").join("autocomplete.db");
     let pid_path = derive_pid_path(&socket_path);
@@ -374,7 +578,7 @@ async fn full_entrypoint_lifecycle() {
 
 #[tokio::test]
 async fn full_entrypoint_storage_records_session() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = private_tempdir();
     let socket_path = temp_socket_path();
     let db_path = dir.path().join("data").join("autocomplete.db");
 
@@ -409,7 +613,7 @@ async fn full_entrypoint_storage_records_session() {
 #[tokio::test]
 async fn full_entrypoint_stale_socket_cleanup() {
     let socket_path = temp_socket_path();
-    let dir = tempfile::tempdir().unwrap();
+    let dir = private_tempdir();
     let db_path = dir.path().join("data").join("autocomplete.db");
 
     // Create a stale socket file (simulates leftover from a crash)
@@ -428,7 +632,7 @@ async fn full_entrypoint_stale_socket_cleanup() {
 
 #[tokio::test]
 async fn full_entrypoint_double_start_rejected() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = private_tempdir();
     let socket_path = temp_socket_path();
     let db_path = dir.path().join("data").join("autocomplete.db");
 
@@ -453,4 +657,16 @@ async fn full_entrypoint_double_start_rejected() {
 
     // Clean up first daemon
     shutdown_full_daemon(&socket_path, handle).await;
+}
+
+/// A temp directory at mode 0700.
+///
+/// `tempfile` honours the umask (0755 in practice), but the daemon refuses to put private
+/// data in a group/other-accessible directory — as a real user's `~/.autocomplete-rs`
+/// would never be.
+fn private_tempdir() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().expect("failed to create temp dir");
+    std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700))
+        .expect("failed to restrict temp dir");
+    dir
 }
