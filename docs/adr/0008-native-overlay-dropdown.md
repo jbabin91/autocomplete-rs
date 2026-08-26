@@ -5,6 +5,9 @@
 **Decision Makers:** Project Team
 **Technical Story:** Replace inline ANSI rendering with native GUI overlay for completion dropdown
 **Supersedes:** [ADR-0004](0004-direct-terminal-control.md) (Direct Terminal Control), [ADR-0006](0006-inline-ansi-dropdown.md) (Inline ANSI Dropdown)
+**Amended by:** [ADR-0009](0009-dsr-cursor-positioning.md) (DSR Cursor Positioning) — the
+caret now comes from the terminal via `ESC[6n`; the Accessibility API supplies only
+the window rect.
 
 ## Context
 
