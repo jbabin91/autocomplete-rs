@@ -16,9 +16,9 @@
 # `rust-version` (1.89) — the lower MSRV the crate promises, verified by its own
 # CI job.
 rust = { version = "1.98.0", components = "clippy,rustfmt,rust-src,rust-analyzer" }
-lefthook = "2.1.11"
-dprint = "0.56.1"
-rumdl = "0.2.60"
+lefthook = "2.1.12"
+dprint = "0.57.4"
+rumdl = "0.2.66"
 # actionlint covers the shell inlined in workflow `run:` blocks, which is where
 # the only non-trivial scripting in this repo lives. It does not lint shell
 # itself — it shells out to shellcheck, and silently reports nothing when
