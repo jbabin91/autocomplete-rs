@@ -16,9 +16,9 @@
 # `rust-version` (1.89) — the lower MSRV the crate promises, verified by its own
 # CI job.
 rust = { version = "1.98.0", components = "clippy,rustfmt,rust-src,rust-analyzer" }
-lefthook = "2.1.11"
-dprint = "0.56.1"
-rumdl = "0.2.60"
+lefthook = "2.1.14"
+dprint = "0.57.4"
+rumdl = "0.2.73"
 # actionlint covers the shell inlined in workflow `run:` blocks, which is where
 # the only non-trivial scripting in this repo lives. It does not lint shell
 # itself — it shells out to shellcheck, and silently reports nothing when
@@ -39,7 +39,7 @@ gitleaks = "8.30.1"
 # cold CI cache. Exact, because cog parses commit messages for both the
 # commit-msg hook and CI, and a 7.x release could change what either accepts.
 "aqua:cocogitto/cocogitto" = "7.0.0"
-"cargo:cargo-nextest" = "0.9.143"
+"cargo:cargo-nextest" = "0.9.144"
 # The release pipeline's own tool. CI never installs it — release.yml fetches
 # dist by curl and no CI job runs it — so this pin exists to give `dist
 # generate-ci` a declared version locally, reachable as `mise exec -- dist`.
