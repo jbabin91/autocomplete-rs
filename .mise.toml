@@ -50,7 +50,7 @@ gitleaks = "8.30.1"
 # against a config declaring a different one ("You're running dist 0.32.0, but
 # 'cargo-dist-version = 0.30.3' is set"). Bumping this means running `dist init`,
 # so renovate.json keeps it off automerge.
-"aqua:axodotdev/cargo-dist" = "0.30.3"
+"aqua:axodotdev/cargo-dist" = "0.33.0"
 
 [tasks.setup]
 description = "Bootstrap a fresh clone"
