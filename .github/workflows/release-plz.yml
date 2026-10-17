@@ -23,13 +23,13 @@ jobs:
       # on an allowlist built from real runs. This job holds contents: write and
       # the crates.io OIDC token, so it is the one most worth watching.
       - name: Harden Runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           app-id: ${{ secrets.AUTOMATED_ACTIONS_AGENT_APP_ID }}
           private-key: ${{ secrets.AUTOMATED_ACTIONS_AGENT_PRIVATE_KEY }}
@@ -41,6 +41,6 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
       - name: Run release-plz
-        uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5.131
+        uses: release-plz/action@8921286633dfa0c4020f7f30bd1c14fe19cbb10e # v0.5.142
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
